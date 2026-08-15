@@ -1,10 +1,14 @@
 // netlify/functions/levels.js
-// 关卡共享工作台后端：list / save / delete，用 Netlify Blobs 存
-// 共享口令放在环境变量 WORKBENCH_PASSWORD 里，所有写操作带 X-Workbench-Pass 校验
-const { getStore } = require('@netlify/blobs');
+// 关卡共享工作台后端：list / save / delete
+// 存储直接用 GitHub 仓库里的 data/levels/ 目录（每个关卡一个 JSON 文件）
+// 环境变量：
+//   WORKBENCH_PASSWORD  - 共享口令（必填）
+//   GITHUB_TOKEN        - GitHub Personal Access Token（repo 权限，必填）
+//   GITHUB_REPO        - 仓库，格式 "用户名/仓库名"，比如 "zhangjiwei0221/mahjong"（可选，自动推断也行）
+//   GITHUB_BRANCH      - 分支，默认 main
 
 const PASS_ENV = 'WORKBENCH_PASSWORD';
-const STORE_NAME = 'level-workbench';
+const LEVELS_DIR = 'data/levels';
 
 function cors() {
   return {
@@ -26,56 +30,164 @@ function checkPass(headers) {
   return { ok: true };
 }
 
+const GH_API = 'https://api.github.com';
+
+function ghHeaders(token, extra) {
+  return Object.assign({
+    'Authorization': 'Bearer ' + token,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': 'mahjong-workbench',
+  }, extra || {});
+}
+
+async function ghRequest(path, opts) {
+  opts = opts || {};
+  const token = process.env.GITHUB_TOKEN;
+  if (!token) throw new Error('GITHUB_TOKEN 未配置');
+  const repo = process.env.GITHUB_REPO;
+  if (!repo) throw new Error('GITHUB_REPO 未配置');
+  const url = `${GH_API}/repos/${repo}${path}`;
+  const r = await fetch(url, {
+    method: opts.method || 'GET',
+    headers: ghHeaders(token, opts.headers || {}),
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const text = await r.text();
+  let data;
+  try { data = JSON.parse(text); } catch (_) { data = text; }
+  if (!r.ok) {
+    const msg = (data && data.message) ? data.message : ('HTTP ' + r.status);
+    const err = new Error(msg);
+    err.status = r.status;
+    err.data = data;
+    throw err;
+  }
+  return { data, status: r.status };
+}
+
+async function getLevelList() {
+  const branch = process.env.GITHUB_BRANCH || 'main';
+  try {
+    const { data } = await ghRequest(`/contents/${LEVELS_DIR}?ref=${branch}`);
+    if (!Array.isArray(data)) return [];
+    const files = data.filter(f => f.name.endsWith('.json') && f.type === 'file');
+    const levels = [];
+    for (const f of files) {
+      try {
+        const { data: content } = await ghRequest(`/contents/${LEVELS_DIR}/${f.name}?ref=${branch}`);
+        const raw = Buffer.from(content.content, 'base64').toString('utf8');
+        const lv = JSON.parse(raw);
+        levels.push({
+          key: f.name.replace(/\.json$/, ''),
+          name: lv.name,
+          totalPairs: lv.totalPairs,
+          tileCount: (lv.tiles || []).length,
+          darkCount: (lv.specialTiles || []).filter(s => s.type === 'dark').length,
+          score: lv._difficulty?.score ?? null,
+          maxLayer: lv._difficulty?.maxLayer ?? 0,
+          savedAt: lv.createdAt || null,
+          author: lv.author || '',
+        });
+      } catch (_) { /* skip bad files */ }
+    }
+    levels.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+    return levels;
+  } catch (e) {
+    if (e.status === 404) return []; // 目录不存在说明还没存过
+    throw e;
+  }
+}
+
+async function getLevel(key) {
+  const branch = process.env.GITHUB_BRANCH || 'main';
+  try {
+    const { data } = await ghRequest(`/contents/${LEVELS_DIR}/${encodeURIComponent(key)}.json?ref=${branch}`);
+    const raw = Buffer.from(data.content, 'base64').toString('utf8');
+    return JSON.parse(raw);
+  } catch (e) {
+    if (e.status === 404) return null;
+    throw e;
+  }
+}
+
+async function putLevel(key, levelObj) {
+  const branch = process.env.GITHUB_BRANCH || 'main';
+  const filePath = `${LEVELS_DIR}/${key}.json`;
+  const content = Buffer.from(JSON.stringify(levelObj, null, 2)).toString('base64');
+
+  // 先看文件存不存在（拿到 sha 才能更新）
+  let sha = null;
+  try {
+    const { data: existing } = await ghRequest(`/contents/${filePath}?ref=${branch}`);
+    sha = existing.sha;
+  } catch (e) {
+    if (e.status !== 404) throw e;
+  }
+
+  const body = {
+    message: `workbench: ${sha ? 'update' : 'add'} level ${key}`,
+    content,
+    branch,
+  };
+  if (sha) body.sha = sha;
+
+  await ghRequest(`/contents/${filePath}`, { method: 'PUT', body });
+  return true;
+}
+
+async function deleteLevel(key) {
+  const branch = process.env.GITHUB_BRANCH || 'main';
+  const filePath = `${LEVELS_DIR}/${key}.json`;
+
+  let sha;
+  try {
+    const { data: existing } = await ghRequest(`/contents/${filePath}?ref=${branch}`);
+    sha = existing.sha;
+  } catch (e) {
+    if (e.status === 404) return false;
+    throw e;
+  }
+
+  await ghRequest(`/contents/${filePath}`, {
+    method: 'DELETE',
+    body: {
+      message: `workbench: delete level ${key}`,
+      sha,
+      branch,
+    },
+  });
+  return true;
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: cors() };
   }
 
-  const store = getStore(STORE_NAME);
   const path = (event.path || '').replace(/^.*\/levels\/?/, '').replace(/\/$/, '');
 
   try {
-    // GET /levels — 列出所有关卡（元信息）
+    // GET /levels — 列出所有关卡
     if (event.httpMethod === 'GET' && !path) {
-      const { blobs } = await store.list();
-      const levels = [];
-      for (const b of blobs) {
-        try {
-          const data = await store.get(b.key, { type: 'json' });
-          levels.push({
-            key: b.key,
-            name: data.name,
-            totalPairs: data.totalPairs,
-            tileCount: data.tiles?.length ?? 0,
-            darkCount: (data.specialTiles || []).filter(s => s.type === 'dark').length,
-            score: data._difficulty?.score ?? null,
-            maxLayer: data._difficulty?.maxLayer ?? 0,
-            savedAt: data.createdAt || null,
-            author: data.author || '',
-          });
-        } catch (_) { /* skip bad entries */ }
-      }
-      levels.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+      const levels = await getLevelList();
       return json(200, { levels });
     }
 
-    // GET /levels/:key — 下载单个完整关卡
+    // GET /levels/:key — 单个完整关卡
     if (event.httpMethod === 'GET' && path) {
-      try {
-        const data = await store.get(decodeURIComponent(path), { type: 'json' });
-        const clean = {
-          levelId: data.levelId,
-          totalPairs: data.totalPairs,
-          tiles: data.tiles,
-          specialTiles: data.specialTiles || [],
-        };
-        return json(200, clean);
-      } catch (e) {
-        return json(404, { error: '关卡不存在' });
-      }
+      const data = await getLevel(decodeURIComponent(path));
+      if (!data) return json(404, { error: '关卡不存在' });
+      const clean = {
+        levelId: data.levelId,
+        totalPairs: data.totalPairs,
+        tiles: data.tiles,
+        specialTiles: data.specialTiles || [],
+      };
+      return json(200, clean);
     }
 
-    // POST /levels — 保存新关卡（需要口令）
+    // POST /levels — 保存
     if (event.httpMethod === 'POST') {
       const passCheck = checkPass(event.headers);
       if (!passCheck.ok) return json(401, { error: passCheck.msg });
@@ -96,20 +208,16 @@ exports.handler = async (event) => {
         _difficulty: body._difficulty || null,
         createdAt: new Date().toISOString(),
       };
-      await store.setJSON(key, payload);
+      await putLevel(key, payload);
       return json(200, { key, name });
     }
 
-    // DELETE /levels/:key — 删除（需要口令）
+    // DELETE /levels/:key — 删除
     if (event.httpMethod === 'DELETE' && path) {
       const passCheck = checkPass(event.headers);
       if (!passCheck.ok) return json(401, { error: passCheck.msg });
-      try {
-        await store.delete(decodeURIComponent(path));
-        return json(200, { ok: true });
-      } catch (e) {
-        return json(404, { error: '关卡不存在' });
-      }
+      const ok = await deleteLevel(decodeURIComponent(path));
+      return json(ok ? 200 : 404, { ok });
     }
 
     return json(405, { error: '不支持的方法' });
