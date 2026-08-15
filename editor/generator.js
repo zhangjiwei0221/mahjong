@@ -624,6 +624,56 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
   }
 
+  // ===== 堆塔生成：以用户画的形状为底，自动往上堆层 + 填色 =====
+  function generateStackFromShape(editorTiles, options) {
+    options = options || {};
+    const darkMode = options.darkMode !== false;
+    const layerCount = options.layerCount || 5;
+    // 编辑器形状是 std（row=纵/col=横），生成器内部用 row=横/col=纵 → swap
+    const layerMap = {};
+    editorTiles.forEach(function (t) {
+      (layerMap[t.layer] = layerMap[t.layer] || []).push({ row: t.col, col: t.row });
+    });
+    const layerNums = Object.keys(layerMap).map(Number).sort(function (a, b) { return a - b; });
+    if (layerNums.length === 0) throw new Error('空形状');
+    const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
+    const shape = generateFromTemplate(template, { layerCount: layerCount });
+    const v = validateShape(shape);
+    if (!v.ok) throw new Error('堆层校验失败: ' + v.errors.slice(0, 2).join('; '));
+    const level = toEditorJSON(shape, 1);
+    // 填色
+    let result = null;
+    for (let seed = 1; seed <= 100 && !result; seed++) {
+      result = backwardFill(level.tiles, makeRng(seed * 1000 + 42));
+    }
+    if (!result) throw new Error('填色失败');
+    const filled = {
+      levelId: level.levelId, totalPairs: level.totalPairs,
+      tiles: level.tiles.map(function (t, j) { return Object.assign({}, t, { typeId: result.assigned[j] }); }),
+      specialTiles: []
+    };
+    // 暗牌
+    if (darkMode) {
+      const darkRng = makeRng(7777);
+      const darkMax = Math.max(1, Math.round(filled.tiles.length * (DARK_RATIO_MIN + darkRng() * (DARK_RATIO_MAX - DARK_RATIO_MIN))));
+      const darkIdx = assignDarkTiles(filled.tiles, darkRng, darkMax);
+      const dSet = new Set(darkIdx);
+      const special = [];
+      darkIdx.forEach(function (j) {
+        filled.tiles[j].isDark = true;
+        special.push({ id: filled.tiles[j].id, type: 'dark', layer: filled.tiles[j].layer, row: filled.tiles[j].row, col: filled.tiles[j].col });
+      });
+      filled.tiles = filled.tiles.map(function (t, j) { return Object.assign({}, t, { isDark: dSet.has(j) }); });
+      filled.specialTiles = special;
+    } else {
+      filled.tiles = filled.tiles.map(function (t) { return Object.assign({}, t, { isDark: false }); });
+    }
+    const darkIds = new Set((filled.specialTiles || []).map(function (s) { return s.id; }));
+    const diff = evaluateDifficulty(filled, darkIds);
+    filled._difficulty = diff;
+    return filled;
+  }
+
   global.GEN = {
     TEMPLATE_T2_GONG: TEMPLATE_T2_GONG,
     loadTemplate: loadTemplate, generateFromTemplate: generateFromTemplate, validateShape: validateShape, toEditorJSON: toEditorJSON, drawShape: drawShape,
@@ -631,6 +681,6 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     NAMES: NAMES, DARK_RATIO_MIN: DARK_RATIO_MIN, DARK_RATIO_MAX: DARK_RATIO_MAX, DARK_WEIGHT: DARK_WEIGHT,
     makeRng: makeRng, shuffle: shuffle, covers: covers, isClickable: isClickable,
     backwardFill: backwardFill, verifyByElimination: verifyByElimination, assignDarkTiles: assignDarkTiles, evaluateDifficulty: evaluateDifficulty,
-    fillEditorShape: fillEditorShape, generateAndFill: generateAndFill, downloadJSON: downloadJSON,
+    fillEditorShape: fillEditorShape, generateAndFill: generateAndFill, generateStackFromShape: generateStackFromShape, downloadJSON: downloadJSON,
   };
 })(typeof window !== 'undefined' ? window : globalThis);

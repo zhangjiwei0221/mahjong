@@ -391,7 +391,12 @@
     <span>含暗牌 (10–20%)</span>
     <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
   </div>
-  <button class="btn primary-btn" onclick="generateCurrentShape()">🎲 生成关卡</button>
+  <button class="btn primary-btn" onclick="generateCurrentShape()">🎯 按形状生成</button>
+  <div class="toggle-row" style="align-items:center;">
+    <span>自动堆层数</span>
+    <input type="number" id="stackCount" value="5" min="2" max="7" style="width:44px;">
+  </div>
+  <button class="btn" onclick="generateStackFromCurrent()">🏗 堆塔生成</button>
   <div class="info-box">
     <span id="genStatus">就绪</span>
   </div>
@@ -441,7 +446,6 @@
     </div>
     <div class="preview-actions">
       <button class="mini-btn primary" onclick="downloadCurrentLevel()" id="downloadBtn" disabled>⬇ 下载 JSON</button>
-      <button class="mini-btn" onclick="saveLevelToWorkbench()" id="saveBtn" disabled>☁ 保存到工作台</button>
       <button class="mini-btn" onclick="closePreview()" id="closeBtn" disabled>✕ 关闭</button>
     </div>
   </div>
@@ -1358,6 +1362,26 @@ function regenerateLevel() {
   }, 30);
 }
 
+function generateStackFromCurrent() {
+  try {
+    const { tiles, specialTiles } = buildEditorShape();
+    if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
+    const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+    setGenStatus('堆层生成中…');
+    enablePreviewActions(false);
+    setTimeout(() => {
+      try {
+        const level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
+        const d = level._difficulty;
+        currentLevel = level;
+        setGenStatus(`<span class="good">✓ 堆塔 ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length} · ${d.maxLayer + 1}层</span>`);
+        showPreview();
+        sendLevelToPreview(level);
+      } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
+    }, 30);
+  } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
+}
+
 function downloadCurrentLevel() {
   if (!currentLevel) return;
   const d = currentLevel._difficulty;
@@ -1417,7 +1441,7 @@ function setPreviewStats(level, darkCount) {
 }
 
 function enablePreviewActions(enable) {
-  ['downloadBtn', 'saveBtn', 'closeBtn'].forEach(id => {
+  ['downloadBtn', 'closeBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.disabled = !enable;
   });
@@ -1500,9 +1524,12 @@ function escapeHtml(s) {
 }
 
 function saveCurrentLevelToWorkbench() {
+  const btn = document.getElementById('wbSaveBtn');
   if (!workbenchConnected) { setWorkbenchStatus('请先连接工作台', 'error'); return; }
-  if (!currentLevel) return;
+  if (!currentLevel) { setWorkbenchStatus('先生成关卡（点上方生成按钮）才能保存', 'error'); return; }
   const name = document.getElementById('levelNameInput').value.trim() || '未命名关卡';
+  btn.disabled = true;
+  btn.textContent = '保存中…';
   setWorkbenchStatus('保存中…', '');
   workbenchApi('', {
     method: 'POST',
@@ -1514,14 +1541,18 @@ function saveCurrentLevelToWorkbench() {
       totalPairs: currentLevel.totalPairs,
       _difficulty: currentLevel._difficulty,
     }),
-  }).then(() => {
-    setWorkbenchStatus('保存成功！', 'connected');
-    return workbenchApi('');
-  }).then(data => {
+  }).then(() => workbenchApi('')).then(data => {
     workbenchLevels = data.levels || [];
     renderWorkbenchList();
+    btn.textContent = '已保存 ✓';
+    btn.style.background = '#2e7d32';
+    setWorkbenchStatus('保存成功：' + name, 'connected');
+    setTimeout(() => { btn.textContent = '保存当前'; btn.style.background = ''; btn.disabled = false; updateWbSaveBtn(); }, 2000);
   }).catch(e => {
+    btn.textContent = '保存失败';
+    btn.style.background = '#c62828';
     setWorkbenchStatus('保存失败: ' + e.message, 'error');
+    setTimeout(() => { btn.textContent = '保存当前'; btn.style.background = ''; btn.disabled = false; updateWbSaveBtn(); }, 2500);
   });
 }
 
