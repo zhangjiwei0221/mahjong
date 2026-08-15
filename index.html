@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻将消一消 · 在线版</title>
+<style>
+  :root {
+    --bg: #f5f0e4;
+    --card: #fffdf7;
+    --ink: #2a2520;
+    --ink-soft: #6b6256;
+    --line: #d8cdb4;
+    --accent: #b03328;
+    --accent-2: #237a36;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at top, #fbf7ec 0%, var(--bg) 60%) no-repeat,
+      var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    width: 100%;
+    max-width: 560px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 40px 32px 32px;
+    box-shadow: 0 10px 40px rgba(80, 60, 30, 0.08), 0 2px 6px rgba(80, 60, 30, 0.04);
+  }
+  .brand {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+  .brand .tile {
+    display: inline-block;
+    font-size: 36px;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .brand h1 {
+    font-size: 28px;
+    margin: 0 0 8px;
+    letter-spacing: 2px;
+    color: var(--ink);
+  }
+  .brand p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 14px;
+    letter-spacing: 0.5px;
+  }
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  @media (max-width: 420px) {
+    .actions { grid-template-columns: 1fr; }
+    .card { padding: 28px 20px; }
+  }
+  .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 28px 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: var(--card);
+    font-weight: 600;
+    letter-spacing: 1px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+    border: 1px solid transparent;
+  }
+  .btn .icon { font-size: 32px; line-height: 1; }
+  .btn .label { font-size: 16px; }
+  .btn .sub { font-size: 11px; font-weight: 400; opacity: 0.85; letter-spacing: 0.5px; }
+  .btn-play { background: var(--accent); }
+  .btn-edit { background: var(--accent-2); }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    filter: brightness(1.05);
+  }
+  .docs {
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    text-align: center;
+  }
+  .docs-title {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+  .docs a {
+    display: inline-block;
+    margin: 0 8px;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 10px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    transition: background 0.12s ease;
+  }
+  .docs a:hover { background: var(--bg); }
+  footer {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--ink-soft);
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <div class="tile">🀄</div>
+      <h1>麻将消一消</h1>
+      <p>麻将花色 · 二消玩法 · 5 层立体牌堆</p>
+    </div>
+
+    <nav class="actions">
+      <a class="btn btn-play" href="demo/" target="_blank" rel="noopener">
+        <span class="icon">🎮</span>
+        <span class="label">试玩 Demo</span>
+        <span class="sub">内置关卡 · 暗牌玩法</span>
+      </a>
+      <a class="btn btn-edit" href="editor/" target="_blank" rel="noopener">
+        <span class="icon">✏️</span>
+        <span class="label">关卡编辑器</span>
+        <span class="sub">搭形状 · 一键生成完整关卡</span>
+      </a>
+    </nav>
+
+    <div class="docs">
+      <div class="docs-title">使用文档</div>
+      <a href="docs/使用说明.md" target="_blank">编辑器说明</a>
+      <a href="docs/难度分说明.md" target="_blank">难度分说明</a>
+      <a href="docs/游戏Demo说明.md" target="_blank">Demo 说明</a>
+    </div>
+
+    <footer>全流程浏览器一体化：编辑形状 → 一键生成填色 → 直接试玩 · 无后端依赖</footer>
+  </main>
+</body>
+</html>
