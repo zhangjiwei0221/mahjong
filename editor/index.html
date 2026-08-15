@@ -454,6 +454,7 @@
     <span style="opacity:.5;">~</span>
     <input type="number" id="scoreMax" value="999" min="0" max="999" style="width:44px;">
   </div>
+  <button class="btn" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
   <div class="toggle-row" style="align-items:center;">
     <span>生成数量</span>
     <input type="number" id="batchCount" value="5" min="1" max="50" style="width:44px;">
@@ -1670,6 +1671,37 @@ function deleteWorkbenchLevel(key) {
 function updateWbSaveBtn() {
   const btn = document.getElementById('wbSaveBtn');
   if (btn) btn.disabled = !currentLevel || !workbenchConnected;
+}
+
+// ========== 探测分数范围 ==========
+function probeScoreRange() {
+  let tiles;
+  try { ({ tiles } = buildEditorShape()); }
+  catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
+  if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
+  const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+  const N = 20; // 采样数
+  const scores = [];
+  let i = 0;
+  setGenStatus('探测分数范围… 0/' + N);
+  function step() {
+    if (i >= N) {
+      const min = Math.min(...scores), max = Math.max(...scores);
+      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      document.getElementById('scoreMin').value = min;
+      document.getElementById('scoreMax').value = max;
+      setGenStatus(`<span class="good">本底座可出：最低 ${min} / 最高 ${max} / 平均 ${avg}（已填入目标分数框，可再收窄）</span>`);
+      return;
+    }
+    try {
+      const level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
+      scores.push(level._difficulty.score);
+    } catch (_) { /* 跳过失败样本 */ }
+    i++;
+    if (i % 4 === 0) setGenStatus('探测分数范围… ' + i + '/' + N);
+    setTimeout(step, 0);
+  }
+  step();
 }
 
 // ========== 批量生成（按当前底座堆层 + 分数范围过滤） ==========
