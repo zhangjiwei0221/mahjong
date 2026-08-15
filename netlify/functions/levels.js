@@ -31,7 +31,7 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: cors() };
   }
 
-  const store = getStore(STORE_NAME);
+  const store = getStore({ name: STORE_NAME });
   const path = (event.path || '').replace(/^.*\/levels\/?/, '').replace(/\/$/, '');
 
   try {

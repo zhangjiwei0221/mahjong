@@ -1,0 +1,6 @@
+# 关卡共享工作台 · Netlify 配置
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
