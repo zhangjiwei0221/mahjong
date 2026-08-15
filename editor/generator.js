@@ -62,7 +62,7 @@ function loadTemplate(jsonInput) {
 
 // ========== 散落策略 ==========
 // 从候选位置挑牌。mode='ordered' 按行列有序密排（互锁，喂饱上一层）；mode='random' 随机有机
-function generateLayer(lowerArr, lowerKeys, style, count, mode = 'ordered') {
+function generateLayer(lowerArr, lowerKeys, style, count, mode = 'ordered', mirror = true) {
   const candidates = [];
   for (let row = 0; row <= 5; row++) {
     for (let col = -8; col <= 6; col++) {
@@ -105,23 +105,26 @@ function generateLayer(lowerArr, lowerKeys, style, count, mode = 'ordered') {
       }
     }
     if (tooClose) continue;
-    // 无全覆盖：镜像位置也不能和下层完全重合
-    const mr = mirrorRow(cand.row);
-    if (lowerKeys.has(keyOf(mr, cand.col))) continue;
+    // 无全覆盖：仅镜像模式时，镜像位置也不能和下层完全重合
+    if (mirror) {
+      const mr = mirrorRow(cand.row);
+      if (lowerKeys.has(keyOf(mr, cand.col))) continue;
+    }
     selected.add(keyOf(cand.row, cand.col));
   }
 
-  return expandMirrorWithLimit(selected, count);
+  return expandMirrorWithLimit(selected, count, mirror);
 }
 
-function expandMirrorWithLimit(left, count) {
-  const full = new Set();
-  left.forEach(k => {
-    full.add(k);
-    const [r, c] = k.split(',').map(Number);
-    const mr = mirrorRow(r);
-    if (mr !== r) full.add(keyOf(mr, c));
-  });
+function expandMirrorWithLimit(left, count, mirror = true) {
+  const full = new Set(left);
+  if (mirror) {
+    left.forEach(k => {
+      const [r, c] = k.split(',').map(Number);
+      const mr = mirrorRow(r);
+      if (mr !== r) full.add(keyOf(mr, c));
+    });
+  }
   // 如果太多，按 row 顺序裁剪
   if (full.size > count * 2) {
     const arr = Array.from(full);
@@ -137,6 +140,8 @@ function expandMirrorWithLimit(left, count) {
 function generateFromTemplate(template, options = {}) {
   const templateLayerCount = template.layerCount;
   const generateLayerCount = options.layerCount ?? templateLayerCount;
+  // mirror=false：底座不对称时，上层按底座实际形状堆，不做镜像展开
+  const mirror = options.mirror !== false;
 
   // 随机金字塔目标（镜像展开前约×2）
   // L1 是骨架要够密，往上递减；每层加随机抖动制造差异
@@ -163,7 +168,7 @@ function generateFromTemplate(template, options = {}) {
     const count = calcCount(l, generateLayerCount);
     // L1 用 ordered 有序密排（互锁骨架，喂饱上层）；L2+ 用 random 随机有机
     const mode = l === 1 ? 'ordered' : 'random';
-    const selected = generateLayer(lowerArr, lowerKeys, style, count, mode);
+    const selected = generateLayer(lowerArr, lowerKeys, style, count, mode, mirror);
     const arr = Array.from(selected).map(k => {
       const [r, c] = k.split(',').map(Number);
       return { row: r, col: c };
@@ -214,7 +219,7 @@ function generateFromTemplate(template, options = {}) {
 }
 
 // ========== 校验 ==========
-function validateShape(shape) {
+function validateShape(shape, opts = {}) {
   const errors = [];
   const byLayer = {};
   shape.tiles.forEach(t => {
@@ -225,15 +230,17 @@ function validateShape(shape) {
   const layerNums = Object.keys(byLayer).map(Number).sort((a, b) => a - b);
   if (layerNums.length === 0) return { ok: true, errors: [] };
 
-  // 对称
-  layerNums.forEach(l => {
-    const set = new Set(byLayer[l].map(t => keyOf(t.row, t.col)));
-    byLayer[l].forEach(t => {
-      if (!set.has(keyOf(mirrorRow(t.row), t.col))) {
-        errors.push(`[对称] L${l}(${t.row},${t.col})`);
-      }
+  // 对称（skipSymmetry=true 时跳过：底座不对称时，上层按实际形状堆，不要求镜像）
+  if (!opts.skipSymmetry) {
+    layerNums.forEach(l => {
+      const set = new Set(byLayer[l].map(t => keyOf(t.row, t.col)));
+      byLayer[l].forEach(t => {
+        if (!set.has(keyOf(mirrorRow(t.row), t.col))) {
+          errors.push(`[对称] L${l}(${t.row},${t.col})`);
+        }
+      });
     });
-  });
+  }
 
   // 支撑
   layerNums.forEach(l => {
@@ -636,9 +643,27 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     });
     const layerNums = Object.keys(layerMap).map(Number).sort(function (a, b) { return a - b; });
     if (layerNums.length === 0) throw new Error('空形状');
+    if (editorTiles.length % 2 !== 0) {
+      throw new Error('底座是 ' + editorTiles.length + ' 张（奇数），二消要偶数张才能成对，请加一张或删一张');
+    }
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
-    const shape = generateFromTemplate(template, { layerCount: layerCount });
-    const v = validateShape(shape);
+    // 检测底座是否左右对称（std 坐标：每个 (layer,row,col) 都要有 (layer,row,-col)）
+    // 对称底座 → 正常镜像堆塔；不对称底座 → 关掉镜像展开、跳过对称校验，按实际形状堆
+    const symSet = new Set();
+    editorTiles.forEach(function (t) { symSet.add(t.layer + ',' + t.row + ',' + t.col); });
+    const baseSymmetric = editorTiles.every(function (t) { return symSet.has(t.layer + ',' + t.row + ',' + (-t.col)); });
+    const mirror = baseSymmetric;
+    const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
+    // 不对称堆塔时层不镜像翻倍，总牌数可能为奇数（二消要偶数）→ 从顶层删一张凑偶
+    if (shape.tiles.length % 2 !== 0) {
+      const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
+      const topIdx = shape.tiles.findIndex(function (t) { return t.layer === maxL; });
+      if (topIdx >= 0) {
+        shape.tiles.splice(topIdx, 1);
+        if (shape.layerCounts) shape.layerCounts[maxL] = (shape.layerCounts[maxL] || 1) - 1;
+      }
+    }
+    const v = validateShape(shape, { skipSymmetry: !mirror });
     if (!v.ok) throw new Error('堆层校验失败: ' + v.errors.slice(0, 2).join('; '));
     const level = toEditorJSON(shape, 1);
     // 填色
