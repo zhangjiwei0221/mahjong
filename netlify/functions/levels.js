@@ -31,11 +31,11 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: cors() };
   }
 
-  const store = getStore({ name: STORE_NAME });
+  const store = getStore(STORE_NAME);
   const path = (event.path || '').replace(/^.*\/levels\/?/, '').replace(/\/$/, '');
 
   try {
-    // GET /levels — 列出所有关卡（只返回元信息，不含 tiles 大对象）
+    // GET /levels — 列出所有关卡（元信息）
     if (event.httpMethod === 'GET' && !path) {
       const { blobs } = await store.list();
       const levels = [];
@@ -50,7 +50,7 @@ exports.handler = async (event) => {
             darkCount: (data.specialTiles || []).filter(s => s.type === 'dark').length,
             score: data._difficulty?.score ?? null,
             maxLayer: data._difficulty?.maxLayer ?? 0,
-            savedAt: b.etag ? String(b.etag) : null,
+            savedAt: data.createdAt || null,
             author: data.author || '',
           });
         } catch (_) { /* skip bad entries */ }
@@ -59,11 +59,10 @@ exports.handler = async (event) => {
       return json(200, { levels });
     }
 
-    // GET /levels/:key — 下载单个完整关卡 JSON
+    // GET /levels/:key — 下载单个完整关卡
     if (event.httpMethod === 'GET' && path) {
       try {
         const data = await store.get(decodeURIComponent(path), { type: 'json' });
-        // 去掉内部辅助字段
         const clean = {
           levelId: data.levelId,
           totalPairs: data.totalPairs,
@@ -85,7 +84,6 @@ exports.handler = async (event) => {
       const name = (body.name || '未命名关卡').toString().slice(0, 50);
       if (!body.tiles || !Array.isArray(body.tiles)) return json(400, { error: '缺少 tiles' });
 
-      // key 用时间戳 + 随机后缀，避免重名覆盖
       const key = Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
       const payload = {
         key,
