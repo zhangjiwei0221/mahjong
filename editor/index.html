@@ -281,6 +281,57 @@
   .level-item .lv-actions button.danger { background: #533; border-color: #744; }
   .level-item .lv-actions button.danger:hover { background: #744; }
 
+  /* ===== 批量生成结果弹窗 ===== */
+  .batch-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 99999;
+  }
+  .batch-modal {
+    width: 560px; max-width: 92vw;
+    max-height: 80vh;
+    background: #16213e;
+    border: 1px solid #0f3460;
+    border-radius: 10px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .batch-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid #0f3460;
+    font-size: 14px; font-weight: 600; color: #eee;
+  }
+  .batch-modal-actions { display: flex; gap: 5px; }
+  .batch-modal-list {
+    overflow-y: auto;
+    padding: 10px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .batch-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #0a1628;
+    border: 1px solid #0f3460;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .batch-item .bi-idx { color: #888; font-size: 11px; width: 26px; }
+  .batch-item .bi-score {
+    font-weight: 700; color: #ffd76a;
+    min-width: 52px;
+  }
+  .batch-item .bi-meta { flex: 1; color: #bbb; font-size: 11px; }
+  .batch-item .bi-actions { display: flex; gap: 4px; }
+  .batch-item .bi-actions button {
+    padding: 3px 8px;
+    background: #0f3460; color: #eee;
+    border: 1px solid #1a4a7a; border-radius: 3px;
+    cursor: pointer; font-size: 10px;
+  }
+  .batch-item .bi-actions button:hover { background: #1a4a7a; }
+
   @media (max-width: 1100px) {
     .preview-panel { width: 400px; }
   }
@@ -391,12 +442,23 @@
     <span>含暗牌 (10–20%)</span>
     <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
   </div>
-  <button class="btn primary-btn" onclick="generateCurrentShape()">🎯 按形状生成</button>
+  <button class="btn primary-btn" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
   <div class="toggle-row" style="align-items:center;">
     <span>自动堆层数</span>
     <input type="number" id="stackCount" value="5" min="2" max="7" style="width:44px;">
   </div>
-  <button class="btn" onclick="generateStackFromCurrent()">🏗 堆塔生成</button>
+  <button class="btn" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
+  <div class="toggle-row" style="align-items:center;">
+    <span>目标分数</span>
+    <input type="number" id="scoreMin" value="0" min="0" max="999" style="width:44px;">
+    <span style="opacity:.5;">~</span>
+    <input type="number" id="scoreMax" value="999" min="0" max="999" style="width:44px;">
+  </div>
+  <div class="toggle-row" style="align-items:center;">
+    <span>生成数量</span>
+    <input type="number" id="batchCount" value="5" min="1" max="50" style="width:44px;">
+  </div>
+  <button class="btn" onclick="batchGenerate()">⚡ 批量生成</button>
   <div class="info-box">
     <span id="genStatus">就绪</span>
   </div>
@@ -467,6 +529,19 @@
     <iframe id="previewFrame" src="about:blank" frameborder="0"></iframe>
   </div>
 </div>
+</div>
+
+<div class="batch-modal-overlay" id="batchOverlay" style="display:none;" onclick="if(event.target===this)closeBatchModal()">
+  <div class="batch-modal">
+    <div class="batch-modal-head">
+      <span id="batchModalTitle">批量生成结果</span>
+      <span class="batch-modal-actions">
+        <button class="mini-btn primary" onclick="downloadAllBatch()">⬇ 下载全部</button>
+        <button class="mini-btn" onclick="closeBatchModal()">✕ 关闭</button>
+      </span>
+    </div>
+    <div class="batch-modal-list" id="batchList"></div>
+  </div>
 </div>
 
 <script src="generator.js"></script>
@@ -1595,6 +1670,98 @@ function deleteWorkbenchLevel(key) {
 function updateWbSaveBtn() {
   const btn = document.getElementById('wbSaveBtn');
   if (btn) btn.disabled = !currentLevel || !workbenchConnected;
+}
+
+// ========== 批量生成（按当前底座堆层 + 分数范围过滤） ==========
+let batchResults = [];
+
+function batchGenerate() {
+  let tiles, specialTiles;
+  try { ({ tiles, specialTiles } = buildEditorShape()); }
+  catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
+  if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
+
+  const lo = parseInt(document.getElementById('scoreMin').value);
+  const hi = parseInt(document.getElementById('scoreMax').value);
+  const scoreMin = Number.isFinite(lo) ? lo : 0;
+  const scoreMax = Number.isFinite(hi) ? hi : 999;
+  const count = Math.min(50, Math.max(1, parseInt(document.getElementById('batchCount').value) || 5));
+  const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+
+  const results = [];
+  let attempts = 0;
+  const maxAttempts = count * 60 + 300; // 每个目标最多试 60 次
+
+  setGenStatus('批量生成中… 0/' + count);
+  function step() {
+    attempts++;
+    if (results.length >= count) { finish(); return; }
+    if (attempts > maxAttempts) {
+      setGenStatus('<span class="bad">只生成出 ' + results.length + ' 个（凑不齐，试试放宽分数范围）</span>');
+      showBatchResults(results);
+      return;
+    }
+    try {
+      const level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
+      const s = level._difficulty.score;
+      if (s >= scoreMin && s <= scoreMax) {
+        results.push(level);
+        setGenStatus('批量生成中… ' + results.length + '/' + count);
+      }
+    } catch (_) { /* 跳过失败 */ }
+    setTimeout(step, 0); // 让出主线程，保持界面响应
+  }
+  function finish() {
+    setGenStatus(`<span class="good">✓ 已生成 ${results.length} 关（分数 ${scoreMin}~${scoreMax}）</span>`);
+    showBatchResults(results);
+  }
+  step();
+}
+
+function showBatchResults(levels) {
+  batchResults = levels;
+  document.getElementById('batchModalTitle').textContent = '批量生成 ' + levels.length + ' 关';
+  const list = document.getElementById('batchList');
+  if (levels.length === 0) {
+    list.innerHTML = '<div style="color:#888;padding:24px;text-align:center;">没有符合条件的关卡<br>试试放宽分数范围</div>';
+  } else {
+    list.innerHTML = levels.map((lv, i) => {
+      const d = lv._difficulty;
+      return `<div class="batch-item">
+        <span class="bi-idx">#${i + 1}</span>
+        <span class="bi-score">${d.score}分</span>
+        <span class="bi-meta">${lv.tiles.length}张/${lv.totalPairs}对 · ${d.maxLayer + 1}层 · 暗${lv.specialTiles.length}</span>
+        <span class="bi-actions">
+          <button onclick="previewBatch(${i})">预览</button>
+          <button onclick="downloadBatch(${i})">下载</button>
+        </span>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('batchOverlay').style.display = 'flex';
+}
+
+function previewBatch(i) {
+  currentLevel = batchResults[i];
+  closeBatchModal();
+  showPreview();
+  sendLevelToPreview(currentLevel);
+  setGenStatus('已加载 #' + (i + 1));
+}
+
+function downloadBatch(i) {
+  const lv = batchResults[i];
+  GEN.downloadJSON(lv, `level_${lv._difficulty.score}分_#${i + 1}.json`);
+}
+
+function downloadAllBatch() {
+  batchResults.forEach((lv, i) => {
+    setTimeout(() => GEN.downloadJSON(lv, `level_${lv._difficulty.score}分_#${i + 1}.json`), i * 300);
+  });
+}
+
+function closeBatchModal() {
+  document.getElementById('batchOverlay').style.display = 'none';
 }
 
 init();

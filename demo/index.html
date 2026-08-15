@@ -326,12 +326,13 @@ function shuffleArray(arr) {
 // 标准 typeId 0~33 随机分配牌面；"白"固定用空白牌面（白板）
 function buildTypeImgMap() {
   typeImgMap = {};
-  const blankTypeId = 27 + TYPE_WINDS_DRAGONS.indexOf('白');
   const pool = TILE_FRONT_IMAGES.slice();
   shuffleArray(pool);
   let p = 0;
+  // 所有 typeId 都从 45 张真实牌面随机分配。
+  // 注意：不再把"白"固定映射到 A空白麻将.png——生成器里"发"也是 typeId 33，
+  // 用空白图会让这些牌显示成"空白块"（像没贴图）。空白图只作底图，不作牌面。
   for (let id = 0; id < 34; id++) {
-    if (id === blankTypeId) { typeImgMap[id] = TILE_BLANK_IMAGE; continue; }
     typeImgMap[id] = pool[p % pool.length]; p++;
   }
 }
