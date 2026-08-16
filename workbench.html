@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>麻将关卡工作台</title>
+<style>
+  :root {
+    --bg:#f4f1ea; --card:#fff; --ink:#3a2e1f; --sub:#8a7a5f;
+    --line:#e5ddcc; --line-soft:#efe8d8;
+    --accent:#b8860b; --accent2:#8b5a2b; --accent-bg:#f6ecd8;
+    --danger:#c0453e; --danger-bg:#f9e9e8; --ok:#2e7d32;
+    --radius:10px; --shadow:0 1px 3px rgba(58,46,31,.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--ink); font-size: 13px;
+    display: flex; flex-direction: column;
+  }
+  button, input, select { font: inherit; color: var(--ink); }
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 22px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    flex-shrink: 0;
+  }
+  .topbar .brand { font-size: 15px; font-weight: 700; }
+  .topbar .brand .ver { font-size: 11px; color: var(--sub); font-weight: 400; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar .back { font-size: 12px; }
+
+  .wrap { flex: 1; display: flex; flex-direction: column; max-width: 1320px; width: 100%; margin: 0 auto; padding: 18px 22px 40px; }
+
+  .connect-card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 14px 18px;
+    box-shadow: var(--shadow);
+    margin-bottom: 14px;
+  }
+  .connect-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .connect-row h2 { font-size: 16px; }
+  .connect-row .sub { color: var(--sub); font-size: 12px; }
+  .connect-row input {
+    padding: 6px 10px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 7px; font-size: 13px; min-width: 180px;
+  }
+  .btn {
+    padding: 6px 14px; border-radius: 7px;
+    background: #fbf8f2; color: var(--ink);
+    border: 1px solid var(--line); cursor: pointer;
+    transition: all .12s;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+  .btn.primary {
+    background: linear-gradient(#c9973a, #b07a22);
+    border-color: #b07a22; color: #fff; font-weight: 600;
+  }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.06); color: #fff; }
+  .btn.danger { color: var(--danger); }
+  .btn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
+
+  .status-line { font-size: 12px; color: var(--sub); margin-top: 8px; }
+  .status-line.ok { color: var(--ok); }
+  .status-line.err { color: var(--danger); }
+  .summary {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    margin-top: 10px; font-size: 12px; color: var(--sub);
+  }
+  .summary b { color: var(--ink); font-size: 14px; }
+
+  .toolbar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .toolbar input[type="text"], .toolbar select {
+    padding: 6px 10px; background: #fbf8f2;
+    border: 1px solid var(--line); border-radius: 7px; font-size: 13px;
+  }
+  .toolbar #search { flex: 1; min-width: 200px; }
+  .toolbar label { display: flex; align-items: center; gap: 5px; color: var(--sub); font-size: 12px; }
+
+  .table-card {
+    flex: 1;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; min-height: 200px;
+    display: flex; flex-direction: column;
+  }
+  .table-scroll { flex: 1; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    position: sticky; top: 0; z-index: 1;
+    background: #fbf8f2; border-bottom: 1px solid var(--line);
+    padding: 8px 10px; text-align: left; font-weight: 600; color: var(--sub);
+    white-space: nowrap;
+  }
+  tbody td {
+    padding: 7px 10px; border-bottom: 1px solid var(--line-soft);
+    vertical-align: middle;
+  }
+  tbody tr:hover { background: #fbf8f2; }
+  tbody tr.unnumbered { color: var(--sub); }
+  td.num { font-variant-numeric: tabular-nums; }
+  td .row-input {
+    padding: 3px 6px;
+    background: #fff; border: 1px solid transparent;
+    border-radius: 5px; font-size: 12px;
+    transition: all .12s;
+  }
+  td .row-input:hover { border-color: var(--line); }
+  td .row-input:focus { outline: none; border-color: var(--accent); background: #fffaf0; }
+  td .name-input { width: 100%; min-width: 120px; }
+  td .order-input { width: 60px; text-align: center; }
+  td .ops { display: flex; gap: 4px; white-space: nowrap; }
+  td .ops button { padding: 3px 8px; font-size: 11px; }
+  td.dim { color: var(--sub); }
+  .empty {
+    padding: 60px 20px; text-align: center; color: var(--sub); font-size: 13px; line-height: 1.8;
+  }
+
+  .toast-wrap { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+  .toast {
+    background: var(--card); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px; box-shadow: 0 4px 14px rgba(58,46,31,.18);
+    padding: 9px 14px; font-size: 12px; max-width: 320px;
+    animation: tin .18s ease-out;
+  }
+  .toast.ok { border-left-color: var(--ok); }
+  .toast.err { border-left-color: var(--danger); }
+  .toast.out { opacity: 0; transform: translateY(6px); transition: all .25s; }
+  @keyframes tin { from { opacity: 0; transform: translateY(8px); } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">🀄 关卡工作台<span class="ver">共享 · 表格管理</span></div>
+  <a class="back" href="/editor/">← 返回编辑器</a>
+  <div class="spacer"></div>
+</header>
+
+<div class="wrap">
+
+  <div class="connect-card">
+    <div class="connect-row">
+      <h2>连接共享工作台</h2>
+      <span class="sub">（关卡存到 GitHub 仓库 · 仅部署版可用）</span>
+      <div style="flex:1"></div>
+      <input type="password" id="wbPass" placeholder="共享口令（浏览器会记住）" onkeydown="if(event.key==='Enter')connect()">
+      <button class="btn primary" onclick="connect()">连接 / 刷新</button>
+    </div>
+    <div class="status-line" id="statusLine">未连接</div>
+    <div class="summary" id="summary"></div>
+  </div>
+
+  <div class="toolbar">
+    <input type="text" id="search" placeholder="搜索关卡名…" oninput="renderTable()">
+    <label>排序
+      <select id="sortBy" onchange="renderTable()">
+        <option value="order">按序号（已排号在前）</option>
+        <option value="score">按难度分</option>
+        <option value="tiles">按张数</option>
+        <option value="savedAt">按保存时间</option>
+        <option value="name">按名称</option>
+      </select>
+    </label>
+    <label>筛选
+      <select id="filter" onchange="renderTable()">
+        <option value="all">全部</option>
+        <option value="numbered">已排号</option>
+        <option value="unnumbered">未排号</option>
+      </select>
+    </label>
+    <div style="flex:1"></div>
+    <span class="sub" id="showingCount"></span>
+  </div>
+
+  <div class="table-card">
+    <div class="table-scroll">
+      <table id="lvTable">
+        <thead>
+          <tr>
+            <th style="width:90px;">序号</th>
+            <th>关卡名</th>
+            <th style="width:90px;">张/对</th>
+            <th style="width:70px;">难度分</th>
+            <th style="width:60px;">暗牌</th>
+            <th style="width:60px;">层数</th>
+            <th style="width:80px;">试玩</th>
+            <th style="width:140px;">保存时间</th>
+            <th style="width:130px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="lvBody"></tbody>
+      </table>
+      <div class="empty" id="emptyHint" style="display:none;">暂无关卡 · 先去<a href="/editor/">编辑器</a>画形状 → 试玩 → 保存到工作台</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+const API = '/.netlify/functions/levels';
+const getPass = () => sessionStorage.getItem('wbPass') || '';
+const setPass = v => { try { sessionStorage.setItem('wbPass', v); } catch (_) {} };
+
+let levels = [];
+
+function api(path, options) {
+  options = options || {};
+  const headers = options.headers || {};
+  const pass = getPass();
+  if (pass && !headers['X-Workbench-Pass']) headers['X-Workbench-Pass'] = pass;
+  return fetch(API + path, {
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  }).then(async r => {
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || ('HTTP ' + r.status));
+    return data;
+  });
+}
+
+function setStatus(text, cls) {
+  const el = document.getElementById('statusLine');
+  el.textContent = text;
+  el.className = 'status-line ' + (cls || '');
+}
+
+function toast(msg, type) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, 2500);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function formatTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const pad = n => n < 10 ? '0' + n : n;
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatPlay(ms) {
+  if (ms == null) return '—';
+  const s = Math.round(ms / 1000);
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60), rs = s % 60;
+  return m + 'm' + (rs ? rs + 's' : '');
+}
+
+async function connect() {
+  const inputEl = document.getElementById('wbPass');
+  let pass = inputEl.value.trim();
+  if (!pass) pass = getPass();
+  if (!pass) { setStatus('请输入共享口令', 'err'); return; }
+  setPass(pass);
+  inputEl.value = pass;
+  setStatus('加载中…', '');
+  try {
+    const r = await api('');
+    levels = r.levels || [];
+    renderTable();
+    renderSummary();
+    setStatus('已连接 · ' + levels.length + ' 关', 'ok');
+  } catch (e) {
+    setStatus('加载失败: ' + e.message, 'err');
+  }
+}
+
+function loadAndConnect() {
+  if (getPass()) connect();
+  else setStatus('请输入共享口令后连接', '');
+}
+
+function renderSummary() {
+  const total = levels.length;
+  const numbered = levels.filter(l => l.order != null).length;
+  const unnumbered = total - numbered;
+  const totalTiles = levels.reduce((s, l) => s + (l.tileCount || 0), 0);
+  const sumScore = levels.reduce((s, l) => s + (l.score || 0), 0);
+  const avgScore = total ? Math.round(sumScore / total) : 0;
+  document.getElementById('summary').innerHTML =
+    `共 <b>${total}</b> 关 · 已排号 <b>${numbered}</b> · 未排号 <b>${unnumbered}</b> · ` +
+    `总张数 <b>${totalTiles}</b> · 平均难度 <b>${avgScore}</b> 分`;
+}
+
+function getFilteredSorted() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  const sortBy = document.getElementById('sortBy').value;
+  const filter = document.getElementById('filter').value;
+  let arr = levels.slice();
+  if (q) arr = arr.filter(l => (l.name || '').toLowerCase().includes(q) || (l.key || '').toLowerCase().includes(q));
+  if (filter === 'numbered') arr = arr.filter(l => l.order != null);
+  else if (filter === 'unnumbered') arr = arr.filter(l => l.order == null);
+
+  arr.sort((a, b) => {
+    if (sortBy === 'order') {
+      const ao = a.order == null ? Infinity : a.order;
+      const bo = b.order == null ? Infinity : b.order;
+      if (ao !== bo) return ao - bo;
+      return (b.savedAt || '').localeCompare(a.savedAt || '');
+    } else if (sortBy === 'score') return (b.score || 0) - (a.score || 0);
+    else if (sortBy === 'tiles') return (b.tileCount || 0) - (a.tileCount || 0);
+    else if (sortBy === 'savedAt') return (b.savedAt || '').localeCompare(a.savedAt || '');
+    else if (sortBy === 'name') return (a.name || '').localeCompare(b.name || '', 'zh-Hans-CN');
+    return 0;
+  });
+  return arr;
+}
+
+function renderTable() {
+  const body = document.getElementById('lvBody');
+  const empty = document.getElementById('emptyHint');
+  const arr = getFilteredSorted();
+  document.getElementById('showingCount').textContent = levels.length ? `显示 ${arr.length} / 共 ${levels.length} 关` : '';
+
+  if (levels.length === 0) {
+    body.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  if (arr.length === 0) { body.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  body.innerHTML = arr.map(lv => {
+    const k = lv.key;
+    const isUnnumbered = lv.order == null;
+    const orderVal = lv.order != null ? lv.order : '';
+    return `<tr class="${isUnnumbered ? 'unnumbered' : ''}" data-key="${k}">
+      <td class="num">
+        <input class="row-input order-input" type="number" min="0" placeholder="—" value="${orderVal}" onchange="editOrder('${k}', this.value)">
+      </td>
+      <td>
+        <input class="row-input name-input" value="${escapeHtml(lv.name || '')}" onchange="editName('${k}', this.value)">
+      </td>
+      <td class="num">${lv.tileCount || 0}/${lv.totalPairs || 0}</td>
+      <td class="num"><b>${lv.score != null ? lv.score : '—'}</b></td>
+      <td class="num">${lv.darkCount || 0}</td>
+      <td class="num">${(lv.maxLayer || 0) + 1}</td>
+      <td class="num">${formatPlay(lv.playTimeMs)}</td>
+      <td class="dim">${formatTime(lv.savedAt)}</td>
+      <td class="ops">
+        <button class="btn" onclick="downloadLevel('${k}')">下载</button>
+        <button class="btn danger" onclick="deleteLevel('${k}')">删</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function editOrder(key, val) {
+  const t = (val || '').trim();
+  const order = t === '' ? null : parseInt(t, 10);
+  try {
+    await api('/' + encodeURIComponent(key), {
+      method: 'PATCH',
+      body: JSON.stringify({ order }),
+    });
+    toast('序号已更新为「' + (order == null ? '未排号' : '第 ' + order + ' 关') + '」', 'ok');
+    await refresh();
+  } catch (e) {
+    toast('更新失败: ' + e.message, 'err');
+  }
+}
+
+async function editName(key, val) {
+  const name = (val || '').trim();
+  if (!name) { toast('关卡名不能为空', 'err'); await refresh(); return; }
+  try {
+    await api('/' + encodeURIComponent(key), {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    });
+    toast('关卡名已更新', 'ok');
+    await refresh();
+  } catch (e) {
+    toast('更新失败: ' + e.message, 'err');
+  }
+}
+
+async function downloadLevel(key) {
+  try {
+    const level = await api('/' + encodeURIComponent(key));
+    const d = level._difficulty || {};
+    const score = d.score != null ? d.score : 'X';
+    const blob = new Blob([JSON.stringify(level, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `level_${score}分_${key}.json`; a.click();
+    URL.revokeObjectURL(url);
+    toast('已下载', 'ok');
+  } catch (e) {
+    toast('下载失败: ' + e.message, 'err');
+  }
+}
+
+async function deleteLevel(key) {
+  if (!confirm('确定删除这个关卡？删除后无法恢复。')) return;
+  try {
+    await api('/' + encodeURIComponent(key), { method: 'DELETE' });
+    toast('已删除', 'ok');
+    await refresh();
+  } catch (e) {
+    toast('删除失败: ' + e.message, 'err');
+  }
+}
+
+async function refresh() {
+  if (!getPass()) return;
+  try {
+    const r = await api('');
+    levels = r.levels || [];
+    renderTable();
+    renderSummary();
+  } catch (e) {
+    setStatus('刷新失败: ' + e.message, 'err');
+  }
+}
+
+loadAndConnect();
+</script>
+</body>
+</html>

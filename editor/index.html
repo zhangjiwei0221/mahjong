@@ -208,82 +208,50 @@
   .layer-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--sub); }
   .layer-swatch { width: 16px; height: 11px; border: 1px solid rgba(0,0,0,.15); border-radius: 2px; }
 
-  /* ---- 关卡工作台（共享，部署版可用） ---- */
-  .wb-auth { display: flex; gap: 5px; margin-bottom: 6px; }
-  .wb-auth input {
-    flex: 1; min-width: 0; padding: 6px 8px;
-    background: #fbf8f2; border: 1px solid var(--line);
-    border-radius: 6px; font-size: 12px;
+  /* ---- 区域拉伸条 ---- */
+  .divider {
+    width: 6px; flex-shrink: 0;
+    cursor: col-resize;
+    background: transparent;
+    position: relative; z-index: 5;
+    transition: background .12s;
   }
+  .divider:hover, .divider.dragging { background: var(--line); }
+  .divider::after {
+    content: ''; position: absolute; left: 2px; top: 0; bottom: 0;
+    width: 2px; background: var(--line); opacity: 0;
+    transition: opacity .12s;
+  }
+  .divider:hover::after, .divider.dragging::after { opacity: 1; }
+  body.dragging-h { cursor: col-resize; user-select: none; }
+  body.dragging-h .divider { background: var(--line); }
+  body:has(.preview-panel.collapsed) #divPrev { display: none; }
+
+  /* ---- 保存到工作台（预览面板内） ---- */
+  .wb-savebox {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  .wb-save-title { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
+  .wb-save-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .wb-save-row input {
+    padding: 5px 8px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 12px; min-width: 0;
+  }
+  #wbPass { width: 110px; flex-shrink: 0; }
+  #wbSaveName { flex: 1; }
+  #wbSaveOrder { width: 60px; flex-shrink: 0; }
   .wb-status {
     font-size: 11px; color: var(--sub);
-    margin-bottom: 6px; padding: 4px 8px;
+    margin-top: 6px; padding: 4px 8px;
     background: #fbf8f2; border: 1px solid var(--line-soft);
     border-radius: 6px;
   }
   .wb-status.connected { color: var(--ok); }
   .wb-status.error { color: var(--danger); }
-  .wb-summary {
-    font-size: 11px; color: var(--sub);
-    margin-bottom: 6px; padding: 4px 8px;
-    background: #fbf8f2; border: 1px solid var(--line-soft);
-    border-radius: 6px; line-height: 1.6;
-  }
-  .wb-summary b { color: var(--ink); }
-  .wb-toolbar { display: flex; gap: 4px; margin-bottom: 6px; flex-wrap: wrap; }
-  .wb-toolbar input[type="text"] {
-    flex: 1; min-width: 90px; padding: 5px 8px;
-    background: #fbf8f2; border: 1px solid var(--line);
-    border-radius: 6px; font-size: 11px;
-  }
-  .wb-toolbar .sbtn, .wb-auth .sbtn { flex: 0 0 auto; }
-  .wb-newmeta { display: flex; gap: 4px; flex: 0 0 auto; }
-  .wb-newmeta input[type="number"] {
-    width: 46px; padding: 5px 6px;
-    background: #fbf8f2; border: 1px solid var(--line);
-    border-radius: 6px; font-size: 11px;
-  }
-  .wb-newmeta select {
-    padding: 5px 4px;
-    background: #fbf8f2; border: 1px solid var(--line);
-    border-radius: 6px; font-size: 11px;
-  }
-  .wb-levels { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-  .wb-empty { color: var(--sub); font-size: 11px; text-align: center; padding: 18px 0; line-height: 1.8; }
-  .level-item {
-    background: #fbf8f2; border: 1px solid var(--line-soft);
-    border-radius: 7px; padding: 6px 8px; font-size: 11px;
-  }
-  .level-item .lv-name { font-weight: 600; margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
-  .level-item .lv-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .level-item .lv-meta { color: var(--sub); font-size: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
-  .level-item .lv-order { display: flex; align-items: center; gap: 2px; font-size: 10px; color: var(--sub); font-weight: 400; flex-shrink: 0; }
-  .level-item .lv-order.unnumbered { color: #c4b9a4; }
-  .lv-order-input {
-    width: 34px; padding: 1px 2px; text-align: center;
-    border: 1px solid var(--line); border-radius: 4px;
-    background: #fff; font-size: 10px; color: var(--ink);
-  }
-  .lv-order-input:hover { border-color: var(--accent); }
-  .status-badge {
-    font-size: 10px; padding: 2px 8px; border-radius: 999px;
-    cursor: pointer; font-weight: 600; flex-shrink: 0;
-    border: 1px solid transparent; transition: filter .12s;
-  }
-  .status-badge:hover { filter: brightness(0.96); }
-  .status-badge.st-wip  { background: #fdf3d8; color: #8a6d1a; border-color: #e8d48f; }
-  .status-badge.st-test { background: #e4edf9; color: #2a5da8; border-color: #bcd0ea; }
-  .status-badge.st-done { background: #e4f4e8; color: #2e7d32; border-color: #b9ddc0; }
-  .level-item .lv-actions { display: flex; gap: 4px; margin-top: 5px; }
-  .level-item .lv-actions button {
-    flex: 1; padding: 3px 6px;
-    background: #fff; color: var(--ink);
-    border: 1px solid var(--line); border-radius: 5px;
-    font-size: 10px; transition: all .12s;
-  }
-  .level-item .lv-actions button:hover { border-color: var(--accent); color: var(--accent2); }
-  .level-item .lv-actions button.danger { color: var(--danger); }
-  .level-item .lv-actions button.danger:hover { border-color: var(--danger); background: var(--danger-bg); }
+  .wb-hint { font-size: 10px; color: var(--sub); margin-top: 5px; line-height: 1.6; }
 
   /* ---- 画布区 ---- */
   .canvas-area { flex: 1; min-width: 300px; display: flex; flex-direction: column; overflow: hidden; }
@@ -319,6 +287,7 @@
     transition: width .25s ease; overflow: hidden;
   }
   .preview-panel.collapsed { width: 0; border-left: 0; }
+  .preview-panel.resizing, .sidebar.resizing { transition: none; }
   .preview-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 14px; border-bottom: 1px solid var(--line);
@@ -468,13 +437,14 @@
     <div class="chip" id="coordToggle" onclick="toggleCoord()"><span class="dot"></span>坐标</div>
   </div>
   <div class="tb-spacer"></div>
+  <button class="tbtn" onclick="location.href='/workbench.html'" title="打开关卡工作台（部署版）">📋 工作台</button>
   <button class="tbtn" onclick="fitView()" title="缩放并居中到完整画布">⤢ 视图重置</button>
   <button class="tbtn" id="helpBtn" onclick="toggleHelp(event)">？</button>
 </header>
 
 <div class="body">
   <!-- ============ 左侧栏 ============ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
 
     <div class="card" id="cardLayers">
       <div class="card-head" onclick="toggleCard('cardLayers')"><span>🗂 图层</span><span class="chev">▼</span></div>
@@ -519,8 +489,7 @@
     </div>
 
     <div class="card" id="cardGen">
-      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><span class="chev">▼</span></div>
-      <div class="card-body">
+      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><span class="chev">▼</span></div>      <div class="card-body">
         <div class="switch-row">
           <span>含暗牌 (10–20%)</span>
           <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
@@ -559,34 +528,9 @@
       </div>
     </div>
 
-    <div class="card collapsed" id="cardWb">
-      <div class="card-head" onclick="toggleCard('cardWb')"><span>🤝 关卡工作台（共享）</span><span class="chev">▼</span></div>
-      <div class="card-body">
-        <div class="wb-auth">
-          <input type="password" id="workbenchPass" placeholder="共享口令" onkeydown="if(event.key==='Enter')loadWorkbench()">
-          <button class="sbtn" onclick="loadWorkbench()">连接</button>
-        </div>
-        <div class="wb-status" id="workbenchStatus">未连接（仅部署在 Netlify 的版本可用）</div>
-        <div id="workbenchList" style="display:none;">
-          <div class="wb-summary" id="wbSummary"></div>
-          <div class="wb-toolbar">
-            <input type="text" id="levelNameInput" placeholder="关卡名（如「关卡 1」）">
-            <div class="wb-newmeta">
-              <input type="number" id="wbNewOrder" min="0" max="999" placeholder="序号" title="第几关（可留空 = 未排号）">
-              <select id="wbNewStatus" title="制作进度">
-                <option value="wip">制作中</option>
-                <option value="test">待测试</option>
-                <option value="done">已完成</option>
-              </select>
-            </div>
-            <button class="sbtn" onclick="saveCurrentLevelToWorkbench()" id="wbSaveBtn" disabled>保存当前</button>
-          </div>
-          <div class="wb-levels" id="workbenchLevels"></div>
-        </div>
-      </div>
-    </div>
-
   </aside>
+
+  <div class="divider" id="divSide"></div>
 
   <!-- ============ 画布区 ============ -->
   <main class="canvas-area">
@@ -606,6 +550,8 @@
     </div>
   </main>
 
+  <div class="divider" id="divPrev"></div>
+
   <!-- ============ 右侧预览面板 ============ -->
   <aside class="preview-panel" id="previewPanel">
     <div class="preview-header">
@@ -614,12 +560,25 @@
         <span class="preview-empty-hint" id="previewEmptyHint">生成关卡后在此试玩</span>
       </div>
       <div class="preview-actions">
+        <button class="mini-btn" onclick="toggleWbSaveBox()" id="wbToggleBtn" disabled>🤝 保存到工作台</button>
         <button class="mini-btn primary" onclick="downloadCurrentLevel()" id="downloadBtn" disabled>⬇ 下载 JSON</button>
         <button class="mini-btn" onclick="closePreview()" id="closeBtn" disabled>✕ 关闭</button>
       </div>
     </div>
     <div class="preview-stats" id="previewStats">
       <span>-- 张</span><span>-- 对</span><span>-- 分</span><span>暗牌 --</span><span>-- 层</span>
+    </div>
+    <div class="wb-savebox" id="wbSaveBox" style="display:none;">
+      <div class="wb-save-title">保存到共享工作台（关卡名=这关叫什么；第几关=排列顺序，可留空）</div>
+      <div class="wb-save-row">
+        <input type="password" id="wbPass" placeholder="共享口令">
+        <input type="text" id="wbSaveName" placeholder="关卡名，如「第1关 · 初始」">
+        <input type="number" id="wbSaveOrder" min="0" max="999" placeholder="第几关" title="留空 = 未排号">
+        <button class="mini-btn primary" onclick="saveCurrentLevelToWorkbench(this)">保存</button>
+        <button class="mini-btn" onclick="toggleWbSaveBox(false)">收起</button>
+      </div>
+      <div class="wb-hint">口令只需输入一次，本浏览器会记住；另存一份去「📋 工作台」页统一管理全部关卡。</div>
+      <div class="wb-status" id="workbenchStatus"></div>
     </div>
     <div class="results-section" id="resultsSection" style="display:none;">
       <div class="results-head">
@@ -745,6 +704,58 @@ function fitView() {
 }
 
 new ResizeObserver(() => resizeCanvas()).observe(canvasWrap);
+
+// ========== 三栏可左右拉伸（宽度记忆） ==========
+const LAYOUT_KEY = 'mjEditorLayout.v1';
+const layoutW = { sidebar: 264, preview: 480 }; // 默认宽度
+try {
+  const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || '{}');
+  if (saved.sidebar) layoutW.sidebar = saved.sidebar;
+  if (saved.preview) layoutW.preview = saved.preview;
+} catch (_) {}
+
+function applyLayout() {
+  document.getElementById('sidebar').style.width = layoutW.sidebar + 'px';
+  const panel = document.getElementById('previewPanel');
+  if (!panel.classList.contains('collapsed')) panel.style.width = layoutW.preview + 'px';
+}
+
+function initDivider(id, targetId, dir) {
+  const div = document.getElementById(id);
+  const target = document.getElementById(targetId);
+  div.addEventListener('mousedown', e => {
+    e.preventDefault();
+    document.body.classList.add('dragging-h');
+    div.classList.add('dragging');
+    target.classList.add('resizing');
+    const startX = e.clientX;
+    const startW = target.getBoundingClientRect().width;
+    function move(ev) {
+      let w = dir === 'left'
+        ? startW + (ev.clientX - startX)   // 侧栏：往右拉变宽
+        : startW - (ev.clientX - startX);  // 预览：往左拉变宽
+      w = Math.round(w);
+      if (targetId === 'sidebar') w = Math.min(440, Math.max(200, w));
+      else w = Math.min(760, Math.max(340, w));
+      target.style.width = w + 'px';
+      if (targetId === 'sidebar') layoutW.sidebar = w;
+      else layoutW.preview = w;
+    }
+    function up() {
+      document.body.classList.remove('dragging-h');
+      div.classList.remove('dragging');
+      target.classList.remove('resizing');
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layoutW)); } catch (_) {}
+    }
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  });
+}
+applyLayout();
+initDivider('divSide', 'sidebar', 'left');
+initDivider('divPrev', 'previewPanel', 'right');
 
 // 镜像列（内部 col=横向）：所有层围绕 col=0 镜像
 function mirrorCol(col, layer) {
@@ -1724,6 +1735,7 @@ function downloadCurrentLevel() {
 
 function showPreview() {
   document.getElementById('previewPanel').classList.remove('collapsed');
+  document.getElementById('previewPanel').style.width = layoutW.preview + 'px';
   document.getElementById('previewPlaceholder').classList.remove('hidden');
   document.getElementById('previewEmptyHint').style.display = 'none';
   updateStatsPending();
@@ -1731,10 +1743,10 @@ function showPreview() {
 
 function closePreview() {
   document.getElementById('previewPanel').classList.add('collapsed');
+  document.getElementById('previewPanel').style.width = '0px';
   document.getElementById('previewEmptyHint').style.display = '';
   currentLevel = null;
   enablePreviewActions(false);
-  updateWbSaveBtn();
   setGenStatus('就绪');
 }
 
@@ -1779,25 +1791,24 @@ function setPreviewStats(level, darkCount) {
 }
 
 function enablePreviewActions(enable) {
-  ['downloadBtn', 'closeBtn'].forEach(id => {
+  ['downloadBtn', 'closeBtn', 'wbToggleBtn'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.disabled = !enable;
   });
 }
 
-// ========== 关卡工作台（共享存储，Netlify 部署版可用） ==========
+// ========== 保存到共享工作台（Netlify 部署版可用） ==========
 const WORKBENCH_API = '/.netlify/functions/levels';
-const WB_STATUS = { wip: '制作中', test: '待测试', done: '已完成' };
-const WB_STATUS_ORDER = ['wip', 'test', 'done'];
-let workbenchPass = null;
-let workbenchConnected = false;
-let workbenchLevels = [];
+
+// 口令存 sessionStorage，与「📋 工作台」页共享
+function getWbPass() { return sessionStorage.getItem('wbPass') || ''; }
 
 function workbenchApi(path, options) {
   options = options || {};
   const headers = options.headers || {};
-  if (workbenchPass && !headers['X-Workbench-Pass']) {
-    headers['X-Workbench-Pass'] = workbenchPass;
+  const pass = getWbPass();
+  if (pass && !headers['X-Workbench-Pass']) {
+    headers['X-Workbench-Pass'] = pass;
   }
   return fetch(WORKBENCH_API + path, {
     ...options,
@@ -1809,126 +1820,30 @@ function workbenchApi(path, options) {
   });
 }
 
-function loadWorkbench() {
-  const pass = document.getElementById('workbenchPass').value.trim();
-  if (!pass) { setWorkbenchStatus('请输入口令', 'error'); return; }
-  workbenchPass = pass;
-  setWorkbenchStatus('连接中…', '');
-  workbenchApi('').then(data => {
-    workbenchConnected = true;
-    workbenchLevels = data.levels || [];
-    document.getElementById('workbenchList').style.display = 'block';
-    setWorkbenchStatus('已连接 · ' + workbenchLevels.length + ' 关', 'connected');
-    renderWorkbenchList();
-    renderWbSummary();
-    updateWbSaveBtn();
-  }).catch(e => {
-    workbenchConnected = false;
-    workbenchPass = null;
-    setWorkbenchStatus('连接失败: ' + e.message, 'error');
-  });
-}
-
 function setWorkbenchStatus(text, cls) {
   const el = document.getElementById('workbenchStatus');
   el.textContent = text;
   el.className = 'wb-status ' + (cls || '');
 }
 
-function renderWorkbenchList() {
-  const container = document.getElementById('workbenchLevels');
-  if (workbenchLevels.length === 0) {
-    container.innerHTML = '<div class="wb-empty">暂无关卡<br>生成一个后填「关卡名 + 序号」点「保存当前」</div>';
-    return;
+function toggleWbSaveBox(show) {
+  const box = document.getElementById('wbSaveBox');
+  const showNow = show == null ? box.style.display === 'none' : show;
+  box.style.display = showNow ? 'block' : 'none';
+  if (showNow) {
+    document.getElementById('wbPass').value = getWbPass();
+    document.getElementById('wbSaveName').focus();
   }
-  container.innerHTML = workbenchLevels.map(lv => {
-    const st = WB_STATUS[lv.status] ? lv.status : 'wip';
-    const orderCls = lv.order != null ? '' : ' unnumbered';
-    const orderVal = lv.order != null ? lv.order : '';
-    const play = lv.playTimeMs ? ` · 试玩 ${Math.round(lv.playTimeMs / 1000)}s` : '';
-    const author = lv.author ? `<span>👤 ${escapeHtml(lv.author)}</span>` : '';
-    const score = lv.score != null ? `<span>${lv.score}分</span>` : '';
-    return `
-    <div class="level-item" data-key="${lv.key}">
-      <div class="lv-name">
-        <span class="lv-order${orderCls}">第 <input class="lv-order-input" value="${orderVal}" data-key="${lv.key}" placeholder="?" onchange="setLevelOrder('${lv.key}', this.value)"> 关</span>
-        <span class="lv-title">${escapeHtml(lv.name)}</span>
-        <span class="status-badge st-${st}" data-key="${lv.key}" onclick="cycleLevelStatus('${lv.key}')" title="点击切换制作进度">${WB_STATUS[st]}</span>
-      </div>
-      <div class="lv-meta">
-        <span>${lv.tileCount}张/${lv.totalPairs}对</span>
-        ${score}
-        <span>暗${lv.darkCount}</span>
-        <span>${(lv.maxLayer || 0) + 1}层</span>
-        ${author}${play}
-      </div>
-      <div class="lv-actions">
-        <button onclick="loadWorkbenchLevel('${lv.key}')">加载到预览</button>
-        <button onclick="downloadWorkbenchLevel('${lv.key}')">下载</button>
-        <button class="danger" onclick="deleteWorkbenchLevel('${lv.key}')">删</button>
-      </div>
-    </div>`;
-  }).join('');
 }
 
-// 顶部状态计数一览：已完成/待测试/制作中/共几关
-function renderWbSummary() {
-  const counts = { wip: 0, test: 0, done: 0 };
-  let numbered = 0;
-  workbenchLevels.forEach(l => {
-    counts[WB_STATUS[l.status] ? l.status : 'wip']++;
-    if (l.order != null) numbered++;
-  });
-  document.getElementById('wbSummary').innerHTML =
-    `已完成 <b>${counts.done}</b> · 待测试 <b>${counts.test}</b> · 制作中 <b>${counts.wip}</b> · 共 <b>${workbenchLevels.length}</b> 关` +
-    (numbered ? `（已排号 ${numbered}）` : '');
-}
-
-// 点状态徽章 → 循环切换 制作中→待测试→已完成→制作中
-function cycleLevelStatus(key) {
-  const lv = workbenchLevels.find(l => l.key === key);
-  if (!lv) return;
-  const cur = WB_STATUS[lv.status] ? lv.status : 'wip';
-  const next = WB_STATUS_ORDER[(WB_STATUS_ORDER.indexOf(cur) + 1) % WB_STATUS_ORDER.length];
-  setWorkbenchStatus('更新中…', '');
-  workbenchApi('/' + encodeURIComponent(key), {
-    method: 'PATCH',
-    body: JSON.stringify({ status: next }),
-  }).then(() => workbenchApi('')).then(data => {
-    workbenchLevels = data.levels || [];
-    renderWorkbenchList();
-    renderWbSummary();
-    setWorkbenchStatus('已更新 → ' + WB_STATUS[next], 'connected');
-  }).catch(e => setWorkbenchStatus('更新失败: ' + e.message, 'error'));
-}
-
-// 设置关卡序号（第几关）；清空 = 未排号
-function setLevelOrder(key, val) {
-  const t = val.trim();
-  const order = t === '' ? null : parseInt(t, 10);
-  workbenchApi('/' + encodeURIComponent(key), {
-    method: 'PATCH',
-    body: JSON.stringify({ order }),
-  }).then(() => workbenchApi('')).then(data => {
-    workbenchLevels = data.levels || [];
-    renderWorkbenchList();
-    renderWbSummary();
-    setWorkbenchStatus('已设置为第 ' + (order == null ? '—' : order) + ' 关', 'connected');
-  }).catch(e => setWorkbenchStatus('更新失败: ' + e.message, 'error'));
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function saveCurrentLevelToWorkbench() {
-  const btn = document.getElementById('wbSaveBtn');
-  if (!workbenchConnected) { setWorkbenchStatus('请先连接工作台', 'error'); return; }
+function saveCurrentLevelToWorkbench(btn) {
   if (!currentLevel) { setWorkbenchStatus('先生成关卡（点上方生成按钮）才能保存', 'error'); return; }
-  const name = document.getElementById('levelNameInput').value.trim() || '未命名关卡';
-  const orderVal = document.getElementById('wbNewOrder').value.trim();
+  const pass = document.getElementById('wbPass').value.trim();
+  if (!pass) { setWorkbenchStatus('请输入共享口令', 'error'); return; }
+  sessionStorage.setItem('wbPass', pass);
+  const name = document.getElementById('wbSaveName').value.trim() || '未命名关卡';
+  const orderVal = document.getElementById('wbSaveOrder').value.trim();
   const order = orderVal === '' ? null : parseInt(orderVal, 10);
-  const status = document.getElementById('wbNewStatus').value;
   btn.disabled = true;
   btn.textContent = '保存中…';
   setWorkbenchStatus('保存中…', '');
@@ -1936,69 +1851,23 @@ function saveCurrentLevelToWorkbench() {
     method: 'POST',
     body: JSON.stringify({
       name,
-      author: '策划',
       tiles: currentLevel.tiles,
       specialTiles: currentLevel.specialTiles,
       totalPairs: currentLevel.totalPairs,
       _difficulty: currentLevel._difficulty,
       order,
-      status,
     }),
-  }).then(() => workbenchApi('')).then(data => {
-    workbenchLevels = data.levels || [];
-    renderWorkbenchList();
-    renderWbSummary();
+  }).then(data => {
     btn.textContent = '已保存 ✓';
-    setWorkbenchStatus('保存成功：' + name, 'connected');
+    setWorkbenchStatus('保存成功：' + name + '（「📋 工作台」页可管理全部关卡）', 'connected');
     toast('已保存到共享工作台：' + name, 'ok');
-    setTimeout(() => { btn.textContent = '保存当前'; btn.disabled = false; updateWbSaveBtn(); }, 2000);
+    setTimeout(() => { btn.textContent = '保存'; btn.disabled = false; }, 2000);
   }).catch(e => {
     btn.textContent = '保存失败';
     setWorkbenchStatus('保存失败: ' + e.message, 'error');
     toast('保存失败: ' + e.message, 'err');
-    setTimeout(() => { btn.textContent = '保存当前'; btn.disabled = false; updateWbSaveBtn(); }, 2500);
+    setTimeout(() => { btn.textContent = '保存'; btn.disabled = false; }, 2500);
   });
-}
-
-function loadWorkbenchLevel(key) {
-  setWorkbenchStatus('加载中…', '');
-  workbenchApi('/' + encodeURIComponent(key)).then(level => {
-    currentLevel = level;
-    showPreview();
-    sendLevelToPreview(level);
-    setWorkbenchStatus('已加载: ' + level.tiles.length + '张', 'connected');
-    enablePreviewActions(true);
-    updateWbSaveBtn();
-  }).catch(e => {
-    setWorkbenchStatus('加载失败: ' + e.message, 'error');
-  });
-}
-
-function downloadWorkbenchLevel(key) {
-  workbenchApi('/' + encodeURIComponent(key)).then(level => {
-    GEN.downloadJSON(level, `level_${key}_${level.totalPairs}对.json`);
-  }).catch(e => {
-    setWorkbenchStatus('下载失败: ' + e.message, 'error');
-  });
-}
-
-function deleteWorkbenchLevel(key) {
-  if (!confirm('确定删除这个关卡？')) return;
-  workbenchApi('/' + encodeURIComponent(key), { method: 'DELETE' }).then(() => {
-    setWorkbenchStatus('已删除', 'connected');
-    return workbenchApi('');
-  }).then(data => {
-    workbenchLevels = data.levels || [];
-    renderWorkbenchList();
-    renderWbSummary();
-  }).catch(e => {
-    setWorkbenchStatus('删除失败: ' + e.message, 'error');
-  });
-}
-
-function updateWbSaveBtn() {
-  const btn = document.getElementById('wbSaveBtn');
-  if (btn) btn.disabled = !currentLevel || !workbenchConnected;
 }
 
 // ========== 探测分数范围 ==========
@@ -2098,7 +1967,6 @@ function addResult(level, opts) {
     currentLevel = level;
     showPreview();
     sendLevelToPreview(level);
-    updateWbSaveBtn();
   }
 }
 
@@ -2128,7 +1996,6 @@ function previewResult(i) {
   renderResults();
   showPreview();
   sendLevelToPreview(lv);
-  updateWbSaveBtn();
   setGenStatus('已加载 #' + (i + 1) + '（' + (lv._difficulty?.score ?? '?') + '分）');
 }
 
