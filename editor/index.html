@@ -2,569 +2,640 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>麻将形状编辑器 v3.1 · std 坐标（row=上下/纵, col=左右/横）</title>
+<title>麻将关卡编辑器 v4.0 · std 坐标（row=上下/纵, col=左右/横）</title>
 <style>
+  /* ===== 设计令牌（与批量工具页同源） ===== */
+  :root {
+    --bg:#f4f1ea; --card:#fff; --ink:#3a2e1f; --sub:#8a7a5f;
+    --line:#e5ddcc; --line-soft:#efe8d8;
+    --accent:#b8860b; --accent2:#8b5a2b; --accent-bg:#f6ecd8;
+    --danger:#c0453e; --danger-bg:#f9e9e8; --ok:#2e7d32;
+    --radius:10px; --shadow:0 1px 3px rgba(58,46,31,.08);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
   body {
     font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: #1a1a2e;
-    color: #eee;
-    display: flex;
-    height: 100vh;
-    overflow: hidden;
+    background: var(--bg); color: var(--ink);
+    display: flex; flex-direction: column;
+    height: 100vh; overflow: hidden;
+    font-size: 13px;
   }
+  button { font: inherit; cursor: pointer; }
+  input, select { font: inherit; color: var(--ink); }
 
+  /* ===== 顶栏 ===== */
+  .topbar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    background: var(--card);
+    border-bottom: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    z-index: 10; flex-shrink: 0;
+  }
+  .brand { font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .brand .ver { font-size: 11px; color: var(--sub); font-weight: 400; margin-left: 4px; }
+  .tb-group { display: flex; align-items: center; gap: 6px; padding-left: 10px; border-left: 1px solid var(--line-soft); }
+  .tb-spacer { flex: 1; }
+
+  .tbtn {
+    padding: 6px 12px; border-radius: 7px;
+    background: #fbf8f2; color: var(--ink);
+    border: 1px solid var(--line);
+    font-size: 12px; white-space: nowrap;
+    transition: all .12s;
+  }
+  .tbtn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+  .tbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .tbtn.danger { color: var(--danger); }
+  .tbtn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
+  .tbtn.armed {
+    background: var(--danger) !important; border-color: var(--danger) !important;
+    color: #fff !important; animation: pulse .9s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: .65; } }
+
+  /* 顶栏小开关 */
+  .chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 9px; border-radius: 999px;
+    border: 1px solid var(--line); background: #fbf8f2;
+    font-size: 11px; color: var(--sub); cursor: pointer;
+    user-select: none; white-space: nowrap;
+    transition: all .12s;
+  }
+  .chip:hover { border-color: var(--accent); }
+  .chip.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent2); font-weight: 600; }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #d8cfbc; }
+  .chip.on .dot { background: var(--accent); }
+
+  /* ===== 主体三栏 ===== */
+  .body { flex: 1; display: flex; overflow: hidden; overflow-x: auto; }
+
+  /* ---- 左侧栏 ---- */
   .sidebar {
-    width: 260px;
-    background: #16213e;
-    padding: 16px;
-    overflow-y: auto;
-    border-right: 1px solid #0f3460;
-    flex-shrink: 0;
+    width: 264px; flex-shrink: 0;
+    padding: 10px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 10px;
   }
-  .sidebar h2 { font-size: 16px; margin-bottom: 12px; color: #e94560; }
-  .sidebar h3 { font-size: 12px; margin: 16px 0 6px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; flex-shrink: 0;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 12px; cursor: pointer; user-select: none;
+    font-size: 13px; font-weight: 700;
+  }
+  .card-head:hover { background: #fbf8f2; }
+  .card-head .chev { color: var(--sub); font-size: 11px; transition: transform .15s; }
+  .card.collapsed .card-head .chev { transform: rotate(-90deg); }
+  .card-body { padding: 4px 12px 12px; }
+  .card.collapsed .card-body { display: none; }
+  .card-sub { font-size: 11px; color: var(--sub); margin: 10px 0 5px; font-weight: 600; }
+  .card-sub:first-child { margin-top: 2px; }
 
-  .layer-list { margin: 8px 0; }
+  .layer-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
   .layer-item {
     display: flex; align-items: center;
-    padding: 6px 8px; margin: 2px 0;
-    background: #0f3460; border-radius: 4px;
-    cursor: pointer; font-size: 13px;
+    padding: 7px 10px;
+    background: #fbf8f2; border: 1px solid var(--line-soft);
+    border-radius: 7px; cursor: pointer; font-size: 12px;
+    transition: all .12s;
   }
-  .layer-item:hover { background: #1a4a7a; }
-  .layer-item.active { background: #e94560; }
+  .layer-item:hover { border-color: var(--accent); }
+  .layer-item.active {
+    background: var(--accent-bg); border-color: var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+    font-weight: 700; color: var(--accent2);
+  }
   .layer-item .lbl { flex: 1; }
-  .layer-item .cnt { font-size: 11px; opacity: 0.7; }
+  .layer-item .cnt { font-size: 11px; color: var(--sub); font-weight: 400; }
 
-  .btn {
-    display: block; width: 100%;
-    padding: 7px 10px; margin: 3px 0;
-    background: #0f3460; color: #eee;
-    border: 1px solid #1a4a7a; border-radius: 4px;
-    cursor: pointer; font-size: 12px;
+  .row-btns { display: flex; gap: 5px; }
+  .row-btns .sbtn { flex: 1; }
+  .sbtn {
+    padding: 6px 8px; border-radius: 7px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    font-size: 12px; color: var(--ink); white-space: nowrap;
+    transition: all .12s;
   }
-  .btn:hover { background: #1a4a7a; }
-  .btn.danger { background: #533; border-color: #744; }
-  .btn.danger:hover { background: #744; }
+  .sbtn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+  .sbtn:disabled { opacity: .4; cursor: not-allowed; }
+  .sbtn.primary {
+    background: linear-gradient(#c9973a, #b07a22); border-color: #b07a22;
+    color: #fff; font-weight: 600;
+  }
+  .sbtn.primary:hover:not(:disabled) { filter: brightness(1.06); color: #fff; }
+  .sbtn.danger { color: var(--danger); }
+  .sbtn.danger:hover:not(:disabled) { border-color: var(--danger); background: var(--danger-bg); }
+  .sbtn.armed {
+    background: var(--danger) !important; border-color: var(--danger) !important;
+    color: #fff !important; animation: pulse .9s ease-in-out infinite;
+  }
+  .sbtn.block { display: block; width: 100%; margin-top: 5px; }
 
-  .brush-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+  .brush-group { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
   .brush-btn {
-    padding: 8px 4px; font-size: 11px; text-align: center;
-    background: #0f3460; border: 1px solid #1a4a7a;
-    border-radius: 4px; cursor: pointer;
+    padding: 9px 4px; font-size: 12px; text-align: center;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 7px; cursor: pointer; transition: all .12s;
   }
-  .brush-btn:hover { background: #1a4a7a; }
-  .brush-btn.active { background: #e94560; border-color: #e94560; }
+  .brush-btn:hover { border-color: var(--accent); }
+  .brush-btn.active {
+    background: var(--accent-bg); border-color: var(--accent);
+    color: var(--accent2); font-weight: 700;
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
 
-  .dir-pad {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 3px; width: 120px; margin: 0 auto;
-  }
+  .dir-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 120px; margin: 0 auto; }
   .dir-btn {
     padding: 6px 0; text-align: center;
-    background: #0f3460; border: 1px solid #1a4a7a;
-    border-radius: 4px; cursor: pointer; font-size: 14px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; cursor: pointer; font-size: 14px;
   }
-  .dir-btn:hover { background: #1a4a7a; }
-  .dir-btn.active { background: #e94560; border-color: #e94560; }
+  .dir-btn:hover { border-color: var(--accent); }
+  .dir-btn.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent2); font-weight: 700; }
 
-  .toggle-row {
+  .field-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 0; font-size: 12px;
+  }
+  .field-row > span { color: var(--sub); white-space: nowrap; }
+  .field-row input[type="number"] {
+    width: 52px; padding: 4px 6px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 12px;
+  }
+  .field-row select {
+    flex: 1; padding: 5px 6px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 12px;
+  }
+  .field-row .sep { opacity: .5; }
+
+  .switch-row {
     display: flex; align-items: center; justify-content: space-between;
     padding: 5px 0; font-size: 12px;
   }
   .toggle {
-    width: 32px; height: 18px;
-    background: #0f3460; border-radius: 9px;
+    width: 34px; height: 19px; flex-shrink: 0;
+    background: #e0d7c4; border-radius: 10px;
     position: relative; cursor: pointer;
-    border: 1px solid #1a4a7a;
+    transition: background .15s;
   }
-  .toggle.on { background: #e94560; border-color: #e94560; }
+  .toggle.on { background: var(--accent); }
   .toggle::after {
     content: ''; position: absolute;
-    width: 12px; height: 12px;
-    background: white; border-radius: 50%;
-    top: 2px; left: 2px; transition: left 0.15s;
+    width: 15px; height: 15px;
+    background: #fff; border-radius: 50%;
+    top: 2px; left: 2px; transition: left .15s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.2);
   }
-  .toggle.on::after { left: 16px; }
+  .toggle.on::after { left: 17px; }
 
-  .info-box {
-    background: #0a1628; padding: 10px;
-    border-radius: 4px; font-size: 11px;
-    line-height: 1.8; margin-top: 8px;
+  .status-box {
+    background: #fbf8f2; border: 1px solid var(--line-soft);
+    padding: 8px 10px; border-radius: 7px;
+    font-size: 11px; line-height: 1.7; color: var(--sub);
+    margin-top: 8px;
   }
-  .good { color: #4caf50; }
-  .bad { color: #f44336; }
+  .good { color: var(--ok); }
+  .bad { color: var(--danger); }
 
+  .layer-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; }
+  .layer-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--sub); }
+  .layer-swatch { width: 16px; height: 11px; border: 1px solid rgba(0,0,0,.15); border-radius: 2px; }
+
+  /* ---- 关卡工作台（共享，部署版可用） ---- */
+  .wb-auth { display: flex; gap: 5px; margin-bottom: 6px; }
+  .wb-auth input {
+    flex: 1; min-width: 0; padding: 6px 8px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 12px;
+  }
+  .wb-status {
+    font-size: 11px; color: var(--sub);
+    margin-bottom: 6px; padding: 4px 8px;
+    background: #fbf8f2; border: 1px solid var(--line-soft);
+    border-radius: 6px;
+  }
+  .wb-status.connected { color: var(--ok); }
+  .wb-status.error { color: var(--danger); }
+  .wb-toolbar { display: flex; gap: 5px; margin-bottom: 6px; }
+  .wb-toolbar input {
+    flex: 1; min-width: 0; padding: 5px 8px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 11px;
+  }
+  .wb-toolbar .sbtn, .wb-auth .sbtn { flex: 0 0 auto; }
+  .wb-levels { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .wb-empty { color: var(--sub); font-size: 11px; text-align: center; padding: 18px 0; line-height: 1.8; }
+  .level-item {
+    background: #fbf8f2; border: 1px solid var(--line-soft);
+    border-radius: 7px; padding: 6px 8px; font-size: 11px;
+  }
+  .level-item .lv-name { font-weight: 600; margin-bottom: 2px; display: flex; justify-content: space-between; align-items: center; }
+  .level-item .lv-name .lv-score { font-size: 10px; color: var(--sub); font-weight: 400; }
+  .level-item .lv-meta { color: var(--sub); font-size: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .level-item .lv-actions { display: flex; gap: 4px; margin-top: 5px; }
+  .level-item .lv-actions button {
+    flex: 1; padding: 3px 6px;
+    background: #fff; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 5px;
+    font-size: 10px; transition: all .12s;
+  }
+  .level-item .lv-actions button:hover { border-color: var(--accent); color: var(--accent2); }
+  .level-item .lv-actions button.danger { color: var(--danger); }
+  .level-item .lv-actions button.danger:hover { border-color: var(--danger); background: var(--danger-bg); }
+
+  /* ---- 画布区 ---- */
+  .canvas-area { flex: 1; min-width: 300px; display: flex; flex-direction: column; overflow: hidden; }
   .canvas-wrap {
-    flex: 1; display: flex;
-    align-items: center; justify-content: center;
-    position: relative;
-    background: radial-gradient(ellipse at center, #1e2a3a 0%, #0d1520 100%);
-    overflow: auto;
+    flex: 1; position: relative; overflow: hidden;
+    background:
+      radial-gradient(ellipse at center, #faf6ec 0%, #efe9da 100%);
   }
-  canvas { cursor: crosshair; }
+  .canvas-wrap.panning { cursor: grab; }
+  .canvas-wrap.panning:active { cursor: grabbing; }
+  canvas { display: block; cursor: crosshair; }
 
-  /* ===== 主区域（画布 + 右侧预览） ===== */
-  .main-area {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
+  .statusbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 6px 14px;
+    background: var(--card); border-top: 1px solid var(--line);
+    font-size: 11px; color: var(--sub);
+    flex-shrink: 0; user-select: none;
   }
+  .statusbar b { color: var(--ink); font-weight: 600; }
+  .statusbar .sep2 { width: 1px; height: 12px; background: var(--line); }
+  .status-support { cursor: pointer; padding: 1px 6px; border-radius: 5px; }
+  .status-support:hover { background: var(--accent-bg); }
+  .status-support.active { background: var(--danger-bg); }
+  .status-spacer { flex: 1; }
 
+  /* ---- 右侧预览面板 ---- */
   .preview-panel {
-    width: 480px;
-    flex-shrink: 0;
-    background: #16213e;
-    border-left: 1px solid #0f3460;
-    display: flex;
-    flex-direction: column;
-    transition: width 0.25s ease;
-    overflow: hidden;
+    width: 480px; flex-shrink: 0;
+    background: var(--card);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    transition: width .25s ease; overflow: hidden;
   }
   .preview-panel.collapsed { width: 0; border-left: 0; }
-
   .preview-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 14px;
-    border-bottom: 1px solid #0f3460;
-    flex-shrink: 0;
+    padding: 10px 14px; border-bottom: 1px solid var(--line);
+    flex-shrink: 0; white-space: nowrap;
   }
-  .preview-title {
-    display: flex; align-items: baseline; gap: 10px;
-  }
-  .preview-title > span:first-child {
-    font-size: 14px; font-weight: 600; color: #eee;
-  }
-  .preview-empty-hint {
-    font-size: 11px; color: #888;
-  }
-  .preview-actions {
-    display: flex; gap: 5px;
-  }
+  .preview-title { display: flex; align-items: baseline; gap: 10px; font-size: 14px; font-weight: 700; }
+  .preview-empty-hint { font-size: 11px; color: var(--sub); font-weight: 400; }
+  .preview-actions { display: flex; gap: 5px; }
   .mini-btn {
-    padding: 4px 10px;
-    background: #0f3460; color: #eee;
-    border: 1px solid #1a4a7a; border-radius: 4px;
-    cursor: pointer; font-size: 11px;
-    transition: all 0.15s;
+    padding: 5px 11px;
+    background: #fbf8f2; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 7px;
+    font-size: 11px; white-space: nowrap;
+    transition: all .12s;
   }
-  .mini-btn:hover:not(:disabled) { background: #1a4a7a; }
-  .mini-btn.primary { background: #e94560; border-color: #e94560; }
-  .mini-btn.primary:hover:not(:disabled) { background: #d63550; }
-  .mini-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .mini-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent2); }
+  .mini-btn.primary {
+    background: linear-gradient(#c9973a, #b07a22);
+    border-color: #b07a22; color: #fff; font-weight: 600;
+  }
+  .mini-btn.primary:hover:not(:disabled) { filter: brightness(1.06); color: #fff; }
+  .mini-btn:disabled { opacity: .4; cursor: not-allowed; }
 
   .preview-stats {
-    display: flex; gap: 8px; flex-wrap: wrap;
-    padding: 8px 14px;
-    font-size: 11px; color: #bbb;
-    border-bottom: 1px solid #0f3460;
-    flex-shrink: 0;
+    display: flex; gap: 6px; flex-wrap: wrap;
+    padding: 8px 14px; font-size: 11px; color: var(--sub);
+    border-bottom: 1px solid var(--line); flex-shrink: 0; white-space: nowrap;
   }
-  .preview-stats span {
-    background: #0a1628;
-    padding: 3px 8px; border-radius: 4px;
-  }
-  .preview-stats span.good { color: #4caf50; }
-  .preview-stats span.bad { color: #f44336; }
+  .preview-stats span { background: #fbf8f2; border: 1px solid var(--line-soft); padding: 3px 8px; border-radius: 5px; }
+  .preview-stats span.good { color: var(--ok); font-weight: 700; }
 
-  .preview-iframe-wrap {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-  }
-  .preview-iframe-wrap iframe {
-    width: 100%; height: 100%;
-    border: 0;
-  }
-  .preview-placeholder {
-    position: absolute;
-    inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: #0a1018;
-    pointer-events: none;
-    transition: opacity 0.2s;
-  }
-  .preview-placeholder.hidden { opacity: 0; }
-  .placeholder-card { text-align: center; color: #666; }
-  .placeholder-icon { font-size: 48px; margin-bottom: 12px; }
-  .placeholder-text { font-size: 14px; margin-bottom: 6px; color: #888; }
-  .placeholder-sub { font-size: 11px; line-height: 1.8; color: #555; }
-
-  .btn.primary-btn {
-    background: #e94560; border-color: #e94560; color: #fff;
-    font-weight: 600;
-  }
-  .btn.primary-btn:hover { background: #d63550; }
-
-  /* ===== 关卡工作台 ===== */
-  .workbench-panel {
-    margin-top: 4px;
-  }
-  .workbench-auth {
-    display: flex; gap: 4px; margin-bottom: 6px;
-  }
-  .workbench-auth input {
-    flex: 1;
-    padding: 5px 8px;
-    background: #0f3460;
-    color: #eee; border: 1px solid #1a4a7a;
-    border-radius: 4px; font-size: 12px;
-  }
-  .workbench-btn {
-    padding: 5px 10px !important;
-    width: auto !important;
-    margin: 0 !important;
-    font-size: 12px !important;
-    flex-shrink: 0;
-  }
-  .workbench-status {
-    font-size: 11px;
-    color: #888;
-    margin-bottom: 6px;
-    padding: 4px 8px;
-    background: #0a1628;
-    border-radius: 4px;
-  }
-  .workbench-status.connected { color: #4caf50; }
-  .workbench-status.error { color: #f44336; }
-  .workbench-toolbar {
-    display: flex; gap: 4px; margin-bottom: 6px;
-  }
-  .workbench-toolbar input {
-    flex: 1;
-    padding: 4px 8px;
-    background: #0f3460;
-    color: #eee; border: 1px solid #1a4a7a;
-    border-radius: 3px; font-size: 11px;
-  }
-  .workbench-btn-sm {
-    padding: 4px 8px !important;
-    width: auto !important;
-    margin: 0 !important;
-    font-size: 11px !important;
-    flex-shrink: 0;
-  }
-  .workbench-levels {
-    max-height: 220px;
-    overflow-y: auto;
-    display: flex; flex-direction: column; gap: 3px;
-  }
-  .level-item {
-    background: #0a1628;
-    border: 1px solid #0f3460;
-    border-radius: 4px;
-    padding: 6px 8px;
-    font-size: 11px;
-  }
-  .level-item .lv-name {
-    font-weight: 600; color: #eee;
-    margin-bottom: 2px;
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .level-item .lv-meta {
-    color: #888;
-    font-size: 10px;
-    display: flex; gap: 8px; flex-wrap: wrap;
-  }
-  .level-item .lv-actions {
-    display: flex; gap: 4px; margin-top: 4px;
-  }
-  .level-item .lv-actions button {
-    flex: 1;
-    padding: 3px 6px;
-    background: #0f3460; color: #eee;
-    border: 1px solid #1a4a7a; border-radius: 3px;
-    cursor: pointer; font-size: 10px;
-  }
-  .level-item .lv-actions button:hover { background: #1a4a7a; }
-  .level-item .lv-actions button.danger { background: #533; border-color: #744; }
-  .level-item .lv-actions button.danger:hover { background: #744; }
-
-  /* ===== 生成结果列表（常驻右侧面板） ===== */
-  .results-section {
-    border-bottom: 1px solid #0f3460;
-    display: flex; flex-direction: column;
-    flex-shrink: 0;
-  }
+  .results-section { border-bottom: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; }
   .results-head {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 14px 4px;
-    font-size: 12px; font-weight: 600; color: #ddd;
+    padding: 8px 14px 4px; font-size: 12px; font-weight: 700; white-space: nowrap;
   }
-  .results-head b { color: #ffd76a; }
+  .results-head b { color: var(--accent2); }
   .results-actions { display: flex; gap: 5px; }
   .results-list {
-    max-height: 200px;
-    overflow-y: auto;
+    max-height: 200px; overflow-y: auto;
     padding: 4px 10px 10px;
     display: flex; flex-direction: column; gap: 4px;
   }
   .result-item {
     display: flex; align-items: center; gap: 8px;
-    background: #0a1628;
-    border: 1px solid #0f3460;
-    border-radius: 5px;
-    padding: 5px 8px;
-    font-size: 11px;
-    cursor: pointer;
-    transition: background 0.12s, border-color 0.12s;
+    background: #fbf8f2; border: 1px solid var(--line-soft);
+    border-radius: 7px; padding: 5px 8px;
+    font-size: 11px; cursor: pointer;
+    transition: all .12s; white-space: nowrap;
   }
-  .result-item:hover { background: #0f1d33; }
-  .result-item.active {
-    border-color: #e94560;
-    background: #1a1420;
-  }
-  .result-item .ri-idx { color: #888; font-size: 10px; width: 22px; }
-  .result-item .ri-score { font-weight: 700; color: #ffd76a; min-width: 44px; }
-  .result-item .ri-meta { flex: 1; color: #aaa; font-size: 10px; }
+  .result-item:hover { border-color: var(--accent); }
+  .result-item.active { border-color: var(--accent); background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }
+  .result-item .ri-idx { color: var(--sub); font-size: 10px; width: 24px; }
+  .result-item .ri-score { font-weight: 700; color: var(--accent2); min-width: 46px; }
+  .result-item .ri-meta { flex: 1; color: var(--sub); font-size: 10px; }
   .result-item .ri-actions { display: flex; gap: 4px; }
   .result-item .ri-actions button {
-    padding: 2px 6px;
-    background: #0f3460; color: #eee;
-    border: 1px solid #1a4a7a; border-radius: 3px;
-    cursor: pointer; font-size: 10px;
+    padding: 3px 7px;
+    background: #fff; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 5px;
+    font-size: 10px;
   }
-  .result-item .ri-actions button:hover { background: #1a4a7a; }
-  .result-item .ri-actions button.primary { background: #e94560; border-color: #e94560; }
-  .result-item .ri-actions button.primary:hover { background: #d63550; }
+  .result-item .ri-actions button:hover { border-color: var(--accent); color: var(--accent2); }
+  .result-item .ri-actions button.primary { background: var(--accent-bg); border-color: var(--accent); color: var(--accent2); font-weight: 600; }
+
+  .preview-iframe-wrap { flex: 1; position: relative; overflow: hidden; }
+  .preview-iframe-wrap iframe { width: 100%; height: 100%; border: 0; }
+  .preview-placeholder {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg);
+    pointer-events: none; transition: opacity .2s;
+  }
+  .preview-placeholder.hidden { opacity: 0; }
+  .placeholder-card { text-align: center; color: var(--sub); padding: 0 30px; }
+  .placeholder-icon { font-size: 44px; margin-bottom: 12px; }
+  .placeholder-text { font-size: 14px; margin-bottom: 6px; color: var(--ink); }
+  .placeholder-sub { font-size: 11px; line-height: 1.8; }
+
+  /* ---- Toast ---- */
+  .toast-wrap {
+    position: fixed; right: 16px; bottom: 16px;
+    display: flex; flex-direction: column; gap: 8px;
+    z-index: 100; pointer-events: none;
+  }
+  .toast {
+    background: var(--card); border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px; box-shadow: 0 4px 14px rgba(58,46,31,.18);
+    padding: 9px 14px; font-size: 12px; color: var(--ink);
+    max-width: 320px;
+    animation: toast-in .18s ease-out;
+  }
+  .toast.err { border-left-color: var(--danger); }
+  .toast.ok { border-left-color: var(--ok); }
+  .toast.out { opacity: 0; transform: translateY(6px); transition: all .25s; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
+
+  /* ---- 帮助弹层 ---- */
+  .help-pop {
+    position: fixed; top: 48px; right: 12px; z-index: 90;
+    width: 300px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: 0 8px 26px rgba(58,46,31,.2);
+    padding: 14px 16px; font-size: 12px; line-height: 2;
+    display: none;
+  }
+  .help-pop.show { display: block; }
+  .help-pop h4 { font-size: 13px; margin-bottom: 6px; }
+  .help-pop kbd {
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-bottom-width: 2px; border-radius: 4px;
+    padding: 0 5px; font-family: inherit; font-size: 11px;
+    white-space: nowrap;
+  }
+  .help-pop .hrow { display: flex; justify-content: space-between; gap: 10px; }
+  .help-pop .hrow span:last-child { color: var(--sub); }
+
+  input[type="file"] { display: none; }
 
   @media (max-width: 1100px) {
     .preview-panel { width: 400px; }
-  }
-
-  .hint {
-    position: absolute; top: 12px; left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.6);
-    padding: 6px 14px; border-radius: 20px;
-    font-size: 11px; color: #aaa;
-  }
-  .hint kbd {
-    background: #333; padding: 1px 5px;
-    border-radius: 3px; font-family: monospace; font-size: 10px;
-  }
-
-  input[type="file"] { display: none; }
-  input[type="number"] {
-    padding: 3px 6px; background: #0f3460;
-    color: #eee; border: 1px solid #1a4a7a;
-    border-radius: 3px; font-size: 12px; width: 50px;
-  }
-
-  .layer-legend {
-    display: flex; flex-direction: column;
-    gap: 4px; margin-top: 6px;
-  }
-  .layer-legend-item {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 11px; color: #ccc;
-  }
-  .layer-swatch {
-    width: 20px; height: 12px;
-    border: 1px solid rgba(0,0,0,0.3);
-    border-radius: 2px;
+    .brand .ver { display: none; }
   }
 </style>
 </head>
 <body>
 
-<div class="sidebar">
-  <h2>🀄 形状编辑器 v3.1 · std</h2>
+<!-- ============ 顶栏 ============ -->
+<header class="topbar">
+  <div class="brand">🀄 关卡编辑器<span class="ver">v4.0 · std 坐标</span></div>
+  <div class="tb-group">
+    <button class="tbtn" onclick="document.getElementById('fileInput').click()">📂 导入</button>
+    <input type="file" id="fileInput" accept=".json" onchange="importJSON(event)">
+    <button class="tbtn" onclick="exportJSON()">💾 导出</button>
+    <button class="tbtn danger" id="clearBtn" onclick="clearAll(this)">🗑 清空</button>
+  </div>
+  <div class="tb-group">
+    <button class="tbtn" id="undoBtn" onclick="undo()" disabled>↩ 撤销</button>
+    <button class="tbtn" id="redoBtn" onclick="redo()" disabled>↪ 重做</button>
+  </div>
+  <div class="tb-group">
+    <div class="chip on" id="symToggle" onclick="toggleSym()" title="快捷键 S"><span class="dot"></span>对称</div>
+    <div class="chip on" id="allToggle" onclick="toggleAll()" title="快捷键 A"><span class="dot"></span>全部层</div>
+    <div class="chip on" id="snapToggle" onclick="toggleSnap()" title="上层牌必须 4 象限都有支撑"><span class="dot"></span>支撑限制</div>
+    <div class="chip on" id="gridToggle" onclick="toggleGrid()"><span class="dot"></span>网格</div>
+    <div class="chip" id="coordToggle" onclick="toggleCoord()"><span class="dot"></span>坐标</div>
+  </div>
+  <div class="tb-spacer"></div>
+  <button class="tbtn" onclick="fitView()" title="缩放并居中到完整画布">⤢ 视图重置</button>
+  <button class="tbtn" id="helpBtn" onclick="toggleHelp(event)">？</button>
+</header>
 
-  <h3>当前层</h3>
-  <div class="layer-list" id="layerList"></div>
-  <button class="btn" onclick="addLayer()">+ 添加层</button>
-  <button class="btn danger" onclick="deleteLayer()">− 删除当前层</button>
+<div class="body">
+  <!-- ============ 左侧栏 ============ -->
+  <aside class="sidebar">
 
-  <h3>画笔 (1/2/3)</h3>
-  <div class="brush-group">
-    <div class="brush-btn active" data-brush="normal" onclick="setBrush('normal')">🀫 普通</div>
-    <div class="brush-btn" data-brush="dark" onclick="setBrush('dark')">🂠 暗牌</div>
-    <div class="brush-btn" data-brush="spitter" onclick="setBrush('spitter')">⚙ 吐牌</div>
-  </div>
-
-  <div id="spitterPanel" style="display:none; margin-top:8px;">
-    <div style="font-size:11px; color:#aaa; margin-bottom:4px;">方向:</div>
-    <div class="dir-pad">
-      <div></div>
-      <div class="dir-btn active" data-dir="up" onclick="setSpitterDir('up')">↑</div>
-      <div></div>
-      <div class="dir-btn" data-dir="left" onclick="setSpitterDir('left')">←</div>
-      <div></div>
-      <div class="dir-btn" data-dir="right" onclick="setSpitterDir('right')">→</div>
-      <div></div>
-      <div class="dir-btn" data-dir="down" onclick="setSpitterDir('down')">↓</div>
-      <div></div>
-    </div>
-    <div style="margin-top:8px; display:flex; gap:6px; align-items:center;">
-      <span style="font-size:11px; color:#aaa;">次数:</span>
-      <input type="number" id="spitterCount" value="3" min="1" max="99">
-    </div>
-  </div>
-
-  <h3>图层颜色</h3>
-  <div class="layer-legend" id="layerLegend"></div>
-
-  <h3>选项</h3>
-  <div class="toggle-row">
-    <span>对称绘制</span>
-    <div class="toggle on" id="symToggle" onclick="toggleSym()"></div>
-  </div>
-  <div class="toggle-row">
-    <span>显示所有层</span>
-    <div class="toggle on" id="allToggle" onclick="toggleAll()"></div>
-  </div>
-  <div class="toggle-row">
-    <span>支撑限制</span>
-    <div class="toggle on" id="snapToggle" onclick="toggleSnap()"></div>
-  </div>
-  <div class="toggle-row">
-    <span>显示网格</span>
-    <div class="toggle on" id="gridToggle" onclick="toggleGrid()"></div>
-  </div>
-  <div class="toggle-row">
-    <span>显示坐标</span>
-    <div class="toggle" id="coordToggle" onclick="toggleCoord()"></div>
-  </div>
-
-  <h3>文件</h3>
-  <button class="btn" onclick="document.getElementById('fileInput').click()">导入 JSON</button>
-  <input type="file" id="fileInput" accept=".json" onchange="importJSON(event)">
-  <button class="btn" onclick="exportJSON()">导出 JSON</button>
-  <button class="btn danger" onclick="clearAll()">清空全部</button>
-
-  <h3>生成关卡</h3>
-  <div class="toggle-row">
-    <span>含暗牌 (10–20%)</span>
-    <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
-  </div>
-  <button class="btn primary-btn" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
-  <div class="toggle-row" style="align-items:center;">
-    <span>自动堆层数</span>
-    <input type="number" id="stackCount" value="5" min="2" max="7" style="width:44px;">
-  </div>
-  <button class="btn" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
-  <div class="toggle-row" style="align-items:center;">
-    <span>目标分数</span>
-    <input type="number" id="scoreMin" value="0" min="0" max="999" style="width:44px;">
-    <span style="opacity:.5;">~</span>
-    <input type="number" id="scoreMax" value="999" min="0" max="999" style="width:44px;">
-  </div>
-  <button class="btn" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
-  <div class="toggle-row" style="align-items:center;">
-    <span>批量模式</span>
-    <select id="batchMode" style="flex:1;background:#0f3460;color:#eee;border:1px solid #1a4a7a;border-radius:3px;padding:4px;font-size:12px;">
-      <option value="stack">按底座堆塔</option>
-      <option value="shape">按当前形状</option>
-    </select>
-  </div>
-  <div class="toggle-row" style="align-items:center;">
-    <span>生成数量</span>
-    <input type="number" id="batchCount" value="5" min="1" max="50" style="width:44px;">
-  </div>
-  <button class="btn" onclick="batchGenerate()">⚡ 批量生成</button>
-  <div class="info-box">
-    <span id="genStatus">就绪</span>
-  </div>
-
-  <h3>关卡工作台 <span style="font-size:10px;color:#888;font-weight:normal;">（共享）</span></h3>
-  <div class="workbench-panel">
-    <div class="workbench-auth">
-      <input type="password" id="workbenchPass" placeholder="共享口令" onkeydown="if(event.key==='Enter')loadWorkbench()">
-      <button class="btn workbench-btn" onclick="loadWorkbench()">连接</button>
-    </div>
-    <div class="workbench-status" id="workbenchStatus">未连接</div>
-    <div class="workbench-list" id="workbenchList" style="display:none;">
-      <div class="workbench-toolbar">
-        <input type="text" id="levelNameInput" placeholder="关卡名（如「关卡 1」）">
-        <button class="btn workbench-btn-sm" onclick="saveCurrentLevelToWorkbench()" id="wbSaveBtn" disabled>保存当前</button>
-      </div>
-      <div class="workbench-levels" id="workbenchLevels"></div>
-    </div>
-  </div>
-
-  <div class="info-box" id="infoBox">
-    普通牌: <b id="countNormal">0</b><br>
-    暗牌: <b id="countDark">0</b><br>
-    吐牌机: <b id="countSpitter">0</b><br>
-    合计: <b id="totalTiles">0</b> 张<br>
-    <span id="supportStatus">支撑检查通过</span>
-  </div>
-</div>
-
-<div class="main-area">
-<div class="canvas-wrap">
-  <div class="hint">
-    <kbd>左键</kbd> 绘制/擦除
-    <kbd>1/2/3</kbd> 画笔
-    <kbd>Q/E</kbd> 切层
-    <kbd>S</kbd> 对称
-    <kbd>A</kbd> 全部
-  </div>
-  <canvas id="canvas"></canvas>
-</div>
-
-<div class="preview-panel" id="previewPanel">
-  <div class="preview-header">
-    <div class="preview-title">
-      <span>🧪 关卡预览</span>
-      <span class="preview-empty-hint" id="previewEmptyHint">生成关卡后在此试玩</span>
-    </div>
-    <div class="preview-actions">
-      <button class="mini-btn primary" onclick="downloadCurrentLevel()" id="downloadBtn" disabled>⬇ 下载 JSON</button>
-      <button class="mini-btn" onclick="closePreview()" id="closeBtn" disabled>✕ 关闭</button>
-    </div>
-  </div>
-  <div class="preview-stats" id="previewStats">
-    <span>-- 张</span>
-    <span>-- 对</span>
-    <span>-- 分</span>
-    <span>暗牌 --</span>
-    <span>-- 层</span>
-  </div>
-  <div class="results-section" id="resultsSection" style="display:none;">
-    <div class="results-head">
-      <span>📋 生成结果 <b id="resultCount">0</b></span>
-      <span class="results-actions">
-        <button class="mini-btn" onclick="downloadAllResults()" id="downloadAllBtn">⬇ 下载全部</button>
-        <button class="mini-btn" onclick="clearResults()">清空</button>
-      </span>
-    </div>
-    <div class="results-list" id="resultsList"></div>
-  </div>
-  <div class="preview-iframe-wrap">
-    <div class="preview-placeholder" id="previewPlaceholder">
-      <div class="placeholder-card">
-        <div class="placeholder-icon">🎴</div>
-        <div class="placeholder-text">生成的关卡会直接在这里试玩</div>
-        <div class="placeholder-sub">在左侧画形状 → 点「按当前形状生成」或「按当前底座搭建后生成」<br>批量生成的结果会列在下方「生成结果」里，点任意一行预览</div>
+    <div class="card" id="cardLayers">
+      <div class="card-head" onclick="toggleCard('cardLayers')"><span>🗂 图层</span><span class="chev">▼</span></div>
+      <div class="card-body">
+        <div class="layer-list" id="layerList"></div>
+        <div class="row-btns">
+          <button class="sbtn" onclick="addLayer()">＋ 添加</button>
+          <button class="sbtn" onclick="duplicateLayer()" title="复制当前层为新的一层">⧉ 复制</button>
+          <button class="sbtn danger" id="delLayerBtn" onclick="deleteLayer(this)">－ 删除</button>
+        </div>
+        <div class="layer-legend" id="layerLegend"></div>
       </div>
     </div>
-    <iframe id="previewFrame" src="about:blank" frameborder="0"></iframe>
-  </div>
+
+    <div class="card" id="cardBrush">
+      <div class="card-head" onclick="toggleCard('cardBrush')"><span>🖌 画笔</span><span class="chev">▼</span></div>
+      <div class="card-body">
+        <div class="brush-group">
+          <div class="brush-btn active" data-brush="normal" onclick="setBrush('normal')">🀫 普通</div>
+          <div class="brush-btn" data-brush="dark" onclick="setBrush('dark')">🂠 暗牌</div>
+          <div class="brush-btn" data-brush="spitter" onclick="setBrush('spitter')">⚙ 吐牌</div>
+        </div>
+        <div id="spitterPanel" style="display:none; margin-top:10px;">
+          <div class="card-sub">吐牌方向</div>
+          <div class="dir-pad">
+            <div></div>
+            <div class="dir-btn active" data-dir="up" onclick="setSpitterDir('up')">↑</div>
+            <div></div>
+            <div class="dir-btn" data-dir="left" onclick="setSpitterDir('left')">←</div>
+            <div></div>
+            <div class="dir-btn" data-dir="right" onclick="setSpitterDir('right')">→</div>
+            <div></div>
+            <div class="dir-btn" data-dir="down" onclick="setSpitterDir('down')">↓</div>
+            <div></div>
+          </div>
+          <div class="field-row" style="justify-content:center; margin-top:8px;">
+            <span>吐牌次数</span>
+            <input type="number" id="spitterCount" value="3" min="1" max="99">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="cardGen">
+      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><span class="chev">▼</span></div>
+      <div class="card-body">
+        <div class="switch-row">
+          <span>含暗牌 (10–20%)</span>
+          <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
+        </div>
+        <button class="sbtn primary block" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
+
+        <div class="card-sub">底座堆塔</div>
+        <div class="field-row">
+          <span>堆层数</span>
+          <input type="number" id="stackCount" value="5" min="2" max="7">
+        </div>
+        <button class="sbtn block" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
+
+        <div class="card-sub">按分数批量</div>
+        <div class="field-row">
+          <span>目标分数</span>
+          <input type="number" id="scoreMin" value="0" min="0" max="999">
+          <span class="sep">~</span>
+          <input type="number" id="scoreMax" value="999" min="0" max="999">
+        </div>
+        <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
+        <div class="field-row">
+          <span>批量模式</span>
+          <select id="batchMode">
+            <option value="stack">按底座堆塔</option>
+            <option value="shape">按当前形状</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <span>生成数量</span>
+          <input type="number" id="batchCount" value="5" min="1" max="50">
+        </div>
+        <button class="sbtn block" onclick="batchGenerate()">⚡ 批量生成</button>
+
+        <div class="status-box"><span id="genStatus">就绪</span></div>
+      </div>
+    </div>
+
+    <div class="card collapsed" id="cardWb">
+      <div class="card-head" onclick="toggleCard('cardWb')"><span>🤝 关卡工作台（共享）</span><span class="chev">▼</span></div>
+      <div class="card-body">
+        <div class="wb-auth">
+          <input type="password" id="workbenchPass" placeholder="共享口令" onkeydown="if(event.key==='Enter')loadWorkbench()">
+          <button class="sbtn" onclick="loadWorkbench()">连接</button>
+        </div>
+        <div class="wb-status" id="workbenchStatus">未连接（仅部署在 Netlify 的版本可用）</div>
+        <div id="workbenchList" style="display:none;">
+          <div class="wb-toolbar">
+            <input type="text" id="levelNameInput" placeholder="关卡名（如「关卡 1」）">
+            <button class="sbtn" onclick="saveCurrentLevelToWorkbench()" id="wbSaveBtn" disabled>保存当前</button>
+          </div>
+          <div class="wb-levels" id="workbenchLevels"></div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ============ 画布区 ============ -->
+  <main class="canvas-area">
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="statusbar">
+      <span>坐标 <b id="sbCoord">—</b></span>
+      <div class="sep2"></div>
+      <span>当前 <b id="sbLayer">L0</b></span>
+      <div class="sep2"></div>
+      <span class="status-support" id="sbSupport" title="点击高亮悬空牌">支撑 <b id="sbSupportText">—</b></span>
+      <div class="sep2"></div>
+      <span id="sbCounts">普通 <b>0</b> · 暗 <b>0</b> · 吐 <b>0</b> · 共 <b>0</b></span>
+      <div class="status-spacer"></div>
+      <span>缩放 <b id="sbZoom">100%</b></span>
+    </div>
+  </main>
+
+  <!-- ============ 右侧预览面板 ============ -->
+  <aside class="preview-panel" id="previewPanel">
+    <div class="preview-header">
+      <div class="preview-title">
+        <span>🧪 关卡预览</span>
+        <span class="preview-empty-hint" id="previewEmptyHint">生成关卡后在此试玩</span>
+      </div>
+      <div class="preview-actions">
+        <button class="mini-btn primary" onclick="downloadCurrentLevel()" id="downloadBtn" disabled>⬇ 下载 JSON</button>
+        <button class="mini-btn" onclick="closePreview()" id="closeBtn" disabled>✕ 关闭</button>
+      </div>
+    </div>
+    <div class="preview-stats" id="previewStats">
+      <span>-- 张</span><span>-- 对</span><span>-- 分</span><span>暗牌 --</span><span>-- 层</span>
+    </div>
+    <div class="results-section" id="resultsSection" style="display:none;">
+      <div class="results-head">
+        <span>📋 生成结果 <b id="resultCount">0</b></span>
+        <span class="results-actions">
+          <button class="mini-btn" onclick="downloadAllResults()" id="downloadAllBtn">⬇ 下载全部</button>
+          <button class="mini-btn" onclick="clearResults()">清空</button>
+        </span>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+    </div>
+    <div class="preview-iframe-wrap">
+      <div class="preview-placeholder" id="previewPlaceholder">
+        <div class="placeholder-card">
+          <div class="placeholder-icon">🎴</div>
+          <div class="placeholder-text" id="placeholderText">生成的关卡会直接在这里试玩</div>
+          <div class="placeholder-sub" id="placeholderSub">在左侧画形状 → 点「按当前形状生成」或「按当前底座搭建后生成」<br>批量生成的结果会列在上方「生成结果」里，点任意一行预览</div>
+        </div>
+      </div>
+      <iframe id="previewFrame" src="about:blank" frameborder="0"></iframe>
+    </div>
+  </aside>
 </div>
+
+<!-- ============ Toast & 帮助 ============ -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="help-pop" id="helpPop">
+  <h4>⌨ 快捷键与鼠标</h4>
+  <div class="hrow"><span><kbd>左键</kbd> 拖拽</span><span>绘制 / 替换</span></div>
+  <div class="hrow"><span><kbd>右键</kbd> 拖拽</span><span>擦除</span></div>
+  <div class="hrow"><span><kbd>Delete</kbd></span><span>删除悬停的牌</span></div>
+  <div class="hrow"><span><kbd>Ctrl</kbd>+<kbd>滚轮</kbd></span><span>缩放（以光标为中心）</span></div>
+  <div class="hrow"><span><kbd>空格</kbd> / <kbd>中键</kbd> 拖拽</span><span>平移画布</span></div>
+  <div class="hrow"><span><kbd>滚轮</kbd></span><span>上下平移（+Shift 左右）</span></div>
+  <div class="hrow"><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></span><span>撤销 / 重做</span></div>
+  <div class="hrow"><span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></span><span>普通 / 暗牌 / 吐牌</span></div>
+  <div class="hrow"><span><kbd>Q</kbd> <kbd>E</kbd></span><span>切换层</span></div>
+  <div class="hrow"><span><kbd>S</kbd> / <kbd>A</kbd></span><span>对称 / 显示全部层</span></div>
 </div>
 
 <script src="generator.js"></script>
 <script>
 // ========== 配置：编辑器坐标显示范围 ==========
 // 横向固定 12 个子格 = 6 个麻将位（每张牌占 2 子格）
-// 编辑器坐标 col -5..6，显示偏移 +5 → 显示 0..11，牌占 2 格最右到 13
+// 编辑器坐标 col -5..5，显示偏移 +5 → 显示 0..10，牌占 2 格最右到 12
 // 编辑器坐标 row -8..6（显示 +8 → 0..14），牌占 2 格 → 最底显示 16
 const GRID_COLS = 14;  // 画布列数（显示 0..13，容纳半格偏移牌）
-const GRID_ROWS = 16;  // 画布行数（显示 0..16）
-const CELL = 40;       // 每格像素
+const GRID_ROWS = 16;  // 画布行数（显示 0..15）
+const CELL = 40;       // 每格世界像素（缩放前）
 const TILE = 2;        // 每张牌占 2×2 格
 
-// 每层颜色（俯视图，平铺色块）
+// 每层颜色（俯视平铺色块，浅色底适配）
 const LAYER_COLORS = [
-  { base: '#7a6b4a', accent: '#a89570' }, // L0 棕黄（最底）
-  { base: '#5a7a8a', accent: '#7da3b5' }, // L1 蓝灰
-  { base: '#6a8a5a', accent: '#8eb37d' }, // L2 草绿
-  { base: '#a86a5a', accent: '#c98a7a' }, // L3 砖红
-  { base: '#8a5a8a', accent: '#b37db3' }, // L4 紫
-  { base: '#5a8a7a', accent: '#7db39c' }, // L5 青
+  { base: '#d9b380', accent: '#e8cfa5' }, // L0 棕黄（最底）
+  { base: '#8fb6c9', accent: '#b3d2de' }, // L1 蓝灰
+  { base: '#9cc28a', accent: '#bcd9ae' }, // L2 草绿
+  { base: '#d99a86', accent: '#e9bcac' }, // L3 砖红
+  { base: '#b99ccb', accent: '#d3bfe0' }, // L4 紫
+  { base: '#8cc0ad', accent: '#aed6c7' }, // L5 青
 ];
 
 // ========== 状态 ==========
@@ -581,160 +652,261 @@ let state = {
   showCoord: false,
   painting: false,
   paintMode: null,
-  hoverCell: null, // {col, row, valid}
-  hoverTile: null, // 当前鼠标位置的牌 key（用于悬浮透明）
+  strokeSnapshot: null, // 笔画开始前的 layers 快照（用于撤销）
+  hoverCell: null,      // {col, row, valid}
+  hoverTile: null,      // 当前鼠标位置最顶层的牌
+  showIssues: false,    // 高亮悬空牌
+  spaceDown: false,
+  panning: false,
+  panStart: null,
 };
+
+// 视图变换：screen = world * scale + (ox, oy)
+let view = { scale: 1, ox: 0, oy: 0 };
+let viewFitted = false; // 首次拿到有效尺寸后才执行 fitView
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvasWrap');
+
+function worldTopPad() {
+  const maxLayer = Math.max(state.layers.length - 1, 0);
+  return maxLayer * CELL * 0.2 + 10;
+}
 
 function resizeCanvas() {
-  // 固定画布尺寸，超出时主区出现滚动条
-  // 高度加上顶部预留空间（最高层 × 20% 偏移 + 余量）
-  const maxLayer = Math.max(state.layers.length - 1, 0);
-  const w = GRID_COLS * CELL;
-  const h = GRID_ROWS * CELL + maxLayer * CELL * 0.2 + 20;
-  canvas.width = w;
-  canvas.height = h;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+  if (w === 0 || h === 0) return;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
+  if (!viewFitted) { fitView(); return; } // fitView 内部会 draw
   draw();
 }
-window.addEventListener('resize', resizeCanvas);
 
-// 镜像列（内部 col=横向）：对称中心固定 0
-// 整格位：-5↔5、-3↔3、-1↔1；半格位：-4↔4、-2↔2、0 中轴
-// 所有层都围绕 col=0 镜像
+// 缩放并居中到完整画布
+function fitView() {
+  const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+  if (w === 0 || h === 0) return;
+  const contentW = GRID_COLS * CELL;
+  const contentH = worldTopPad() + GRID_ROWS * CELL;
+  const scale = Math.min(w / contentW, h / contentH) * 0.94;
+  view.scale = Math.min(3.5, Math.max(0.3, scale));
+  view.ox = (w - contentW * view.scale) / 2;
+  view.oy = (h - contentH * view.scale) / 2;
+  viewFitted = true;
+  draw();
+}
+
+new ResizeObserver(() => resizeCanvas()).observe(canvasWrap);
+
+// 镜像列（内部 col=横向）：所有层围绕 col=0 镜像
 function mirrorCol(col, layer) {
   return -col;
 }
 
 function pixelToCell(px, py) {
-  const scale = canvas.width / (GRID_COLS * CELL);
-  // 减去顶部预留空间和显示偏移
-  const maxLayer = Math.max(state.layers.length - 1, 0);
-  const topPad = maxLayer * CELL * scale * 0.2 + 10 * scale;
+  // CSS 像素 → 世界坐标 → 编辑器坐标
+  const wx = (px - view.ox) / view.scale;
+  const wy = (py - view.oy) / view.scale;
   return {
-    col: Math.floor(px / (CELL * scale)) - DISPLAY_OFFSET_COL,
-    row: Math.floor((py - topPad) / (CELL * scale)) - DISPLAY_OFFSET_ROW,
+    col: Math.floor(wx / CELL) - DISPLAY_OFFSET_COL,
+    row: Math.floor((wy - worldTopPad()) / CELL) - DISPLAY_OFFSET_ROW,
   };
 }
 
-// 不再 snap 到对齐格，鼠标点哪就是哪（左上角 = 点击的子格）
-// 但要保证 col+2 <= GRID_COLS, row+2 <= GRID_ROWS
-function snapToTile(col, row) {
-  return { col, row };
+// ========== 历史（撤销/重做） ==========
+const HISTORY_LIMIT = 100;
+let past = [], future = [];
+
+function serializeLayers() { return JSON.stringify(state.layers); }
+
+function pushHistory(beforeSnapshot) {
+  past.push(beforeSnapshot);
+  if (past.length > HISTORY_LIMIT) past.shift();
+  future = [];
+  updateUndoButtons();
+  scheduleAutosave();
 }
 
-// 获取某层所有牌 key 的 set（含镜像，用于支撑计算）
-function getFullTileSet(layerIdx) {
-  if (layerIdx < 0 || layerIdx >= state.layers.length) return new Set();
-  const layer = state.layers[layerIdx];
-  const full = new Set();
-  Object.keys(layer.tiles).forEach(k => {
-    full.add(k);
-    const [r, c] = k.split(',').map(Number);
-    const mc = mirrorCol(c, layerIdx);
-    if (mc !== c) full.add(`${r},${mc}`);
-  });
-  return full;
+function restoreLayers(json) {
+  state.layers = JSON.parse(json);
+  if (state.currentLayer >= state.layers.length) state.currentLayer = state.layers.length - 1;
+  if (state.currentLayer < 0) state.currentLayer = 0;
+  updateUI(); updateLegend(); draw();
 }
 
-// 检查某个位置（当前层）是否有支撑 —— 象限规则
-// 4 个象限中心子格下方都要有下层牌
-function hasSupportAt(col, row) {
-  if (state.currentLayer === 0) return true;
-  if (!state.snapToSupport) return true;
-  const lower = state.layers[state.currentLayer - 1].tiles;
-  const lowerArr = Object.keys(lower).map(k => {
-    const [lr, lc] = k.split(',').map(Number);
-    return { row: lr, col: lc };
-  });
+function undo() {
+  if (!past.length) return;
+  future.push(serializeLayers());
+  restoreLayers(past.pop());
+  updateUndoButtons();
+  scheduleAutosave();
+}
 
-  const quads = [[row, col], [row, col + 1], [row + 1, col], [row + 1, col + 1]];
-  let covered = 0;
-  quads.forEach(([r, c]) => {
-    if (quadCovered(lowerArr, r, c)) covered++;
-  });
-  return covered === 4;
+function redo() {
+  if (!future.length) return;
+  past.push(serializeLayers());
+  restoreLayers(future.pop());
+  updateUndoButtons();
+  scheduleAutosave();
+}
+
+function updateUndoButtons() {
+  document.getElementById('undoBtn').disabled = past.length === 0;
+  document.getElementById('redoBtn').disabled = future.length === 0;
+}
+
+// ========== 自动保存（localStorage，防误关丢失） ==========
+const AUTOSAVE_KEY = 'mjShapeEditor.v1';
+let autosaveTimer = null;
+
+function scheduleAutosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+        layers: state.layers,
+        currentLayer: state.currentLayer,
+      }));
+    } catch (_) { /* 隐私模式等场景忽略 */ }
+  }, 500);
+}
+
+function loadAutosave() {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    if (!data.layers || !data.layers.length) return false;
+    const hasTiles = data.layers.some(l => l.tiles && Object.keys(l.tiles).length > 0);
+    if (!hasTiles) return false;
+    state.layers = data.layers;
+    state.currentLayer = Math.min(data.currentLayer || 0, state.layers.length - 1);
+    return true;
+  } catch (_) { return false; }
+}
+
+function clearAutosave() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch (_) {}
+}
+
+// ========== Toast ==========
+function toast(msg, type) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 300);
+  }, 2500);
+}
+
+// ========== 卡片折叠 ==========
+function toggleCard(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+// ========== 帮助弹层 ==========
+function toggleHelp(e) {
+  e.stopPropagation();
+  document.getElementById('helpPop').classList.toggle('show');
+}
+document.addEventListener('click', e => {
+  const pop = document.getElementById('helpPop');
+  if (pop.classList.contains('show') && !pop.contains(e.target)) pop.classList.remove('show');
+});
+
+// ========== 危险操作：二次点击确认（iframe 里 confirm 会被拦截） ==========
+function armConfirm(btn, label, action) {
+  if (!btn.dataset.armed) {
+    const orig = btn.innerHTML;
+    btn.dataset.armed = '1';
+    btn.innerHTML = label;
+    btn.classList.add('armed');
+    setTimeout(() => {
+      delete btn.dataset.armed;
+      btn.innerHTML = orig;
+      btn.classList.remove('armed');
+    }, 3000);
+    return;
+  }
+  delete btn.dataset.armed;
+  btn.classList.remove('armed');
+  btn.innerHTML = btn.dataset.origLabel || btn.innerHTML;
+  action();
 }
 
 // ========== 初始化 ==========
 function init() {
-  state.layers = [
-    { tiles: {} },
-    { tiles: {} },
-  ];
+  state.layers = [{ tiles: {} }, { tiles: {} }];
   state.currentLayer = 0;
+  const restored = loadAutosave();
   updateUI();
   updateLegend();
   resizeCanvas();
-  draw();
+  fitView();
+  updateUndoButtons();
+  if (restored) toast('已恢复上次未导出的编辑内容', 'ok');
 }
 
 // ========== 绘制 ==========
 function draw() {
-  const scale = canvas.width / (GRID_COLS * CELL);
-  const c = CELL * scale;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width / dpr, h = canvas.height / dpr;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
 
-  // 背景
-  ctx.fillStyle = '#1a2438';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const topPad = worldTopPad();
+  const boardW = GRID_COLS * CELL;
+  const boardH = GRID_ROWS * CELL;
 
-  // 顶部预留空间（防止上层牌偏移后被截断）
-  // 每层偏移 20%，最高层偏移 = (maxLayer) * 20%
-  const maxLayer = Math.max(...state.layers.map((_, i) => i), 0);
-  const topPad = maxLayer * c * 0.2 + 10 * scale;
+  ctx.setTransform(dpr * view.scale, 0, 0, dpr * view.scale, dpr * view.ox, dpr * view.oy);
+  const lw = 1 / view.scale; // 缩放后仍约 1 屏像素的线宽
 
-  ctx.save();
-  ctx.translate(0, topPad);
+  // 板底
+  ctx.fillStyle = '#fdfaf3';
+  ctx.fillRect(0, 0, boardW, topPad + boardH);
+  ctx.strokeStyle = '#ddd2ba';
+  ctx.lineWidth = lw * 2;
+  ctx.strokeRect(0, 0, boardW, topPad + boardH);
 
   // 网格
   if (state.showGrid) {
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(140,115,75,0.12)';
+    ctx.lineWidth = lw;
     for (let i = 0; i <= GRID_COLS; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * c, 0);
-      ctx.lineTo(i * c, canvas.height);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * CELL, topPad); ctx.lineTo(i * CELL, topPad + boardH); ctx.stroke();
     }
     for (let i = 0; i <= GRID_ROWS; i++) {
-      ctx.beginPath();
-      ctx.moveTo(0, i * c);
-      ctx.lineTo(canvas.width, i * c);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, topPad + i * CELL); ctx.lineTo(boardW, topPad + i * CELL); ctx.stroke();
     }
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.strokeStyle = 'rgba(140,115,75,0.25)';
     for (let i = 0; i <= GRID_COLS; i += 2) {
-      ctx.beginPath();
-      ctx.moveTo(i * c, 0);
-      ctx.lineTo(i * c, canvas.height);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(i * CELL, topPad); ctx.lineTo(i * CELL, topPad + boardH); ctx.stroke();
     }
     for (let i = 0; i <= GRID_ROWS; i += 2) {
-      ctx.beginPath();
-      ctx.moveTo(0, i * c);
-      ctx.lineTo(canvas.width, i * c);
-      ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, topPad + i * CELL); ctx.lineTo(boardW, topPad + i * CELL); ctx.stroke();
     }
   }
 
-  // 中心轴
-  const cx = (GRID_COLS - 1) / 2 * c;
-  ctx.strokeStyle = 'rgba(233,69,96,0.2)';
+  // 中心对称轴
+  const cx = (GRID_COLS - 1) / 2 * CELL;
+  ctx.strokeStyle = 'rgba(184,134,11,0.35)';
+  ctx.lineWidth = lw * 1.5;
   ctx.setLineDash([6, 6]);
-  ctx.beginPath();
-  ctx.moveTo(cx, 0);
-  ctx.lineTo(cx, canvas.height);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, topPad); ctx.lineTo(cx, topPad + boardH); ctx.stroke();
   ctx.setLineDash([]);
 
   // 画所有层（俯视模式）
   const layersToDraw = state.showAll ? state.layers : [state.layers[state.currentLayer]];
   const startLayer = state.showAll ? 0 : state.currentLayer;
+  const issues = state.showIssues ? findSupportIssues() : null;
 
   layersToDraw.forEach((layer, i) => {
     const layerIdx = startLayer + i;
@@ -743,103 +915,97 @@ function draw() {
       const tile = layer.tiles[key];
       const [r, c0] = key.split(',').map(Number);
       const isHover = state.hoverTile && state.hoverTile.key === key && state.hoverTile.layer === layerIdx;
-      drawTile(c0, r, layerIdx, tile, isCurrent, scale, c, isHover);
+      drawTile(c0, r, layerIdx, tile, isCurrent, isHover, issues && layerIdx > 0 && issues.has(key));
     });
   });
 
-  if (state.hoverCell) {
-    drawHover(scale, c);
-  }
+  if (state.hoverCell) drawHover();
 
-  ctx.restore();
-  updateInfo();
+  updateStatusbar();
 }
 
 // 俯视模式：牌大小不变，每层往上偏移露出下层
-function drawTile(col, row, layerIdx, tile, isCurrent, scale, c, isHover = false) {
-  // 编辑器坐标 → 显示坐标（加偏移让负数变正）
+function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  const x = dCol * c;
-  // 牌大小不变，整体往上偏移
-  const yOffset = -layerIdx * c * 0.2; // 每层往上偏移 20% 格
-  const y = dRow * c + yOffset;
-  const w = 2 * c;
-  const h = 2 * c;
-  const pad = 2 * scale;
+  const x = dCol * CELL;
+  const y = worldTopPad() + dRow * CELL - layerIdx * CELL * 0.2;
+  const w = TILE * CELL, h = TILE * CELL;
+  const pad = 2;
+  const lw = 1 / view.scale;
 
   let baseColor, accentColor, borderColor;
   if (tile.type === 'dark') {
-    baseColor = '#1a2a4a'; accentColor = '#2a3a6a'; borderColor = '#4a6cb3';
+    baseColor = '#5a6d95'; accentColor = '#7c8fb8'; borderColor = '#31427a';
   } else if (tile.type === 'spitter') {
-    baseColor = '#5c2e0a'; accentColor = '#8b4513'; borderColor = '#ffd700';
+    baseColor = '#b06a2a'; accentColor = '#d8954f'; borderColor = '#7a4a12';
   } else {
     const lc = LAYER_COLORS[Math.min(layerIdx, LAYER_COLORS.length - 1)];
     baseColor = lc.base; accentColor = lc.accent;
-    borderColor = isCurrent ? '#fff' : 'rgba(0,0,0,0.4)';
+    borderColor = isCurrent ? '#8b5a2b' : 'rgba(58,46,31,0.35)';
   }
 
   ctx.save();
-  if (isHover) ctx.globalAlpha = 0.4;
+  if (isHover) ctx.globalAlpha = 0.45;
 
-  // 牌面（满尺寸）
+  // 牌面
   ctx.fillStyle = baseColor;
   ctx.fillRect(x + pad, y + pad, w - 2 * pad, h - 2 * pad);
   ctx.fillStyle = accentColor;
-  ctx.fillRect(x + pad + c * 0.15, y + pad + c * 0.15, w - 2 * pad - c * 0.3, h - 2 * pad - c * 0.3);
+  ctx.fillRect(x + pad + CELL * 0.15, y + pad + CELL * 0.15, w - 2 * pad - CELL * 0.3, h - 2 * pad - CELL * 0.3);
   ctx.strokeStyle = borderColor;
-  ctx.lineWidth = isCurrent ? 3 : 1.5;
+  ctx.lineWidth = isCurrent ? 2.5 * lw + lw : 1.2 * lw;
   ctx.strokeRect(x + pad, y + pad, w - 2 * pad, h - 2 * pad);
 
   // 底边阴影线
   if (layerIdx > 0) {
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.fillRect(x + pad, y + h - 3 * scale, w - 2 * pad, 3 * scale);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillRect(x + pad, y + h - 3, w - 2 * pad, 3);
+  }
+
+  // 悬空问题高亮
+  if (isIssue) {
+    ctx.strokeStyle = '#c0453e';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
   }
 
   // 层号角标
-  ctx.fillStyle = 'rgba(0,0,0,0.5)';
-  ctx.fillRect(x + pad, y + pad, c * 0.6, c * 0.4);
+  ctx.fillStyle = 'rgba(58,46,31,0.55)';
+  ctx.fillRect(x + pad, y + pad, CELL * 0.6, CELL * 0.4);
   ctx.fillStyle = '#fff';
-  ctx.font = `bold ${c * 0.32}px sans-serif`;
+  ctx.font = `bold ${CELL * 0.3}px sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText('L' + layerIdx, x + pad + c * 0.05, y + pad + c * 0.04);
+  ctx.fillText('L' + layerIdx, x + pad + CELL * 0.06, y + pad + CELL * 0.06);
 
-  // 类型图标
+  // 类型图标 / 坐标
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-
-  // 坐标显示（开关开启时）—— 居中大号显示
-  // std 语义：row=纵(上下)、col=横(左右)，显示 (row,col)
   if (state.showCoord) {
-    ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    ctx.font = `bold ${c * 0.55}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(40,30,15,0.85)';
+    ctx.font = `bold ${CELL * 0.5}px monospace`;
     ctx.fillText(`${row},${col}`, x + w / 2, y + h / 2);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
   }
   if (tile.type === 'dark') {
-    ctx.fillStyle = '#4a6cb3';
-    ctx.font = `bold ${c * 0.8}px serif`;
+    ctx.fillStyle = '#dfe6f5';
+    ctx.font = `bold ${CELL * 0.8}px serif`;
     ctx.fillText('?', x + w / 2, y + h / 2);
   } else if (tile.type === 'spitter') {
-    ctx.fillStyle = '#ffd700';
-    ctx.font = `bold ${c * 0.7}px sans-serif`;
+    ctx.fillStyle = '#ffe9a8';
+    ctx.font = `bold ${CELL * 0.7}px sans-serif`;
     const arrows = { up: '▲', down: '▼', left: '◀', right: '▶' };
-    ctx.fillText(arrows[tile.dir] || '⚙', x + w / 2, y + h / 2 - c * 0.15);
+    ctx.fillText(arrows[tile.dir] || '⚙', x + w / 2, y + h / 2 - CELL * 0.15);
     ctx.fillStyle = '#fff';
-    ctx.font = `${c * 0.3}px sans-serif`;
-    ctx.fillText('×' + tile.count, x + w / 2, y + h / 2 + c * 0.4);
+    ctx.font = `${CELL * 0.3}px sans-serif`;
+    ctx.fillText('×' + tile.count, x + w / 2, y + h / 2 + CELL * 0.4);
   }
 
   ctx.restore();
 }
 
 // 悬停预览
-function drawHover(scale, c) {
+function drawHover() {
   const { col, row, valid } = state.hoverCell;
   const layer = state.layers[state.currentLayer];
   if (!layer) return;
@@ -847,82 +1013,135 @@ function drawHover(scale, c) {
   const key = `${row},${col}`;
   const hasTile = key in layer.tiles;
 
-  // 编辑器坐标 → 显示坐标
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  const x = dCol * c;
-  const y = dRow * c;
-  const w = 2 * c;
-  const h = 2 * c;
-  const pad = 2 * scale;
+  const x = dCol * CELL;
+  const y = worldTopPad() + dRow * CELL - state.currentLayer * CELL * 0.2;
+  const w = TILE * CELL, h = TILE * CELL;
 
-  // 颜色
-  const color = hasTile ? '#ff8800' : (valid ? '#44ff44' : '#ff4444');
+  const color = hasTile ? '#c97b1f' : (valid ? '#b8860b' : '#c0453e');
   ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.setLineDash([8, 4]);
-  ctx.strokeRect(x + pad, y + pad, w - 2 * pad, h - 2 * pad);
+  ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
   ctx.setLineDash([]);
 
-  // 填充
   ctx.fillStyle = color;
-  ctx.globalAlpha = 0.15;
-  ctx.fillRect(x + pad, y + pad, w - 2 * pad, h - 2 * pad);
+  ctx.globalAlpha = 0.12;
+  ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
   ctx.globalAlpha = 1;
 
   // 禁止符号
   if (!valid && !hasTile) {
-    ctx.strokeStyle = '#ff0000';
-    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#c0453e';
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.moveTo(x + w * 0.25, y + h * 0.25);
-    ctx.lineTo(x + w * 0.75, y + h * 0.75);
+    ctx.moveTo(x + w * 0.28, y + h * 0.28);
+    ctx.lineTo(x + w * 0.72, y + h * 0.72);
     ctx.stroke();
   }
 }
 
+// ========== 状态栏 ==========
+function updateStatusbar() {
+  document.getElementById('sbCoord').textContent =
+    state.hoverCell ? `(${state.hoverCell.row}, ${state.hoverCell.col})` : '—';
+  document.getElementById('sbLayer').textContent = 'L' + state.currentLayer;
+
+  let n = 0, d = 0, s = 0;
+  state.layers.forEach(layer => {
+    Object.values(layer.tiles).forEach(t => {
+      if (t.type === 'normal') n++;
+      else if (t.type === 'dark') d++;
+      else if (t.type === 'spitter') s++;
+    });
+  });
+  document.getElementById('sbCounts').innerHTML =
+    `普通 <b>${n}</b> · 暗 <b>${d}</b> · 吐 <b>${s}</b> · 共 <b>${n + d + s}</b>`;
+
+  const sb = document.getElementById('sbSupport');
+  const txt = document.getElementById('sbSupportText');
+  if (state.showAll) {
+    const issueCount = findSupportIssues().size;
+    txt.innerHTML = issueCount === 0
+      ? '<span class="good">✓ 通过</span>'
+      : `<span class="bad">✗ ${issueCount} 处悬空</span>`;
+    sb.classList.toggle('active', state.showIssues && issueCount > 0);
+  } else {
+    txt.textContent = '（仅显示全部时）';
+    sb.classList.remove('active');
+  }
+
+  document.getElementById('sbZoom').textContent = Math.round(view.scale * 100) + '%';
+}
+
+document.getElementById('sbSupport').addEventListener('click', () => {
+  state.showIssues = !state.showIssues;
+  if (state.showIssues) toast('悬空牌已用红框标出', 'info');
+  draw();
+});
+
 // ========== 鼠标 ==========
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
 canvas.addEventListener('mousedown', e => {
+  if (e.button === 1 || (e.button === 0 && state.spaceDown)) {
+    // 中键 / 空格+左键：平移
+    state.panning = true;
+    state.panStart = { x: e.clientX, y: e.clientY, ox: view.ox, oy: view.oy };
+    canvasWrap.classList.add('panning');
+    e.preventDefault();
+    return;
+  }
+  if (e.button !== 0 && e.button !== 2) return;
   if (!state.hoverCell) return;
   if (!state.hoverCell.valid && state.snapToSupport && state.currentLayer > 0) return;
 
   state.painting = true;
+  state.strokeSnapshot = serializeLayers(); // 笔画前快照，mouseup 时入历史
   const layer = state.layers[state.currentLayer];
   const { col, row } = state.hoverCell;
   const key = `${row},${col}`;
 
-  const existing = layer.tiles[key];
-  if (existing && existing.type === state.brush &&
-      (state.brush !== 'spitter' ||
-       (existing.dir === state.spitterDir && existing.count == state.spitterCount))) {
-    state.paintMode = 'remove';
+  if (e.button === 2) {
+    state.paintMode = 'remove'; // 右键一律擦除
   } else {
-    state.paintMode = 'add';
+    const existing = layer.tiles[key];
+    if (existing && existing.type === state.brush &&
+        (state.brush !== 'spitter' ||
+         (existing.dir === state.spitterDir && existing.count == state.spitterCount))) {
+      state.paintMode = 'remove';
+    } else {
+      state.paintMode = 'add';
+    }
   }
   paintAt(col, row);
 });
 
 canvas.addEventListener('mousemove', e => {
+  if (state.panning) {
+    view.ox = state.panStart.ox + (e.clientX - state.panStart.x);
+    view.oy = state.panStart.oy + (e.clientY - state.panStart.y);
+    draw();
+    return;
+  }
+
   const pos = getMousePos(e);
   const cell = pixelToCell(pos.x, pos.y);
-  const snapped = snapToTile(cell.col, cell.row);
 
-  // 编辑器坐标边界：col -5..6（12 子格 = 6 麻将位）, row -8..6
-  // 牌占 2×2，row 最大 6（占 row[6,8)，显示底部 16）
-  // 内部边界：col=横向(-5..5)，row=纵向(-8..6)
-  if (snapped.col < -5 || snapped.col > 5 ||
-      snapped.row < -8 || snapped.row > 6) {
+  // 编辑器坐标边界：col -5..5（12 子格 = 6 麻将位）, row -8..6
+  if (cell.col < -5 || cell.col > 5 || cell.row < -8 || cell.row > 6) {
     state.hoverCell = null;
     state.hoverTile = null;
   } else {
-    const valid = hasSupportAt(snapped.col, snapped.row);
-    state.hoverCell = { col: snapped.col, row: snapped.row, valid };
-    // 找到当前鼠标位置最顶层的牌（最高的层）
+    const valid = hasSupportAt(cell.col, cell.row);
+    state.hoverCell = { col: cell.col, row: cell.row, valid };
+    // 找到当前鼠标位置最顶层的牌
     let topTile = null;
     for (let l = state.layers.length - 1; l >= 0; l--) {
       const layer = state.layers[l];
-      if (layer.tiles[`${snapped.row},${snapped.col}`]) {
-        topTile = { key: `${snapped.row},${snapped.col}`, layer: l };
+      if (layer.tiles[`${cell.row},${cell.col}`]) {
+        topTile = { key: `${cell.row},${cell.col}`, layer: l };
         break;
       }
     }
@@ -944,7 +1163,41 @@ canvas.addEventListener('mouseleave', () => {
   draw();
 });
 
-window.addEventListener('mouseup', () => { state.painting = false; });
+window.addEventListener('mouseup', e => {
+  if (state.panning) {
+    state.panning = false;
+    canvasWrap.classList.remove('panning');
+  }
+  if (state.painting) {
+    state.painting = false;
+    // 笔画结束：有实际变化才入历史
+    if (state.strokeSnapshot !== null && state.strokeSnapshot !== serializeLayers()) {
+      pushHistory(state.strokeSnapshot);
+    }
+    state.strokeSnapshot = null;
+  }
+});
+
+// 缩放与滚动平移
+canvasWrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (e.ctrlKey || e.metaKey) {
+    // Ctrl+滚轮：以光标为中心缩放
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const factor = Math.exp(-e.deltaY * 0.0015);
+    const newScale = Math.min(3.5, Math.max(0.3, view.scale * factor));
+    const k = newScale / view.scale;
+    view.ox = mx - (mx - view.ox) * k;
+    view.oy = my - (my - view.oy) * k;
+    view.scale = newScale;
+  } else if (e.shiftKey) {
+    view.ox -= e.deltaY;
+  } else {
+    view.oy -= e.deltaY;
+  }
+  draw();
+}, { passive: false });
 
 function getMousePos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -963,11 +1216,9 @@ function isPlaceable(layer, key) {
   // 同一行最多 6 个麻将（横向 12 子格 / 2 格宽）
   const MAX_PER_ROW = 6;
   const [newRow] = key.split(',').map(Number);
-  // 统计该行已有几张（排除重叠行的情况，简单按 row 相同计数）
   let rowCount = 0;
   for (const existingKey of Object.keys(layer.tiles)) {
     const [er] = existingKey.split(',').map(Number);
-    // 牌占 2 行，若 existingKey 的行和 newRow 有重叠也算同区域
     if (Math.abs(er - newRow) < 2) rowCount++;
   }
   if (rowCount >= MAX_PER_ROW && !layer.tiles[key]) {
@@ -975,7 +1226,7 @@ function isPlaceable(layer, key) {
   }
   const newCells = tileOccupiesCells(key);
   for (const existingKey of Object.keys(layer.tiles)) {
-    if (existingKey === key) continue; // 替换自己没问题
+    if (existingKey === key) continue;
     const existCells = tileOccupiesCells(existingKey);
     for (const cell of newCells) {
       if (existCells.has(cell)) return false;
@@ -986,24 +1237,21 @@ function isPlaceable(layer, key) {
 
 function paintAt(col, row) {
   const layer = state.layers[state.currentLayer];
-  if (col < -5 || col > 5 || row < -8 || row > 6) return; // 内部边界：col=横向, row=纵向
+  if (col < -5 || col > 5 || row < -8 || row > 6) return;
 
   const key = `${row},${col}`;
   const mcol = mirrorCol(col, state.currentLayer);
   const mkey = `${row},${mcol}`;
 
   if (state.paintMode === 'add') {
-    // 检查能放得下（除了"完全相同位置"——那种是替换，允许）
     if (!isPlaceable(layer, key)) return;
     if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
 
-    // 替换时：如果新牌占的 4 个子格有部分和旧牌重叠但不是完全重合，说明位置不对
-    // 检查"完全相同位置"的情况：旧牌和新牌占同一 4 子格
     const newCells = tileOccupiesCells(key);
     if (layer.tiles[key]) {
       const oldCells = tileOccupiesCells(key);
       const sameAll = [...newCells].every(c => oldCells.has(c));
-      if (!sameAll) return; // 跨格重叠，拒绝
+      if (!sameAll) return;
     }
     if (state.symmetric && mcol !== col && layer.tiles[mkey]) {
       const oldCells = tileOccupiesCells(mkey);
@@ -1036,7 +1284,42 @@ function paintAt(col, row) {
 
 // ========== 键盘 ==========
 window.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+    e.preventDefault();
+    redo();
+    return;
+  }
+  if (e.key === ' ') {
+    e.preventDefault();
+    state.spaceDown = true;
+    canvasWrap.classList.add('panning');
+    return;
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') && state.hoverTile) {
+    // 删除悬停的牌（作用于悬停牌所在层？统一作用于当前层同位+镜像）
+    const before = serializeLayers();
+    const layer = state.layers[state.currentLayer];
+    if (state.hoverCell) {
+      const key = `${state.hoverCell.row},${state.hoverCell.col}`;
+      const mkey = `${state.hoverCell.row},${mirrorCol(state.hoverCell.col, state.currentLayer)}`;
+      delete layer.tiles[key];
+      if (state.symmetric && mkey !== key) delete layer.tiles[mkey];
+      if (before !== serializeLayers()) {
+        pushHistory(before);
+        draw(); updateUI();
+      }
+    }
+    return;
+  }
+
   const k = e.key.toLowerCase();
   if (k === 'q' && state.currentLayer > 0) { state.currentLayer--; updateUI(); draw(); }
   if (k === 'e' && state.currentLayer < state.layers.length - 1) { state.currentLayer++; updateUI(); draw(); }
@@ -1046,42 +1329,42 @@ window.addEventListener('keydown', e => {
   if (k === '2') setBrush('dark');
   if (k === '3') setBrush('spitter');
 });
+window.addEventListener('keyup', e => {
+  if (e.key === ' ') {
+    state.spaceDown = false;
+    if (!state.panning) canvasWrap.classList.remove('panning');
+  }
+});
 
 // ========== 层操作 ==========
 function addLayer() {
+  const before = serializeLayers();
   state.layers.push({ tiles: {} });
   state.currentLayer = state.layers.length - 1;
-  updateUI();
-  updateLegend();
-  draw();
+  pushHistory(before);
+  updateUI(); updateLegend(); draw();
 }
 
-function deleteLayer() {
-  if (state.layers.length <= 1) { alert('至少保留一层'); return; }
-  // 二次确认（不用 confirm，iframe 里会被拦截）
-  const btn = event.target;
-  if (!btn.dataset.armed) {
-    btn.dataset.armed = '1';
-    btn.textContent = '再次点击确认删除';
-    btn.style.background = '#e94560';
-    btn.style.borderColor = '#e94560';
-    setTimeout(() => {
-      delete btn.dataset.armed;
-      btn.textContent = '− 删除当前层';
-      btn.style.background = '';
-      btn.style.borderColor = '';
-    }, 3000);
-    return;
-  }
-  delete btn.dataset.armed;
-  btn.textContent = '− 删除当前层';
-  btn.style.background = '';
-  btn.style.borderColor = '';
-  state.layers.splice(state.currentLayer, 1);
-  if (state.currentLayer >= state.layers.length) state.currentLayer = state.layers.length - 1;
-  updateUI();
-  updateLegend();
-  draw();
+function duplicateLayer() {
+  const before = serializeLayers();
+  const src = state.layers[state.currentLayer];
+  const copy = { tiles: JSON.parse(JSON.stringify(src.tiles)) };
+  state.layers.splice(state.currentLayer + 1, 0, copy);
+  state.currentLayer = state.currentLayer + 1;
+  pushHistory(before);
+  updateUI(); updateLegend(); draw();
+  toast('已复制为新层 L' + state.currentLayer, 'ok');
+}
+
+function deleteLayer(btn) {
+  if (state.layers.length <= 1) { toast('至少保留一层', 'err'); return; }
+  armConfirm(btn, '再次点击确认删除', () => {
+    const before = serializeLayers();
+    state.layers.splice(state.currentLayer, 1);
+    if (state.currentLayer >= state.layers.length) state.currentLayer = state.layers.length - 1;
+    pushHistory(before);
+    updateUI(); updateLegend(); draw();
+  });
 }
 
 // ========== 画笔 ==========
@@ -1101,36 +1384,20 @@ function setSpitterDir(dir) {
 }
 
 // ========== 开关 ==========
-function toggleSym() {
-  state.symmetric = !state.symmetric;
-  document.getElementById('symToggle').classList.toggle('on', state.symmetric);
+function bindChip(id, key, redraw) {
+  state[key] = !state[key];
+  document.getElementById(id).classList.toggle('on', state[key]);
+  if (redraw) draw();
 }
-function toggleAll() {
-  state.showAll = !state.showAll;
-  document.getElementById('allToggle').classList.toggle('on', state.showAll);
-  draw();
-}
-function toggleSnap() {
-  state.snapToSupport = !state.snapToSupport;
-  document.getElementById('snapToggle').classList.toggle('on', state.snapToSupport);
-  draw();
-}
-function toggleGrid() {
-  state.showGrid = !state.showGrid;
-  document.getElementById('gridToggle').classList.toggle('on', state.showGrid);
-  draw();
-}
-function toggleCoord() {
-  state.showCoord = !state.showCoord;
-  document.getElementById('coordToggle').classList.toggle('on', state.showCoord);
-  draw();
-}
+function toggleSym()  { bindChip('symToggle', 'symmetric', false); }
+function toggleAll()  { bindChip('allToggle', 'showAll', true); }
+function toggleSnap() { bindChip('snapToggle', 'snapToSupport', true); }
+function toggleGrid() { bindChip('gridToggle', 'showGrid', true); }
+function toggleCoord(){ bindChip('coordToggle', 'showCoord', true); }
 
 // ========== 支撑问题（象限规则） ==========
 // 规则：上层牌 4 个象限（左上/右上/左下/右下）的中心子格，
 // 每个子格的正下方都必须有下层牌覆盖（可以是不同的下层牌）
-// 上层占 [ur, ur+2) × [uc, uc+2)，4 个象限中心子格 = (ur,uc)(ur,uc+1)(ur+1,uc)(ur+1,uc+1)
-// 下层牌覆盖子格 (r,c) = lr <= r < lr+2 && lc <= c < lc+2
 function quadCovered(lowerArr, r, c) {
   return lowerArr.some(lt => lt.row <= r && r < lt.row + 2 && lt.col <= c && c < lt.col + 2);
 }
@@ -1147,17 +1414,33 @@ function findSupportIssues() {
 
     Object.keys(upper).forEach(key => {
       const [ur, uc] = key.split(',').map(Number);
-      // 4 个象限中心子格
       const quads = [[ur, uc], [ur, uc + 1], [ur + 1, uc], [ur + 1, uc + 1]];
       let covered = 0;
       quads.forEach(([r, c]) => {
         if (quadCovered(lowerArr, r, c)) covered++;
       });
-      // 4 个象限全部要有支撑
       if (covered < 4) issues.add(key);
     });
   }
   return issues;
+}
+
+// 检查某个位置（当前层）是否有支撑
+function hasSupportAt(col, row) {
+  if (state.currentLayer === 0) return true;
+  if (!state.snapToSupport) return true;
+  const lower = state.layers[state.currentLayer - 1].tiles;
+  const lowerArr = Object.keys(lower).map(k => {
+    const [lr, lc] = k.split(',').map(Number);
+    return { row: lr, col: lc };
+  });
+
+  const quads = [[row, col], [row, col + 1], [row + 1, col], [row + 1, col + 1]];
+  let covered = 0;
+  quads.forEach(([r, c]) => {
+    if (quadCovered(lowerArr, r, c)) covered++;
+  });
+  return covered === 4;
 }
 
 // ========== UI ==========
@@ -1168,8 +1451,8 @@ function updateUI() {
     const n = Object.keys(layer.tiles).length;
     const item = document.createElement('div');
     item.className = 'layer-item' + (i === state.currentLayer ? ' active' : '');
-    item.innerHTML = `<span class="lbl">L${i}</span>
-                      <span class="cnt">${n}张</span>`;
+    item.innerHTML = `<span class="lbl">L${i}${i === 0 ? '（底层）' : ''}</span>
+                      <span class="cnt">${n} 张</span>`;
     item.onclick = () => { state.currentLayer = i; updateUI(); draw(); };
     list.appendChild(item);
   });
@@ -1182,45 +1465,18 @@ function updateLegend() {
     const lc = LAYER_COLORS[Math.min(i, LAYER_COLORS.length - 1)];
     const item = document.createElement('div');
     item.className = 'layer-legend-item';
-    item.innerHTML = `<div class="layer-swatch" style="background:${lc.base};"></div>L${i} ${i === 0 ? '(底层)' : (i === state.layers.length - 1 ? '(顶层)' : '')}`;
+    item.innerHTML = `<div class="layer-swatch" style="background:${lc.base};"></div>L${i}`;
     legend.appendChild(item);
   });
 }
 
-function updateInfo() {
-  let n = 0, d = 0, s = 0;
-  state.layers.forEach(layer => {
-    Object.values(layer.tiles).forEach(t => {
-      if (t.type === 'normal') n++;
-      else if (t.type === 'dark') d++;
-      else if (t.type === 'spitter') s++;
-    });
-  });
-  document.getElementById('countNormal').textContent = n;
-  document.getElementById('countDark').textContent = d;
-  document.getElementById('countSpitter').textContent = s;
-  document.getElementById('totalTiles').textContent = n + d + s;
-
-  if (state.showAll) {
-    const issues = findSupportIssues();
-    const el = document.getElementById('supportStatus');
-    el.innerHTML = issues.size === 0
-      ? '<span class="good">✓ 支撑通过</span>'
-      : `<span class="bad">✗ ${issues.size} 处悬空</span>`;
-  } else {
-    document.getElementById('supportStatus').textContent = '（仅显示全部时）';
-  }
-}
-
 // ========== 坐标系统（std 版） ==========
-// 外部（JSON/显示）语义：row = 纵坐标（上下，-8..6），col = 横坐标（左右，-5..5）
-// 内部逻辑保持：key = "内部row,内部col"，内部 row=纵向、内部 col=横向
 // std：JSON 的 row=纵向、col=横向，与内部一致，【不再交换】。
 // 画布显示：内部 col(横向) + 5 → 显示 0..10；内部 row(纵向) + 8 → 显示 0..14
 const DISPLAY_OFFSET_COL = 5;  // 内部横向偏移
 const DISPLAY_OFFSET_ROW = 8;  // 内部纵向偏移
 
-// 导入：std JSON 的 (row纵, col横) 与内部 (row纵, col横) 一致，直接读入
+// 导入：std JSON 的 (row纵, col横) 与内部一致，直接读入
 function loadFromEditorJSON(json) {
   const layerMap = {};
   const specialMap = {};
@@ -1231,22 +1487,19 @@ function loadFromEditorJSON(json) {
   json.tiles.forEach(t => {
     const l = t.layer;
     if (!layerMap[l]) layerMap[l] = { tiles: {} };
-    const innerRow = t.row;  // 内部纵向 = JSON row
-    const innerCol = t.col;  // 内部横向 = JSON col
-    const key = `${innerRow},${innerCol}`;
+    const key = `${t.row},${t.col}`;
     const sp = specialMap[`${l},${t.row},${t.col}`];
     if (sp && sp.type === 'dark') layerMap[l].tiles[key] = { type: 'dark' };
     else if (sp && sp.type === 'spitter') layerMap[l].tiles[key] = { type: 'spitter', dir: sp.direction || 'up', count: sp.count || 3 };
     else layerMap[l].tiles[key] = { type: 'normal' };
   });
 
+  const before = serializeLayers();
   const nums = Object.keys(layerMap).map(Number).sort((a, b) => a - b);
   state.layers = nums.map(n => layerMap[n]);
   state.currentLayer = 0;
-  updateUI();
-  updateLegend();
-  resizeCanvas();
-  draw();
+  pushHistory(before);
+  updateUI(); updateLegend(); draw();
 }
 
 function exportJSON() {
@@ -1257,13 +1510,10 @@ function exportJSON() {
     Object.keys(layer.tiles).forEach(key => {
       const tile = layer.tiles[key];
       const [r, c] = key.split(',').map(Number);
-      // 内部 (r纵, c横) → JSON (row纵, col横)，std 直接对应
-      const row = r;  // 纵坐标
-      const col = c;  // 横坐标
-      tiles.push({ id: 0, layer: layerIdx, row, col, typeId: null });
+      tiles.push({ id: 0, layer: layerIdx, row: r, col: c, typeId: null });
       if (tile.type !== 'normal') {
         specialTiles.push({
-          id: 0, type: tile.type, layer: layerIdx, row, col,
+          id: 0, type: tile.type, layer: layerIdx, row: r, col: c,
           direction: tile.dir, count: tile.count,
         });
       }
@@ -1288,6 +1538,7 @@ function exportJSON() {
   const a = document.createElement('a');
   a.href = url; a.download = 'level_shape.json'; a.click();
   URL.revokeObjectURL(url);
+  toast('已导出 level_shape.json', 'ok');
 }
 
 function importJSON(e) {
@@ -1295,34 +1546,24 @@ function importJSON(e) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = event => {
-    try { loadFromEditorJSON(JSON.parse(event.target.result)); }
-    catch (err) { alert('导入失败: ' + err.message); }
+    try {
+      loadFromEditorJSON(JSON.parse(event.target.result));
+      toast('导入成功', 'ok');
+    } catch (err) { toast('导入失败: ' + err.message, 'err'); }
   };
   reader.readAsText(file);
   e.target.value = '';
 }
 
-function clearAll() {
-  // 不用 confirm（iframe 里会被拦截），改成二次确认
-  const btn = event.target;
-  if (!btn.dataset.armed) {
-    btn.dataset.armed = '1';
-    btn.textContent = '再次点击确认清空';
-    btn.style.background = '#e94560';
-    btn.style.borderColor = '#e94560';
-    setTimeout(() => {
-      delete btn.dataset.armed;
-      btn.textContent = '清空全部';
-      btn.style.background = '';
-      btn.style.borderColor = '';
-    }, 3000);
-    return;
-  }
-  delete btn.dataset.armed;
-  btn.textContent = '清空全部';
-  btn.style.background = '';
-  btn.style.borderColor = '';
-  init();
+function clearAll(btn) {
+  armConfirm(btn, '再次点击确认清空', () => {
+    clearAutosave();
+    past = []; future = [];
+    state.layers = [{ tiles: {} }, { tiles: {} }];
+    state.currentLayer = 0;
+    updateUI(); updateLegend(); draw(); updateUndoButtons();
+    toast('已清空', 'ok');
+  });
 }
 
 // ========== 生成关卡（依赖 generator.js 的 window.GEN） ==========
@@ -1357,30 +1598,40 @@ function setGenStatus(html) { document.getElementById('genStatus').innerHTML = h
 let currentLevel = null;
 let previewFrameReady = false;
 let pendingLevel = null;
+let demoAvailable = true;
+let previewAckTimer = null;
 
-// 计算 demo 的 URL（编辑器和 demo 同级，../demo/）
+// demo 位置：http 下由 serve_editor.js 的 /demo/ 路由提供；
+// file:// 直开时按仓库布局（工具包与 游戏Demo 同级）取相对路径
 function getDemoUrl() {
-  // 如果是 file:// 打开的本地文件，走相对路径
-  const here = location.pathname;
-  const parts = here.split('/');
-  parts.pop(); // 去掉文件名
-  parts.pop(); // 去掉 editor/
-  parts.push('demo');
-  parts.push('index.html');
-  return parts.join('/') || '../demo/index.html';
+  if (location.protocol === 'file:') return '../游戏Demo/game_demo_std.html';
+  return '/demo/index.html';
 }
 
-function initPreview() {
+function showDemoMissing() {
+  demoAvailable = false;
+  document.getElementById('placeholderText').textContent = '未找到本地游戏 Demo';
+  document.getElementById('placeholderSub').innerHTML =
+    '把「游戏Demo」文件夹放在工具包旁边（或用它自带的 bat 启动）即可预览<br>生成、下载功能不受影响';
+}
+
+async function initPreview() {
   const iframe = document.getElementById('previewFrame');
-  // 用 postMessage 等 demo 就绪
   window.addEventListener('message', e => {
     if (e.data && e.data.type === 'levelLoaded') {
+      clearTimeout(previewAckTimer);
       setPreviewStats(currentLevel, e.data.darkCount);
       enablePreviewActions(true);
     }
   });
+  // http 模式先探测 demo 是否存在，避免 iframe 里挂 404
+  if (location.protocol !== 'file:') {
+    try {
+      const r = await fetch(getDemoUrl(), { method: 'HEAD' });
+      if (!r.ok) { showDemoMissing(); return; }
+    } catch (_) { showDemoMissing(); return; }
+  }
   iframe.src = getDemoUrl();
-  // 等 iframe 加载完成后，如果有待发送的关卡就发过去
   iframe.addEventListener('load', () => {
     previewFrameReady = true;
     if (pendingLevel) sendLevelToPreview(pendingLevel);
@@ -1399,42 +1650,10 @@ function generateCurrentShape() {
         const level = GEN.fillEditorShape(tiles, specialTiles, { darkMode: genDarkMode });
         const d = level._difficulty;
         setGenStatus(`<span class="good">✓ ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length}</span>`);
-        addResult(level); // 加入右侧结果列表 + 自动预览
+        addResult(level);
       } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
-}
-
-function generateFromTemplate() {
-  setGenStatus('生成中…');
-  enablePreviewActions(false);
-  setTimeout(() => {
-    try {
-      const level = GEN.generateAndFill({ darkMode: genDarkMode });
-      const d = level._difficulty;
-      currentLevel = level;
-      setGenStatus(`<span class="good">✓ 模板 → ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length}</span>`);
-      showPreview();
-      sendLevelToPreview(level);
-    } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
-  }, 30);
-}
-
-function regenerateLevel() {
-  // 根据上次的生成方式重新生成
-  if (!currentLevel) return;
-  // 简单点：随机生成
-  setGenStatus('重新生成中…');
-  enablePreviewActions(false);
-  setTimeout(() => {
-    try {
-      const level = GEN.generateAndFill({ darkMode: genDarkMode });
-      const d = level._difficulty;
-      currentLevel = level;
-      setGenStatus(`<span class="good">✓ ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length}</span>`);
-      sendLevelToPreview(level);
-    } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
-  }, 30);
 }
 
 function generateStackFromCurrent() {
@@ -1449,7 +1668,7 @@ function generateStackFromCurrent() {
         const level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
         const d = level._difficulty;
         setGenStatus(`<span class="good">✓ 堆塔 ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length} · ${d.maxLayer + 1}层</span>`);
-        addResult(level); // 加入右侧结果列表 + 自动预览
+        addResult(level);
       } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
@@ -1466,8 +1685,6 @@ function showPreview() {
   document.getElementById('previewPlaceholder').classList.remove('hidden');
   document.getElementById('previewEmptyHint').style.display = 'none';
   updateStatsPending();
-  // 触发 canvas 重新计算尺寸（宽度变了）
-  resizeCanvas();
 }
 
 function closePreview() {
@@ -1475,12 +1692,15 @@ function closePreview() {
   document.getElementById('previewEmptyHint').style.display = '';
   currentLevel = null;
   enablePreviewActions(false);
+  updateWbSaveBtn();
   setGenStatus('就绪');
-  // 触发 canvas 重新计算尺寸
-  setTimeout(resizeCanvas, 280);
 }
 
 function sendLevelToPreview(level) {
+  if (!demoAvailable) {
+    toast('本地没有游戏 Demo，仅生成不预览（下载 JSON 不受影响）', 'err');
+    return;
+  }
   const iframe = document.getElementById('previewFrame');
   if (!previewFrameReady) {
     pendingLevel = level;
@@ -1495,17 +1715,20 @@ function sendLevelToPreview(level) {
   };
   document.getElementById('previewPlaceholder').classList.add('hidden');
   iframe.contentWindow.postMessage({ type: 'loadLevel', level: clean }, '*');
+  // file:// 直开时无法预检 demo，超时未收到回执则提示
+  clearTimeout(previewAckTimer);
+  previewAckTimer = setTimeout(() => {
+    if (location.protocol === 'file:') showDemoMissing();
+  }, 8000);
 }
 
 function updateStatsPending() {
-  const el = document.getElementById('previewStats');
-  el.innerHTML = '<span>生成中…</span>';
+  document.getElementById('previewStats').innerHTML = '<span>生成中…</span>';
 }
 
 function setPreviewStats(level, darkCount) {
   const d = level._difficulty;
-  const el = document.getElementById('previewStats');
-  el.innerHTML =
+  document.getElementById('previewStats').innerHTML =
     `<span>${level.tiles.length} 张</span>` +
     `<span>${level.totalPairs} 对</span>` +
     `<span class="good">${d.score} 分</span>` +
@@ -1520,8 +1743,9 @@ function enablePreviewActions(enable) {
   });
 }
 
-// ========== 关卡工作台（共享存储） ==========
+// ========== 关卡工作台（共享存储，Netlify 部署版可用） ==========
 const WORKBENCH_API = '/.netlify/functions/levels';
+let workbenchPass = null;
 let workbenchConnected = false;
 let workbenchLevels = [];
 
@@ -1563,20 +1787,20 @@ function loadWorkbench() {
 function setWorkbenchStatus(text, cls) {
   const el = document.getElementById('workbenchStatus');
   el.textContent = text;
-  el.className = 'workbench-status ' + (cls || '');
+  el.className = 'wb-status ' + (cls || '');
 }
 
 function renderWorkbenchList() {
   const container = document.getElementById('workbenchLevels');
   if (workbenchLevels.length === 0) {
-    container.innerHTML = '<div style="color:#666;font-size:11px;text-align:center;padding:20px 0;">暂无关卡<br>生成一个后点「保存当前」</div>';
+    container.innerHTML = '<div class="wb-empty">暂无关卡<br>生成一个后点「保存当前」</div>';
     return;
   }
   container.innerHTML = workbenchLevels.map(lv => `
     <div class="level-item" data-key="${lv.key}">
       <div class="lv-name">
         <span>${escapeHtml(lv.name)}</span>
-        <span style="font-size:10px;color:#666;">${lv.score ? lv.score+'分' : ''}</span>
+        <span class="lv-score">${lv.score ? lv.score+'分' : ''}</span>
       </div>
       <div class="lv-meta">
         <span>${lv.tileCount}张/${lv.totalPairs}对</span>
@@ -1618,14 +1842,14 @@ function saveCurrentLevelToWorkbench() {
     workbenchLevels = data.levels || [];
     renderWorkbenchList();
     btn.textContent = '已保存 ✓';
-    btn.style.background = '#2e7d32';
     setWorkbenchStatus('保存成功：' + name, 'connected');
-    setTimeout(() => { btn.textContent = '保存当前'; btn.style.background = ''; btn.disabled = false; updateWbSaveBtn(); }, 2000);
+    toast('已保存到共享工作台：' + name, 'ok');
+    setTimeout(() => { btn.textContent = '保存当前'; btn.disabled = false; updateWbSaveBtn(); }, 2000);
   }).catch(e => {
     btn.textContent = '保存失败';
-    btn.style.background = '#c62828';
     setWorkbenchStatus('保存失败: ' + e.message, 'error');
-    setTimeout(() => { btn.textContent = '保存当前'; btn.style.background = ''; btn.disabled = false; updateWbSaveBtn(); }, 2500);
+    toast('保存失败: ' + e.message, 'err');
+    setTimeout(() => { btn.textContent = '保存当前'; btn.disabled = false; updateWbSaveBtn(); }, 2500);
   });
 }
 
@@ -1633,7 +1857,6 @@ function loadWorkbenchLevel(key) {
   setWorkbenchStatus('加载中…', '');
   workbenchApi('/' + encodeURIComponent(key)).then(level => {
     currentLevel = level;
-    const d = currentLevel._difficulty || { score: '?', clickable: '?', total: level.tiles.length, maxLayer: 0 };
     showPreview();
     sendLevelToPreview(level);
     setWorkbenchStatus('已加载: ' + level.tiles.length + '张', 'connected');
@@ -1677,7 +1900,7 @@ function probeScoreRange() {
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
   const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
-  const N = 20; // 采样数
+  const N = 20;
   const scores = [];
   let i = 0;
   setGenStatus('探测分数范围… 0/' + N);
@@ -1714,11 +1937,11 @@ function batchGenerate() {
   const scoreMax = Number.isFinite(hi) ? hi : 999;
   const count = Math.min(50, Math.max(1, parseInt(document.getElementById('batchCount').value) || 5));
   const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
-  const mode = document.getElementById('batchMode').value; // 'stack' | 'shape'
+  const mode = document.getElementById('batchMode').value;
 
   const results = [];
   let attempts = 0;
-  const maxAttempts = count * 60 + 300; // 每个目标最多试 60 次
+  const maxAttempts = count * 60 + 300;
 
   setGenStatus('批量生成中… 0/' + count);
   function step() {
@@ -1742,13 +1965,13 @@ function batchGenerate() {
         setGenStatus('批量生成中… ' + results.length + '/' + count);
       }
     } catch (_) { /* 跳过失败 */ }
-    setTimeout(step, 0); // 让出主线程，保持界面响应
+    setTimeout(step, 0);
   }
   function finish() {
     results.forEach(lv => addResult(lv, { preview: false }));
     const modeName = mode === 'shape' ? '按当前形状' : '按底座堆塔';
     setGenStatus(`<span class="good">✓ 批量生成 ${results.length} 关（${modeName} · ${scoreMin}~${scoreMax}分）→ 已加入右侧列表</span>`);
-    if (results.length > 0) previewResult(0); // 自动预览第一个，列表保持不关
+    if (results.length > 0) previewResult(0);
   }
   step();
 }
@@ -1767,6 +1990,7 @@ function addResult(level, opts) {
     currentLevel = level;
     showPreview();
     sendLevelToPreview(level);
+    updateWbSaveBtn();
   }
 }
 
@@ -1796,6 +2020,7 @@ function previewResult(i) {
   renderResults();
   showPreview();
   sendLevelToPreview(lv);
+  updateWbSaveBtn();
   setGenStatus('已加载 #' + (i + 1) + '（' + (lv._difficulty?.score ?? '?') + '分）');
 }
 
