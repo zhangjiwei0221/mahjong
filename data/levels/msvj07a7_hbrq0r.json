@@ -508,9 +508,9 @@
     "hooks": 2,
     "darkHooks": 2
   },
-  "order": 1,
+  "order": 0,
   "status": "wip",
   "playTimeMs": null,
   "createdAt": "2026-08-16T08:11:29.119Z",
-  "updatedAt": "2026-08-16T08:11:42.973Z"
+  "updatedAt": "2026-08-16T08:11:43.832Z"
 }
