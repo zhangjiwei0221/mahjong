@@ -1671,10 +1671,19 @@ function showDemoMissing() {
 async function initPreview() {
   const iframe = document.getElementById('previewFrame');
   window.addEventListener('message', e => {
-    if (e.data && e.data.type === 'levelLoaded') {
+    if (!e.data) return;
+    if (e.data.type === 'levelLoaded') {
       clearTimeout(previewAckTimer);
       setPreviewStats(currentLevel, e.data.darkCount);
       enablePreviewActions(true);
+    } else if (e.data.type === 'playFinished') {
+      // 试玩通关：记录耗时，用于验证难度分
+      if (currentLevel) {
+        currentLevel.playTimeMs = e.data.durationMs;
+        const s = Math.round(e.data.durationMs / 1000);
+        setGenStatus(`已通关 · 试玩 ${s}s · 难度 ${currentLevel._difficulty?.score ?? '?'} 分`);
+        toast(`试玩通关，耗时 ${s}s（保存时会一并记录）`, 'ok');
+      }
     }
   });
   // http 模式先探测 demo 是否存在，避免 iframe 里挂 404
@@ -1798,7 +1807,7 @@ function enablePreviewActions(enable) {
 }
 
 // ========== 保存到共享工作台（Netlify 部署版可用） ==========
-const WORKBENCH_API = '/.netlify/functions/levels';
+const WORKBENCH_API = '/levels';
 
 // 口令存 sessionStorage，与「📋 工作台」页共享
 function getWbPass() { return sessionStorage.getItem('wbPass') || ''; }
@@ -1856,6 +1865,7 @@ function saveCurrentLevelToWorkbench(btn) {
       totalPairs: currentLevel.totalPairs,
       _difficulty: currentLevel._difficulty,
       order,
+      playTimeMs: currentLevel.playTimeMs || null,  // 试玩耗时（通关后自动记录）
     }),
   }).then(data => {
     btn.textContent = '已保存 ✓';
