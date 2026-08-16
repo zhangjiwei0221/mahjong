@@ -248,7 +248,8 @@
     "darkHooks": 3
   },
   "order": 1,
-  "status": "wip",
+  "status": "test",
   "playTimeMs": null,
-  "createdAt": "2026-08-16T07:11:26.430Z"
+  "createdAt": "2026-08-16T07:11:26.430Z",
+  "updatedAt": "2026-08-16T07:11:41.542Z"
 }
