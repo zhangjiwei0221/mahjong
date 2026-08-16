@@ -290,7 +290,7 @@
   .canvas-wrap {
     flex: 1; position: relative; overflow: hidden;
     background:
-      radial-gradient(ellipse at center, #faf6ec 0%, #efe9da 100%);
+      radial-gradient(ellipse at center, #f0ead9 0%, #e6deca 100%);
   }
   .canvas-wrap.panning { cursor: grab; }
   .canvas-wrap.panning:active { cursor: grabbing; }
@@ -652,9 +652,8 @@
   <div class="hrow"><span><kbd>左键</kbd> 拖拽</span><span>绘制 / 替换</span></div>
   <div class="hrow"><span><kbd>右键</kbd> 拖拽</span><span>擦除</span></div>
   <div class="hrow"><span><kbd>Delete</kbd></span><span>删除悬停的牌</span></div>
-  <div class="hrow"><span><kbd>Ctrl</kbd>+<kbd>滚轮</kbd></span><span>缩放（以光标为中心）</span></div>
+  <div class="hrow"><span><kbd>滚轮</kbd> / <kbd>Ctrl</kbd>+<kbd>滚轮</kbd></span><span>缩放（以光标为中心）</span></div>
   <div class="hrow"><span><kbd>空格</kbd> / <kbd>中键</kbd> 拖拽</span><span>平移画布</span></div>
-  <div class="hrow"><span><kbd>滚轮</kbd></span><span>上下平移（+Shift 左右）</span></div>
   <div class="hrow"><span><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Ctrl</kbd>+<kbd>Y</kbd></span><span>撤销 / 重做</span></div>
   <div class="hrow"><span><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></span><span>普通 / 暗牌 / 吐牌</span></div>
   <div class="hrow"><span><kbd>Q</kbd> <kbd>E</kbd></span><span>切换层</span></div>
@@ -731,13 +730,13 @@ function resizeCanvas() {
   draw();
 }
 
-// 缩放并居中到完整画布
+// 缩放并居中到完整画布（填满可视区较窄的一边，四周不再留大片空白）
 function fitView() {
   const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
   if (w === 0 || h === 0) return;
   const contentW = GRID_COLS * CELL;
   const contentH = worldTopPad() + GRID_ROWS * CELL;
-  const scale = Math.min(w / contentW, h / contentH) * 0.94;
+  const scale = Math.min(w / contentW, h / contentH) * 0.98;
   view.scale = Math.min(3.5, Math.max(0.3, scale));
   view.ox = (w - contentW * view.scale) / 2;
   view.oy = (h - contentH * view.scale) / 2;
@@ -1228,24 +1227,17 @@ window.addEventListener('mouseup', e => {
   }
 });
 
-// 缩放与滚动平移
+// 缩放（滚轮 / Ctrl+滚轮 都以光标为中心；平移用空格或中键拖拽）
 canvasWrap.addEventListener('wheel', e => {
   e.preventDefault();
-  if (e.ctrlKey || e.metaKey) {
-    // Ctrl+滚轮：以光标为中心缩放
-    const rect = canvas.getBoundingClientRect();
-    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-    const factor = Math.exp(-e.deltaY * 0.0015);
-    const newScale = Math.min(3.5, Math.max(0.3, view.scale * factor));
-    const k = newScale / view.scale;
-    view.ox = mx - (mx - view.ox) * k;
-    view.oy = my - (my - view.oy) * k;
-    view.scale = newScale;
-  } else if (e.shiftKey) {
-    view.ox -= e.deltaY;
-  } else {
-    view.oy -= e.deltaY;
-  }
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const factor = Math.exp(-e.deltaY * 0.0015);
+  const newScale = Math.min(3.5, Math.max(0.3, view.scale * factor));
+  const k = newScale / view.scale;
+  view.ox = mx - (mx - view.ox) * k;
+  view.oy = my - (my - view.oy) * k;
+  view.scale = newScale;
   draw();
 }, { passive: false });
 
