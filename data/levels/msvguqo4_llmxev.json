@@ -1,0 +1,254 @@
+{
+  "key": "msvguqo4_llmxev",
+  "name": "未命名关卡",
+  "author": "策划",
+  "levelId": 1,
+  "totalPairs": 13,
+  "tiles": [
+    {
+      "id": 1,
+      "layer": 0,
+      "row": -8,
+      "col": -5,
+      "typeId": 16,
+      "isDark": false
+    },
+    {
+      "id": 2,
+      "layer": 0,
+      "row": -8,
+      "col": -3,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 3,
+      "layer": 0,
+      "row": -8,
+      "col": -1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 4,
+      "layer": 0,
+      "row": -6,
+      "col": -1,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 5,
+      "layer": 0,
+      "row": -4,
+      "col": -1,
+      "typeId": 4,
+      "isDark": false
+    },
+    {
+      "id": 6,
+      "layer": 0,
+      "row": -2,
+      "col": -1,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 7,
+      "layer": 0,
+      "row": -8,
+      "col": 1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 8,
+      "layer": 0,
+      "row": -6,
+      "col": 1,
+      "typeId": 4,
+      "isDark": false
+    },
+    {
+      "id": 9,
+      "layer": 0,
+      "row": -4,
+      "col": 1,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 10,
+      "layer": 0,
+      "row": -2,
+      "col": 1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 11,
+      "layer": 0,
+      "row": -8,
+      "col": 3,
+      "typeId": 31,
+      "isDark": false
+    },
+    {
+      "id": 12,
+      "layer": 0,
+      "row": -8,
+      "col": 5,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 13,
+      "layer": 1,
+      "row": -8,
+      "col": -4,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 14,
+      "layer": 1,
+      "row": -7,
+      "col": -1,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 15,
+      "layer": 1,
+      "row": -5,
+      "col": -1,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 16,
+      "layer": 1,
+      "row": -3,
+      "col": -1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 17,
+      "layer": 1,
+      "row": -7,
+      "col": 1,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 18,
+      "layer": 1,
+      "row": -5,
+      "col": 1,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 19,
+      "layer": 1,
+      "row": -3,
+      "col": 1,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 20,
+      "layer": 1,
+      "row": -8,
+      "col": 4,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 21,
+      "layer": 2,
+      "row": -7,
+      "col": 0,
+      "typeId": 19,
+      "isDark": false
+    },
+    {
+      "id": 22,
+      "layer": 2,
+      "row": -5,
+      "col": 0,
+      "typeId": 16,
+      "isDark": true
+    },
+    {
+      "id": 23,
+      "layer": 2,
+      "row": -3,
+      "col": 0,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 24,
+      "layer": 3,
+      "row": -6,
+      "col": 0,
+      "typeId": 31,
+      "isDark": true
+    },
+    {
+      "id": 25,
+      "layer": 3,
+      "row": -4,
+      "col": 0,
+      "typeId": 19,
+      "isDark": false
+    },
+    {
+      "id": 26,
+      "layer": 4,
+      "row": -5,
+      "col": 0,
+      "typeId": 28,
+      "isDark": true
+    }
+  ],
+  "specialTiles": [
+    {
+      "id": 22,
+      "type": "dark",
+      "layer": 2,
+      "row": -5,
+      "col": 0
+    },
+    {
+      "id": 26,
+      "type": "dark",
+      "layer": 4,
+      "row": -5,
+      "col": 0
+    },
+    {
+      "id": 24,
+      "type": "dark",
+      "layer": 3,
+      "row": -6,
+      "col": 0
+    }
+  ],
+  "_difficulty": {
+    "score": 127,
+    "clickRatio": 0.115,
+    "clickable": 3,
+    "total": 26,
+    "maxLayer": 4,
+    "typeCount": 10,
+    "hooks": 3,
+    "darkHooks": 3
+  },
+  "order": 1,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-16T07:11:15.076Z"
+}
