@@ -10,11 +10,19 @@
 const PASS_ENV = 'WORKBENCH_PASSWORD';
 const LEVELS_DIR = 'data/levels';
 
+// 制作进度状态
+const STATUS_LIST = ['wip', 'test', 'done'];
+function pickStatus(v) { return STATUS_LIST.includes(v) ? v : 'wip'; }
+function pickOrder(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 function cors() {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, X-Workbench-Pass',
-    'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   };
 }
 
@@ -88,15 +96,28 @@ async function getLevelList() {
           maxLayer: lv._difficulty?.maxLayer ?? 0,
           savedAt: lv.createdAt || null,
           author: lv.author || '',
+          order: lv.order != null ? lv.order : null,   // 关卡序号（第几关），未排号为 null
+          status: pickStatus(lv.status),                // 制作进度 wip/test/done
+          playTimeMs: lv.playTimeMs || null,            // 试玩耗时（毫秒），用于验证难度分
         });
       } catch (_) { /* skip bad files */ }
     }
-    levels.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+    sortLevels(levels);
     return levels;
   } catch (e) {
     if (e.status === 404) return []; // 目录不存在说明还没存过
     throw e;
   }
+}
+
+// 序号排前的关卡在前（未排号的放最后，按保存时间倒序）
+function sortLevels(levels) {
+  levels.sort((a, b) => {
+    const ao = a.order == null ? Infinity : a.order;
+    const bo = b.order == null ? Infinity : b.order;
+    if (ao !== bo) return ao - bo;
+    return (b.savedAt || '').localeCompare(a.savedAt || '');
+  });
 }
 
 async function getLevel(key) {
@@ -206,10 +227,34 @@ exports.handler = async (event) => {
         tiles: body.tiles,
         specialTiles: body.specialTiles || [],
         _difficulty: body._difficulty || null,
+        order: pickOrder(body.order),          // 第几关，可空
+        status: pickStatus(body.status),       // 制作进度
+        playTimeMs: body.playTimeMs || null,   // 试玩耗时（毫秒）
         createdAt: new Date().toISOString(),
       };
       await putLevel(key, payload);
       return json(200, { key, name });
+    }
+
+    // PATCH /levels/:key — 更新元数据（序号/状态/名称/试玩时长），不动关卡数据
+    if (event.httpMethod === 'PATCH' && path) {
+      const passCheck = checkPass(event.headers);
+      if (!passCheck.ok) return json(401, { error: passCheck.msg });
+      let body;
+      try { body = JSON.parse(event.body); } catch (_) { return json(400, { error: 'JSON 格式错误' }); }
+      const key = decodeURIComponent(path);
+      const cur = await getLevel(key);
+      if (!cur) return json(404, { error: '关卡不存在' });
+      const merged = {
+        ...cur,
+        name: body.name !== undefined ? String(body.name).slice(0, 50) : cur.name,
+        order: body.order !== undefined ? pickOrder(body.order) : (cur.order != null ? cur.order : null),
+        status: body.status !== undefined ? pickStatus(body.status) : (cur.status || 'wip'),
+        playTimeMs: body.playTimeMs !== undefined ? (body.playTimeMs || null) : (cur.playTimeMs || null),
+        updatedAt: new Date().toISOString(),
+      };
+      await putLevel(key, merged);
+      return json(200, { ok: true });
     }
 
     // DELETE /levels/:key — 删除
