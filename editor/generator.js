@@ -528,10 +528,12 @@ function evaluateDifficulty(level, darkIds = new Set()) {
       if (darkIds.has(buried.id)) darkHooks++;
     }
   }
-  const darkHookTerm = Math.min(darkHooks / total * 100, 1) * DARK_WEIGHT;
+  // 钩子/暗钩子按数量给梯度分：每 1 个钩子 +6 分（5 个拿满 30），每 1 个暗钩子 +4 分（5 个拿满 20）
+  // 实测 80~110 张的关卡钩子数 0~5 个（中位 2），5 个封顶正好覆盖观测范围
+  const darkHookTerm = Math.min(darkHooks / 5, 1) * DARK_WEIGHT;
   const score = Math.round(
     (1 - clickRatio) * 40 + maxLayer * 8 +
-    Math.min(hooks / total * 100, 1) * 30 + darkHookTerm + 10
+    Math.min(hooks / 5, 1) * 30 + darkHookTerm + 10
   );
   return { score: Math.max(0, score), clickRatio: +clickRatio.toFixed(3), clickable, total, maxLayer, typeCount: Object.keys(byType).length, hooks, darkHooks };
 }
