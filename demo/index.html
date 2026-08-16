@@ -235,6 +235,7 @@ let slots = [];
 let matchedTileIds = new Set(); // 已永久消除的具体牌 id（按张记录，不按花色）
 let slotTileIds = new Set();
 let gameOver = false;
+let levelStartTime = 0;       // 本轮关卡开始时间（毫秒），用于试玩计时
 let levelData = null;
 let selectedDarkId = null;   // 当前被选中的正面暗牌 id（点暗牌翻面并选中；点同花色一起消除；点异色暗牌转移选中）
 let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动画）
@@ -520,6 +521,13 @@ function checkWin() {
   if (active.length === 0 && slots.every(s => s === null)) {
     showMessage('🎉 通关！', '所有牌都消除了');
     gameOver = true;
+    // 试玩计时：回传给父窗口（编辑器）用于验证难度分
+    try {
+      const durationMs = Date.now() - levelStartTime;
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: 'playFinished', durationMs }, '*');
+      }
+    } catch (_) {}
   }
 }
 
@@ -630,6 +638,7 @@ function loadLevel(json) {
   selectedDarkId = null;
   justFlipped = new Set();
   gameOver = false;
+  levelStartTime = Date.now();  // 记录本轮开始时间（含重玩/导入，均重新计时）
   hideMessage();
   const hasDark = json.tiles.some(t => t.isDark);
   document.getElementById('level-name').textContent = '关卡 ' + (json.levelId || '?') + (hasDark ? ' · 含暗牌' : '');
