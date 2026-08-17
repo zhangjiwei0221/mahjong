@@ -1263,9 +1263,9 @@ function draw() {
 function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  // 上层牌每升一层往左偏 20px、往上偏 20px，露出下层牌的右侧边和底边，视觉上能看出"垒起"的高度
-  const x = BOARD_PAD + dCol * CELL - layerIdx * 20;
-  const y = BOARD_PAD + worldTopPad() + dRow * CELL - layerIdx * 20;
+  // 上层牌每升一层往左偏 30px、往上偏 30px，露出下层牌的右侧边和底边
+  const x = BOARD_PAD + dCol * CELL - layerIdx * 30;
+  const y = BOARD_PAD + worldTopPad() + dRow * CELL - layerIdx * 30;
   const w = TILE * CELL, h = TILE * CELL;
   const pad = 2;
   const lw = 1 / view.scale;
@@ -1284,6 +1284,17 @@ function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   ctx.save();
   if (isHover) ctx.globalAlpha = 0.45;
 
+  // 绘制牌的"厚度"效果(右侧面和底面的阴影)
+  if (layerIdx > 0) {
+    const depth = layerIdx * 6; // 每层厚度 6px
+    // 右侧面阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(x + w - pad, y + pad, depth, h - 2 * pad);
+    // 底面阴影
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(x + pad, y + h - pad, w - 2 * pad, depth);
+  }
+
   // 牌面
   ctx.fillStyle = baseColor;
   ctx.fillRect(x + pad, y + pad, w - 2 * pad, h - 2 * pad);
@@ -1292,12 +1303,6 @@ function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   ctx.strokeStyle = borderColor;
   ctx.lineWidth = isCurrent ? 2.5 * lw + lw : 1.2 * lw;
   ctx.strokeRect(x + pad, y + pad, w - 2 * pad, h - 2 * pad);
-
-  // 底边阴影线
-  if (layerIdx > 0) {
-    ctx.fillStyle = 'rgba(0,0,0,0.28)';
-    ctx.fillRect(x + pad, y + h - 3, w - 2 * pad, 3);
-  }
 
   // 悬空问题高亮
   if (isIssue) {
