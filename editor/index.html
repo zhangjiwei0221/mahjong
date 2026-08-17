@@ -1247,8 +1247,8 @@ function draw() {
 function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  // 上层牌每升一层往左偏 3px，露出下层牌的右侧边，视觉上能看出"垒起"的高度
-  const x = BOARD_PAD + dCol * CELL - layerIdx * 3;
+  // 上层牌每升一层往左偏 5px，露出下层牌的右侧边，视觉上能看出"垒起"的高度
+  const x = BOARD_PAD + dCol * CELL - layerIdx * 5;
   const y = BOARD_PAD + worldTopPad() + dRow * CELL - layerIdx * CELL * 0.2;
   const w = TILE * CELL, h = TILE * CELL;
   const pad = 2;
