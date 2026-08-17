@@ -216,7 +216,6 @@ body {
     <div class="message" id="message">
       <div class="title" id="message-text"></div>
       <div class="sub" id="message-sub"></div>
-      <button class="btn" onclick="restartLevel()">再来一次</button>
     </div>
   </div>
 
@@ -238,6 +237,7 @@ let gameOver = false;
 let levelStartTime = 0;       // 本轮关卡开始时间（毫秒），用于试玩计时
 let gameStarted = false;      // 玩家是否已首次点击（开始计时）
 let levelData = null;
+let levelBestMs = null;       // 当前关卡的历史最佳耗时（毫秒），从 localStorage 读
 let selectedDarkId = null;   // 当前被选中的正面暗牌 id（点暗牌翻面并选中；点同花色一起消除；点异色暗牌转移选中）
 let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动画）
 
@@ -525,16 +525,52 @@ function placeInSlot(tile) {
 function checkWin() {
   const active = getActiveTiles();
   if (active.length === 0 && slots.every(s => s === null)) {
-    showMessage('🎉 通关！', '所有牌都消除了');
     gameOver = true;
     // 试玩计时：回传给父窗口（编辑器）用于验证难度分
+    let durationMs = 0;
     try {
-      const durationMs = Date.now() - levelStartTime;
+      durationMs = Date.now() - levelStartTime;
       if (window.parent && window.parent !== window) {
         window.parent.postMessage({ type: 'playFinished', durationMs }, '*');
       }
     } catch (_) {}
+    // 更新并持久化本关最佳成绩
+    if (durationMs > 0) {
+      if (levelBestMs == null || durationMs < levelBestMs) levelBestMs = durationMs;
+      try { localStorage.setItem('mahjong_best_' + levelKey(), String(levelBestMs)); } catch (_) {}
+    }
+    showWinMessage(durationMs);
   }
+}
+
+// 稳定关卡标识（用于 localStorage 存最佳成绩）
+function levelKey() {
+  if (!levelData || !levelData.tiles) return 'default';
+  const t = levelData.tiles;
+  // 用层数+牌数+首末几张牌的位置做轻量指纹
+  let h = t.length + ':' + (t.filter(x => x.isDark).length) + ':';
+  for (let i = 0; i < Math.min(3, t.length); i++) h += t[i].layer + ',' + t[i].row + ',' + t[i].col + ';';
+  return h;
+}
+
+// 通关界面：显示本局 / 最佳成绩 + 再玩一次按钮
+function showWinMessage(durationMs) {
+  const msg = document.getElementById('message');
+  const sec = (ms) => (ms / 1000).toFixed(1) + 's';
+  const bestTxt = (levelBestMs != null) ? `最佳 ${sec(levelBestMs)}` : '';
+  document.getElementById('message-text').textContent = '🎉 通关！';
+  document.getElementById('message-sub').innerHTML =
+    `本局用时 <b>${sec(durationMs)}</b>${bestTxt ? ' · ' + bestTxt : ''}`;
+  let actions = document.getElementById('win-actions');
+  if (!actions) {
+    actions = document.createElement('div');
+    actions.id = 'win-actions';
+    actions.style.marginTop = '10px';
+    msg.appendChild(actions);
+  }
+  actions.innerHTML =
+    '<button class="btn" onclick="restartLevel()" style="margin-top:6px">🔄 再玩一次</button>';
+  msg.style.display = 'block';
 }
 
 function renderSlots() {
@@ -646,6 +682,8 @@ function loadLevel(json) {
   gameOver = false;
   gameStarted = false;
   levelStartTime = Date.now();  // 记录本轮开始时间（含重玩/导入，均重新计时）
+  // 读取本关历史最佳成绩
+  try { const v = localStorage.getItem('mahjong_best_' + levelKey()); levelBestMs = v ? parseInt(v, 10) : null; } catch (_) { levelBestMs = null; }
   hideMessage();
   const hasDark = json.tiles.some(t => t.isDark);
   document.getElementById('level-name').textContent = '关卡 ' + (json.levelId || '?') + (hasDark ? ' · 含暗牌' : '');
@@ -653,6 +691,8 @@ function loadLevel(json) {
 }
 
 function restartLevel() {
+  const actions = document.getElementById('win-actions');
+  if (actions) actions.remove();
   if (levelData) loadLevel(levelData);
 }
 

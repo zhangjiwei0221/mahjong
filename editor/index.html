@@ -234,16 +234,19 @@
     flex-shrink: 0;
   }
   .wb-save-title { font-size: 11px; color: var(--sub); margin-bottom: 6px; }
-  .wb-save-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .wb-save-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .wb-save-row:last-child { margin-bottom: 0; }
   .wb-save-row input {
     padding: 5px 8px;
     background: #fbf8f2; border: 1px solid var(--line);
     border-radius: 6px; font-size: 12px; min-width: 0;
   }
   #wbPass { width: 110px; flex-shrink: 0; }
-  #wbSaveName { flex: 1; }
-  #wbSaveOrder { width: 60px; flex-shrink: 0; }
-  .wb-status {
+  #wbSaveName { flex: 1; min-width: 0; }
+  #wbNewOrder { width: 48px; flex-shrink: 0; }
+  .wb-save-row label { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--sub); white-space: nowrap; font-weight: 600; }
+  .wb-save-spacer { flex: 1; }
+  .wb-hint { font-size: 10px; color: var(--sub); margin-top: 4px; line-height: 1.6; }
     font-size: 11px; color: var(--sub);
     margin-top: 6px; padding: 4px 8px;
     background: #fbf8f2; border: 1px solid var(--line-soft);
@@ -320,6 +323,14 @@
   }
   .preview-stats span { background: #fbf8f2; border: 1px solid var(--line-soft); padding: 3px 8px; border-radius: 5px; }
   .preview-stats span.good { color: var(--ok); font-weight: 700; }
+  .play-history {
+    padding: 8px 14px; border-bottom: 1px solid var(--line);
+    background: #fbf8f2; font-size: 11px; color: var(--sub); flex-shrink: 0;
+  }
+  .ph-title { margin-bottom: 4px; }
+  .ph-title b { color: var(--accent2); }
+  .ph-row { display: flex; justify-content: space-between; gap: 8px; opacity: 0.85; }
+  .ph-row span:first-child { color: var(--sub); }
 
   .results-section { border-bottom: 1px solid var(--line); display: flex; flex-direction: column; flex-shrink: 0; }
   .results-head {
@@ -589,12 +600,16 @@
     <div class="preview-stats" id="previewStats">
       <span>-- 张</span><span>-- 对</span><span>-- 分</span><span>暗牌 --</span><span>-- 层</span>
     </div>
+    <div class="play-history" id="playHistoryBox" style="display:none;"></div>
     <div class="wb-savebox" id="wbSaveBox" style="display:none;">
-      <div class="wb-save-title">保存到共享工作台（关卡名=这关叫什么；第几关=排列顺序，可留空）</div>
+      <div class="wb-save-title">保存到共享工作台</div>
       <div class="wb-save-row">
         <input type="password" id="wbPass" placeholder="共享口令">
         <input type="text" id="wbSaveName" placeholder="关卡名，如「第1关 · 初始」">
-        <input type="number" id="wbSaveOrder" min="0" max="999" placeholder="第几关" title="留空 = 未排号">
+      </div>
+      <div class="wb-save-row">
+        <label>第 <input type="number" id="wbNewOrder" min="0" max="999" placeholder="几" title="留空 = 未排号"> 关</label>
+        <span class="wb-save-spacer"></span>
         <button class="mini-btn primary" onclick="saveCurrentLevelToWorkbench(this)">保存</button>
         <button class="mini-btn" onclick="toggleWbSaveBox(false)">收起</button>
       </div>
@@ -1665,6 +1680,25 @@ function buildEditorShape() {
 function setGenStatus(html) { document.getElementById('genStatus').innerHTML = html; }
 
 let currentLevel = null;
+let levelPlayHistory = []; // 当前关卡的试玩历史 [{durationMs, date}]
+
+function fmtTime(ms) {
+  if (ms == null) return '—';
+  const s = Math.round(ms / 1000);
+  if (s < 60) return s + 's';
+  return Math.floor(s / 60) + 'm' + (s % 60) + 's';
+}
+function renderPlayHistory() {
+  const box = document.getElementById('playHistoryBox');
+  if (!box) return;
+  if (levelPlayHistory.length === 0) { box.innerHTML = ''; box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  const best = Math.min(...levelPlayHistory.map(h => h.durationMs));
+  box.innerHTML = '<div class="ph-title">试玩记录 · 最佳 <b>' + fmtTime(best) + '</b></div>' +
+    levelPlayHistory.slice(-5).map((h, i) =>
+      '<div class="ph-row"><span>#' + (levelPlayHistory.length - 5 + i + 1) + '</span><span>' + fmtTime(h.durationMs) + '</span></div>'
+    ).join('');
+}
 let previewFrameReady = false;
 let pendingLevel = null;
 let demoAvailable = true;
@@ -1727,18 +1761,20 @@ async function initPreview() {
       clearTimeout(previewAckTimer);
       setPreviewStats(currentLevel, e.data.darkCount);
       enablePreviewActions(true);
-      showGameStartBtn(); // 关卡载入后显示"计时并开始游戏"按钮，等玩家主动开始
+      stopPreviewTimer(); // 关卡（重新）载入，重置计时器
+      showGameStartBtn(); // 显示"计时并开始游戏"按钮，等玩家主动开始
     } else if (e.data.type === 'gameStarted') {
       // 保留兼容：demo 内部若触发 gameStarted，确保遮罩隐藏
       document.getElementById('gameStartOverlay')?.classList.add('hidden');
     } else if (e.data.type === 'playFinished') {
-      // 试玩通关：记录耗时，用于验证难度分
-      stopPreviewTimer(); // 通关，停止计时
+      // 试玩通关：记录历史，最佳成绩用于保存
+      stopPreviewTimer();
       if (currentLevel) {
-        currentLevel.playTimeMs = e.data.durationMs;
-        const s = Math.round(e.data.durationMs / 1000);
-        setGenStatus(`已通关 · 试玩 ${s}s · 难度 ${currentLevel._difficulty?.score ?? '?'} 分`);
-        toast(`试玩通关，耗时 ${s}s（保存时会一并记录）`, 'ok');
+        levelPlayHistory.push({ durationMs: e.data.durationMs, date: Date.now() });
+        const best = Math.min(...levelPlayHistory.map(h => h.durationMs));
+        currentLevel.playTimeMs = best; // 保存时用最佳成绩
+        setGenStatus(`已通关 · 本局 ${fmtTime(e.data.durationMs)} · 最佳 ${fmtTime(best)} · 难度 ${currentLevel._difficulty?.score ?? '?'} 分`);
+        renderPlayHistory();
       }
     }
   });
@@ -2035,6 +2071,8 @@ function addResult(level, opts) {
   renderResults();
   if (opts.preview !== false) {
     currentLevel = level;
+    levelPlayHistory = []; // 新关卡，重置试玩历史
+    renderPlayHistory();
     showPreview();
     sendLevelToPreview(level);
   }
