@@ -1273,9 +1273,9 @@ function draw() {
 function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  // 上层牌每升一层往左偏 25px、往上偏 25px，露出下层牌的右侧边和底边
-  const x = BOARD_PAD + dCol * CELL - layerIdx * 25;
-  const y = BOARD_PAD + worldTopPad() + dRow * CELL - layerIdx * 25;
+  // 上层牌每升一层往左偏 8px，从侧面能看到错开的层级
+  const x = BOARD_PAD + dCol * CELL - layerIdx * 8;
+  const y = BOARD_PAD + worldTopPad() + dRow * CELL;
   const w = TILE * CELL, h = TILE * CELL;
   const pad = 2;
   const lw = 1 / view.scale;
