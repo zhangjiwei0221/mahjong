@@ -117,6 +117,50 @@
     transition: background 0.12s ease;
   }
   .docs a:hover { background: var(--bg); }
+  .changelog {
+    border-top: 1px solid var(--line);
+    padding-top: 20px;
+    margin-top: 20px;
+  }
+  .changelog-title {
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  .changelog-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .cl-item {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: left;
+  }
+  .cl-meta {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .cl-meta .cl-date { font-weight: 600; color: var(--ink); }
+  .cl-meta .cl-hash {
+    font-family: monospace; font-size: 10px;
+    background: var(--card); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  .cl-notes { font-size: 12.5px; line-height: 1.6; color: var(--ink); }
+  .cl-toggle {
+    margin-top: 10px;
+    text-align: center;
+  }
+  .cl-toggle button {
+    background: transparent; border: 1px solid var(--line);
+    color: var(--ink-soft); font-size: 12px;
+    padding: 4px 14px; border-radius: 6px; cursor: pointer;
+  }
+  .cl-toggle button:hover { background: var(--bg); color: var(--ink); }
   footer {
     text-align: center;
     margin-top: 20px;
@@ -153,7 +197,63 @@
       <a href="docs/游戏Demo说明.md" target="_blank">Demo 说明</a>
     </div>
 
+    <section class="changelog">
+      <div class="changelog-title">最近更新</div>
+      <div id="changelogList" class="changelog-list"></div>
+      <div id="changelogToggle" class="cl-toggle" style="display:none">
+        <button onclick="toggleChangelog()">展开全部</button>
+      </div>
+    </section>
+
     <footer>全流程浏览器一体化：编辑形状 → 一键生成填色 → 直接试玩 · 无后端依赖</footer>
   </main>
+
+  <script>
+    // ====== 最近更新公告（fetch version.json） ======
+    const CHANGELOG_VISIBLE = 3; // 默认显示条数,超出可"展开全部"
+    let changelogExpanded = false;
+    function renderChangelog(list) {
+      const showAll = changelogExpanded || list.length <= CHANGELOG_VISIBLE;
+      const items = (showAll ? list : list.slice(0, CHANGELOG_VISIBLE));
+      const html = items.map(it => {
+        const date = it.date || '';
+        const ver = it.version ? it.version.slice(0, 7) : '';
+        const notes = String(it.notes || '').replace(/\n/g, '<br>');
+        return `<div class="cl-item">
+          <div class="cl-meta">
+            <span class="cl-date">${date}</span>
+            <span class="cl-hash" title="部署版本号">${ver}</span>
+          </div>
+          <div class="cl-notes">${notes}</div>
+        </div>`;
+      }).join('');
+      document.getElementById('changelogList').innerHTML = html;
+      const toggle = document.getElementById('changelogToggle');
+      if (list.length > CHANGELOG_VISIBLE) {
+        toggle.style.display = 'block';
+        toggle.querySelector('button').textContent = showAll ? '收起' : '展开全部';
+      } else {
+        toggle.style.display = 'none';
+      }
+    }
+    function toggleChangelog() {
+      changelogExpanded = !changelogExpanded;
+      if (window.__changelogCache) renderChangelog(window.__changelogCache);
+    }
+    fetch('/version.json?t=' + Date.now())
+      .then(r => r.json().catch(() => ({})))
+      .then(j => {
+        const list = Array.isArray(j.changelog) ? j.changelog : [];
+        if (!list.length) {
+          document.getElementById('changelogList').innerHTML = '<div class="cl-item"><div class="cl-notes" style="color:var(--ink-soft);text-align:center">暂无更新记录</div></div>';
+          return;
+        }
+        window.__changelogCache = list;
+        renderChangelog(list);
+      })
+      .catch(() => {
+        document.getElementById('changelogList').innerHTML = '<div class="cl-item"><div class="cl-notes" style="color:var(--ink-soft);text-align:center">更新公告加载失败</div></div>';
+      });
+  </script>
 </body>
 </html>
