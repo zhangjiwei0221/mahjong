@@ -455,6 +455,28 @@
   }
   .help-pop .hrow { display: flex; justify-content: space-between; gap: 10px; }
   .help-pop .hrow span:last-child { color: var(--sub); }
+  .gen-help-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1px solid var(--line); background: transparent;
+    font-size: 11px; cursor: pointer; color: var(--sub);
+    margin-left: 6px; flex-shrink: 0;
+  }
+  .gen-help-btn:hover { background: rgba(255,255,255,.1); color: var(--text); }
+  .gen-help-pop {
+    position: absolute; z-index: 90;
+    width: 280px;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: 0 8px 26px rgba(58,46,31,.2);
+    padding: 14px 16px; font-size: 12px; line-height: 1.7;
+    display: none;
+  }
+  .gen-help-pop.show { display: block; }
+  .gen-help-pop h4 { font-size: 13px; margin-bottom: 8px; }
+  .gen-help-pop .gh-item { margin-bottom: 10px; }
+  .gen-help-pop .gh-item:last-child { margin-bottom: 0; }
+  .gen-help-pop .gh-title { font-weight: 600; color: var(--text); }
+  .gen-help-pop .gh-desc { color: var(--sub); margin-top: 2px; }
 
   input[type="file"] { display: none; }
 
@@ -539,7 +561,7 @@
     </div>
 
     <div class="card" id="cardGen">
-      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><span class="chev">▼</span></div>      <div class="card-body">
+      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><button class="gen-help-btn" onclick="toggleGenHelp(event)" title="查看参数说明">?</button><span class="chev">▼</span></div>      <div class="card-body">
         <div class="card-sub">生成参数（单关重试命中 / 批量筛选）</div>
         <div class="slider-row">
           <span class="slabel">暗钩覆盖率</span>
@@ -594,6 +616,25 @@
         <button class="sbtn block" onclick="batchGenerate()">⚡ 批量生成</button>
 
         <div class="status-box"><span id="genStatus">就绪</span></div>
+      </div>
+    </div>
+    <div class="gen-help-pop" id="genHelpPop">
+      <h4>生成参数说明</h4>
+      <div class="gh-item">
+        <div class="gh-title">暗钩覆盖率</div>
+        <div class="gh-desc">有多少比例的"钩子对"会被标成暗牌。100% = 所有钩子都暗，0% = 没有暗钩。</div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">暗牌总数</div>
+        <div class="gh-desc">暗牌占总牌数的比例。0% = 纯钩子模式(只有钩子对里深埋的那张是暗的)，10% = 额外再标一些随机牌为暗。</div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">钩子目标</div>
+        <div class="gh-desc">钩子数占总对子数的百分比。钩子 = 同一对牌层差 ≥ 2(一张在上、一张深埋)。越高越难。</div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">暗钩目标</div>
+        <div class="gh-desc">暗钩数占总对子数的百分比。暗钩 = 钩子对里深埋的那张恰好是暗牌(看不到花色，难度更高)。</div>
       </div>
     </div>
 
@@ -944,6 +985,26 @@ function toast(msg, type) {
 function toggleCard(id) {
   document.getElementById(id).classList.toggle('collapsed');
 }
+
+// ========== 生成参数帮助弹层 ==========
+function toggleGenHelp(e) {
+  e.stopPropagation();
+  const pop = document.getElementById('genHelpPop');
+  const btn = e.currentTarget;
+  pop.classList.toggle('show');
+  if (pop.classList.contains('show')) {
+    // Position relative to button
+    const rect = btn.getBoundingClientRect();
+    pop.style.top = (rect.bottom + 6) + 'px';
+    pop.style.left = Math.min(rect.left - 100, window.innerWidth - 300) + 'px';
+  }
+}
+document.addEventListener('click', e => {
+  const pop = document.getElementById('genHelpPop');
+  if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.classList.contains('gen-help-btn')) {
+    pop.classList.remove('show');
+  }
+});
 
 // ========== 帮助弹层 ==========
 function toggleHelp(e) {
