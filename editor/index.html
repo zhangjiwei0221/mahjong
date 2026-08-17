@@ -2000,7 +2000,7 @@ function generateCurrentShape() {
           setTimeout(tryGen, 0);
         }
       } catch (e) {
-        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(牌形可能过于复杂或不规则，试试简化形状)' : e.message;
+        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(底座形状可能导致无解,试试调整底座形状)' : e.message;
         setGenStatus('<span class="bad">失败: ' + msg + '</span>');
       }
     }, 30);
@@ -2030,7 +2030,7 @@ function generateStackFromCurrent() {
           setTimeout(tryGen, 0);
         }
       } catch (e) {
-        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(牌形可能过于复杂或不规则，试试简化形状)' : e.message;
+        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(底座形状可能导致无解,试试调整底座形状)' : e.message;
         setGenStatus('<span class="bad">失败: ' + msg + '</span>');
       }
     }, 30);

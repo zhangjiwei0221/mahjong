@@ -252,14 +252,13 @@ function validateShape(shape, opts = {}) {
     });
   });
 
-  // 同层冲突
+  // 同层冲突:只允许完全重合才算冲突(相邻是合法的)
   layerNums.forEach(l => {
     const arr = byLayer[l];
     for (let i = 0; i < arr.length; i++) {
       for (let j = i + 1; j < arr.length; j++) {
-        if (arr[i].row < arr[j].row + 2 && arr[i].row + 2 > arr[j].row &&
-            arr[i].col < arr[j].col + 2 && arr[i].col + 2 > arr[j].col) {
-          errors.push(`[冲突] L${l}`);
+        if (arr[i].row === arr[j].row && arr[i].col === arr[j].col) {
+          errors.push(`[冲突] L${l}(${arr[i].row},${arr[i].col})`);
         }
       }
     }
@@ -752,7 +751,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
         }
       }
     }
-    if (!filled) throw new Error('堆塔后无法完成填色(底座可能过于复杂,试试简化底座或减少堆层数)');
+    if (!filled) throw new Error('堆塔后无法完成填色(底座形状可能导致无解,试试调整底座形状或减少堆层数)');
     // 暗牌
     if (darkMode) {
       const darkRng = makeRng(7777);
