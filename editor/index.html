@@ -1145,9 +1145,11 @@ function toggleChangelog(e) {
   if (pop.classList.contains('show')) positionPop(pop, e.currentTarget);
 }
 document.addEventListener('click', e => {
+  // 用 closest 精确判断:点击的是否是触发按钮本身(点按钮不关,让 toggle 处理)
+  const clickedTrigger = e.target.closest('[onclick*="toggleGenHelp"], [onclick*="toggleScoreHelp"], [onclick*="toggleChangelog"]');
   ['genHelpPop', 'scoreHelpPop', 'changelogPop'].forEach(id => {
     const pop = document.getElementById(id);
-    if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.classList.contains('gen-help-btn') && !e.target.textContent.includes('变更日志')) {
+    if (pop.classList.contains('show') && !pop.contains(e.target) && !clickedTrigger) {
       pop.classList.remove('show');
     }
   });
