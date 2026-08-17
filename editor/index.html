@@ -1952,7 +1952,10 @@ function stopPreviewTimer() {
   previewTimerInterval = null;
   previewTimerStart = 0;
   const el = document.getElementById('previewTimer');
-  if (el) el.classList.remove('active');
+  if (el) {
+    el.textContent = '⏱ 00:00';
+    el.classList.remove('active');
+  }
 }
 
 // demo 位置：http 下由 serve_editor.js 的 /demo/ 路由提供；

@@ -588,13 +588,17 @@ function flyInToSlot(tile, slotIdx, onDone) {
 function placeInSlot(tile, onDone) {
   const emptyIdx = slots.indexOf(null);
   if (emptyIdx === -1) {
-    showMessage('💀 卡槽满了', '点击"再来一次"重新挑战');
+    showMessage('💀 卡槽满了', '没有可匹配的牌，游戏结束', true);
     return;
   }
+  // 立即从棋盘移除(不再可点),飞入动画只是视觉反馈
+  slotTileIds.add(tile.id);
+  render();
+  renderSlots();
+  updateProgress();
   // 飞入动画 → 结束后正式入槽
   flyInToSlot(tile, emptyIdx, () => {
     slots[emptyIdx] = tile;
-    slotTileIds.add(tile.id);
     renderSlots();
     updateProgress();
     if (onDone) onDone();
@@ -737,10 +741,23 @@ function checkMatch() {
 }
 
 // ========== 消息 ==========
-function showMessage(text, sub) {
+function showMessage(text, sub, showRetry) {
   const msg = document.getElementById('message');
   document.getElementById('message-text').textContent = text;
   document.getElementById('message-sub').textContent = sub || '';
+  // 添加"再来一次"按钮(失败时)
+  let actions = document.getElementById('message-actions');
+  if (showRetry) {
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.id = 'message-actions';
+      actions.style.marginTop = '16px';
+      msg.appendChild(actions);
+    }
+    actions.innerHTML = '<button class="btn" onclick="restartLevel()">🔄 再来一次</button>';
+  } else if (actions) {
+    actions.innerHTML = '';
+  }
   msg.style.display = 'block';
 }
 function hideMessage() {
