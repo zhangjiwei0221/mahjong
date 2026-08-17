@@ -157,6 +157,36 @@ body {
   to { transform: translateY(0); opacity: 1; }
 }
 
+/* 飞入卡槽动画：从牌位置飞向卡槽 */
+@keyframes flyIn {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--fly-dx), var(--fly-dy)) scale(0.4); opacity: 0; }
+}
+.fly-in-clone {
+  position: absolute;
+  z-index: 99999;
+  pointer-events: none;
+  animation: flyIn var(--fly-dur, 0.35s) cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-radius: 15%;
+  overflow: hidden;
+}
+.fly-in-clone .tile-img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* 匹配消除动画：卡槽内配对牌缩小消失 */
+@keyframes matchedOut {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+  100% { transform: scale(0); opacity: 0; }
+}
+.slot .slot-tile.matching {
+  animation: matchedOut 0.3s ease forwards;
+}
+
 /* 消息 */
 .message {
   position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -470,7 +500,7 @@ function clickTile(id) {
     if (A) {
       if (tile.id === A.id) {           // 点已选中的 A → 移入卡槽（槽内同色随之消除），选中结束
         selectedDarkId = null;
-        if (placeInSlot(A)) { render(); checkMatch(); }
+        placeInSlot(A, () => { render(); checkMatch(); });
         return;
       }
       if (tile.typeId === A.typeId) {   // 同花色 → 两张一起消除
@@ -488,7 +518,7 @@ function clickTile(id) {
         return;
       }
       // 异色明牌 → 按常规明牌规则进槽（A 保持选中）
-      if (placeInSlot(tile)) { render(); checkMatch(); }
+      placeInSlot(tile, () => { render(); checkMatch(); });
       return;
     }
     selectedDarkId = null; // A 已不在棋盘（异常兜底）
@@ -496,9 +526,16 @@ function clickTile(id) {
 
   // 无选中 → 首次点击
   if (tile.isDark) {
-    // 卡槽已有同花色 → 翻开后立即进槽消除（不等后续点击）
+    // 卡槽已有同花色 → 先翻开（展示正面），再飞入卡槽消除
     if (slots.some(s => s && s.typeId === tile.typeId) && slots.includes(null)) {
-      if (placeInSlot(tile)) { render(); checkMatch(); }
+      selectedDarkId = tile.id;
+      justFlipped.add(tile.id);
+      render();
+      // 翻开动画结束后再飞入卡槽
+      setTimeout(() => {
+        selectedDarkId = null;
+        placeInSlot(tile, () => { render(); });
+      }, 320);
       return;
     }
     selectedDarkId = tile.id; // 翻面选中，保持正面
@@ -508,18 +545,60 @@ function clickTile(id) {
   }
 
   // 普通明牌 → 进槽
-  if (placeInSlot(tile)) { render(); checkMatch(); }
+  placeInSlot(tile, () => { render(); checkMatch(); });
 }
 
-function placeInSlot(tile) {
+// 飞入卡槽动画：克隆一张牌从棋盘飞向卡槽，动画结束后再正式入槽
+function flyInToSlot(tile, slotIdx, onDone) {
+  const board = document.querySelector('.board');
+  const slotEl = document.getElementById(`slot-${slotIdx}`);
+  const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
+  const boardRect = board.getBoundingClientRect();
+  const slotRect = slotEl.getBoundingClientRect();
+
+  // 起始位置：取牌当前位置（若牌已消失则用棋盘中心）
+  let startX = boardRect.width / 2, startY = boardRect.height / 2, size = 40;
+  if (tileEl) {
+    const r = tileEl.getBoundingClientRect();
+    startX = r.left - boardRect.left;
+    startY = r.top - boardRect.top;
+    size = r.width;
+  }
+  // 目标：卡槽中心
+  const endX = slotRect.left - boardRect.left + slotRect.width / 2 - size / 2;
+  const endY = slotRect.top - boardRect.top + slotRect.height / 2 - size / 2;
+
+  const clone = document.createElement('div');
+  clone.className = 'fly-in-clone';
+  clone.style.left = startX + 'px';
+  clone.style.top = startY + 'px';
+  clone.style.width = size + 'px';
+  clone.style.height = size + 'px';
+  clone.style.setProperty('--fly-dx', (endX - startX) + 'px');
+  clone.style.setProperty('--fly-dy', (endY - startY) + 'px');
+  clone.innerHTML = `<img class="tile-img" src="${tileImgSrc(tile.typeId)}" alt="">`;
+  board.appendChild(clone);
+
+  clone.addEventListener('animationend', () => {
+    clone.remove();
+    if (onDone) onDone();
+  });
+}
+
+function placeInSlot(tile, onDone) {
   const emptyIdx = slots.indexOf(null);
   if (emptyIdx === -1) {
     showMessage('💀 卡槽满了', '点击"再来一次"重新挑战');
-    return false;
+    return;
   }
-  slots[emptyIdx] = tile;
-  slotTileIds.add(tile.id);
-  return true;
+  // 飞入动画 → 结束后正式入槽
+  flyInToSlot(tile, emptyIdx, () => {
+    slots[emptyIdx] = tile;
+    slotTileIds.add(tile.id);
+    renderSlots();
+    updateProgress();
+    if (onDone) onDone();
+  });
 }
 
 function checkWin() {
@@ -614,22 +693,16 @@ function checkMatch() {
   }
 
   let matched = false;
+  let matchIndices = [];
   for (const typeId in counts) {
     if (counts[typeId] >= 2) {
-      const toRemove = [];
       let found = 0;
       for (let i = 0; i < 4; i++) {
         if (slots[i] && slots[i].typeId === Number(typeId)) {
-          toRemove.push(i);
+          matchIndices.push(i);
           found++;
           if (found === 2) break;
         }
-      }
-      for (const idx of toRemove) {
-        const t = slots[idx];
-        matchedTileIds.add(t.id); // 只永久消除这 2 张，同花色的其他牌不受影响
-        slotTileIds.delete(t.id);
-        slots[idx] = null;
       }
       matched = true;
       break;
@@ -637,12 +710,24 @@ function checkMatch() {
   }
 
   if (matched) {
-    render();
-    const active = getActiveTiles();
-    if (active.length === 0 && slots.every(s => s === null)) {
-      showMessage('🎉 通关！', '所有牌都消除了');
-      gameOver = true;
+    // 给要消除的卡槽牌加消失动画
+    renderSlots();
+    for (const idx of matchIndices) {
+      const el = document.querySelector(`#slot-${idx} .slot-tile`);
+      if (el) el.classList.add('matching');
     }
+    // 动画结束后：标记消除、清空槽位、render
+    setTimeout(() => {
+      for (const idx of matchIndices) {
+        const t = slots[idx];
+        matchedTileIds.add(t.id);
+        slotTileIds.delete(t.id);
+        slots[idx] = null;
+      }
+      render();
+      checkWin();
+    }, 320);
+    return;
   } else {
     if (slots.every(s => s !== null)) {
       showMessage('💀 卡槽全满', '没有可匹配的牌，游戏结束');
