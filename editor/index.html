@@ -202,6 +202,8 @@
     padding: 8px 10px; border-radius: 7px;
     font-size: 11px; line-height: 1.7; color: var(--sub);
     margin-top: 8px;
+    min-height: 52px;
+    overflow-y: auto;
   }
   .good { color: var(--ok); }
   .bad { color: var(--danger); }
@@ -1247,8 +1249,8 @@ function draw() {
 function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  // 上层牌每升一层往左偏 5px，露出下层牌的右侧边，视觉上能看出"垒起"的高度
-  const x = BOARD_PAD + dCol * CELL - layerIdx * 5;
+  // 上层牌每升一层往左偏 10px，露出下层牌的右侧边，视觉上能看出"垒起"的高度
+  const x = BOARD_PAD + dCol * CELL - layerIdx * 10;
   const y = BOARD_PAD + worldTopPad() + dRow * CELL - layerIdx * CELL * 0.2;
   const w = TILE * CELL, h = TILE * CELL;
   const pad = 2;
