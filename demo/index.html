@@ -426,10 +426,12 @@ function render() {
 
   // 计算缩放
   // 注意：layerOffset 是负数（向上偏移），所以总高度是牌堆高度 + 偏移量的绝对值
+  // 水平方向也需要考虑层偏移（上层往左偏，露出层级）
+  const layerXShift = maxLayer * layerOffset; // 上层往左偏(负数)
   const tileSpanW = (maxCol - minCol + 2); // 宽度按 col（横向）
   const tileSpanH = (maxRow - minRow + 2); // 高度按 row（纵向）
   const layerYShift = maxLayer * layerOffset; // 负数（向上移）
-  const totalW = tileSpanW;
+  const totalW = tileSpanW + Math.abs(layerXShift); // 考虑向左偏移后实际占用的宽度
   const totalH = tileSpanH + Math.abs(layerYShift); // 考虑向上偏移后实际占用的高度
   const padding = 30;
   const sX = (boardW - padding * 2) / totalW;
@@ -447,7 +449,8 @@ function render() {
   // 实测修正系数让包围盒中心精确对齐棋盘中心
   const visualBias = -0.4 * cell;
   const offsetY = (boardH - actualH) / 2 + (actualH / 2 - visualCenterY) + visualBias;
-  const offsetX = (boardW - actualW) / 2;
+  // 水平居中：考虑层向左偏移后，左边会多出空间，需要补偿
+  const offsetX = (boardW - actualW) / 2 + Math.abs(layerXShift) * cell / 2;
 
   const tileSize = 2 * cell;
   // 卡槽与麻将同尺寸：动画从棋盘飞到卡槽，位移自然
@@ -457,7 +460,7 @@ function render() {
   // 从低层到高层画
   const sorted = [...active].sort((a, b) => a.layer - b.layer || a.id - b.id);
   for (const t of sorted) {
-    const x = offsetX + (t.col - minCol) * cell;
+    const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
     const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
     const clickable = isClickable(t, active);
     const isBack = t.isDark && t.id !== selectedDarkId; // 暗牌背面 = 未被选中（点暗牌即翻面选中，可随选中转移翻回）
