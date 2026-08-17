@@ -2268,17 +2268,18 @@ function probeScoreRange() {
   try { ({ tiles } = buildEditorShape()); }
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
-  if (tiles.length % 2 !== 0) { setGenStatus('<span class="bad">底座是 ' + tiles.length + ' 张（奇数），二消要偶数张才能成对，请加一张或删一张</span>'); return; }
   const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
   const N = 20;
   const scores = [];
   let i = 0;
   let failCount = 0;
+  let lastError = '';
   setGenStatus('探测分数范围… 0/' + N);
   function step() {
     if (i >= N) {
       if (scores.length === 0) {
-        setGenStatus(`<span class="bad">探测失败：${N} 次生成都未成功（本底座可能无法堆塔或填色无解，试试调整底座形状或堆层数）</span>`);
+        const errHint = lastError ? '：' + lastError : '';
+        setGenStatus(`<span class="bad">探测失败：${N} 次生成都未成功${errHint}（试试调整底座形状或堆层数）</span>`);
         return;
       }
       const min = Math.min(...scores), max = Math.max(...scores);
@@ -2294,6 +2295,7 @@ function probeScoreRange() {
       scores.push(level._difficulty.score);
     } catch (e) {
       failCount++;
+      lastError = e.message;
     }
     i++;
     if (i % 4 === 0) setGenStatus('探测分数范围… ' + i + '/' + N + (failCount > 0 ? `（${failCount} 次失败）` : ''));
