@@ -294,6 +294,8 @@
     flex-shrink: 0; white-space: nowrap;
   }
   .preview-title { display: flex; align-items: baseline; gap: 10px; font-size: 14px; font-weight: 700; }
+  .preview-timer { font-size: 12px; font-weight: 400; color: var(--sub); font-variant-numeric: tabular-nums; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .preview-timer.active { color: var(--accent2); }
   .preview-empty-hint { font-size: 11px; color: var(--sub); font-weight: 400; }
   .preview-actions { display: flex; gap: 5px; }
   .mini-btn {
@@ -355,6 +357,24 @@
 
   .preview-iframe-wrap { flex: 1; position: relative; overflow: hidden; }
   .preview-iframe-wrap iframe { width: 100%; height: 100%; border: 0; }
+  .game-start-overlay {
+    position: absolute; inset: 0; z-index: 6;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(20, 25, 30, 0.55);
+    backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+    transition: opacity .2s;
+  }
+  .game-start-overlay.hidden { display: none; }
+  .game-start-btn {
+    padding: 16px 30px; border-radius: 14px;
+    background: linear-gradient(#c9973a, #b07a22); color: #fff;
+    border: none; border-bottom: 4px solid #8b5a2b;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 20px rgba(58,46,31,.4);
+    letter-spacing: .5px; transition: transform .12s, filter .12s;
+  }
+  .game-start-btn:hover { filter: brightness(1.08); }
+  .game-start-btn:active { transform: translateY(2px); }
   .preview-placeholder {
     position: absolute; inset: 0;
     display: flex; align-items: center; justify-content: center;
@@ -437,7 +457,7 @@
     <div class="chip" id="coordToggle" onclick="toggleCoord()"><span class="dot"></span>坐标</div>
   </div>
   <div class="tb-spacer"></div>
-  <button class="tbtn" onclick="location.href='/workbench.html'" title="打开关卡工作台（部署版）">📋 工作台</button>
+  <button class="tbtn" onclick="window.open('/workbench.html','_blank')" title="打开关卡工作台（部署版）">📋 工作台</button>
   <button class="tbtn" onclick="fitView()" title="缩放并居中到完整画布">⤢ 视图重置</button>
   <button class="tbtn" id="helpBtn" onclick="toggleHelp(event)">？</button>
 </header>
@@ -557,6 +577,7 @@
     <div class="preview-header">
       <div class="preview-title">
         <span>🧪 关卡预览</span>
+        <span class="preview-timer" id="previewTimer">⏱ 00:00</span>
         <span class="preview-empty-hint" id="previewEmptyHint">生成关卡后在此试玩</span>
       </div>
       <div class="preview-actions">
@@ -597,6 +618,9 @@
           <div class="placeholder-text" id="placeholderText">生成的关卡会直接在这里试玩</div>
           <div class="placeholder-sub" id="placeholderSub">在左侧画形状 → 点「按当前形状生成」或「按当前底座搭建后生成」<br>批量生成的结果会列在上方「生成结果」里，点任意一行预览</div>
         </div>
+      </div>
+      <div class="game-start-overlay" id="gameStartOverlay">
+        <button class="game-start-btn" id="gameStartBtn" onclick="startGame()">⏱ 计时并开始游戏</button>
       </div>
       <iframe id="previewFrame" src="about:blank" frameborder="0"></iframe>
     </div>
@@ -988,7 +1012,8 @@ function draw() {
 function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
   const dCol = col + DISPLAY_OFFSET_COL;
   const dRow = row + DISPLAY_OFFSET_ROW;
-  const x = BOARD_PAD + dCol * CELL;
+  // 上层牌每升一层往左偏 3px，露出下层牌的右侧边，视觉上能看出"垒起"的高度
+  const x = BOARD_PAD + dCol * CELL - layerIdx * 3;
   const y = BOARD_PAD + worldTopPad() + dRow * CELL - layerIdx * CELL * 0.2;
   const w = TILE * CELL, h = TILE * CELL;
   const pad = 2;
@@ -1029,15 +1054,6 @@ function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
     ctx.lineWidth = 3;
     ctx.strokeRect(x - 2, y - 2, w + 4, h + 4);
   }
-
-  // 层号角标
-  ctx.fillStyle = 'rgba(58,46,31,0.55)';
-  ctx.fillRect(x + pad, y + pad, CELL * 0.6, CELL * 0.4);
-  ctx.fillStyle = '#fff';
-  ctx.font = `bold ${CELL * 0.3}px sans-serif`;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-  ctx.fillText('L' + layerIdx, x + pad + CELL * 0.06, y + pad + CELL * 0.06);
 
   // 类型图标 / 坐标
   ctx.textAlign = 'center';
@@ -1653,6 +1669,41 @@ let previewFrameReady = false;
 let pendingLevel = null;
 let demoAvailable = true;
 let previewAckTimer = null;
+let previewTimerStart = 0;   // 试玩计时开始时间（ms），0 表示未在计时
+let previewTimerInterval = null;
+
+// 实时计时器：mm:ss 格式
+function fmtTime(ms) {
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60).toString().padStart(2, '0') + ':' + (s % 60).toString().padStart(2, '0');
+}
+function startGame() {
+  const overlay = document.getElementById('gameStartOverlay');
+  overlay.classList.add('hidden');
+  startPreviewTimer(); // 点击"计时并开始游戏"，启动计时
+}
+function showGameStartBtn() {
+  if (!demoAvailable) return;
+  const overlay = document.getElementById('gameStartOverlay');
+  overlay.classList.remove('hidden');
+}
+function startPreviewTimer() {
+  stopPreviewTimer();
+  previewTimerStart = Date.now();
+  const el = document.getElementById('previewTimer');
+  el.textContent = '⏱ 00:00';
+  el.classList.add('active');
+  previewTimerInterval = setInterval(() => {
+    el.textContent = '⏱ ' + fmtTime(Date.now() - previewTimerStart);
+  }, 1000);
+}
+function stopPreviewTimer() {
+  clearInterval(previewTimerInterval);
+  previewTimerInterval = null;
+  previewTimerStart = 0;
+  const el = document.getElementById('previewTimer');
+  if (el) el.classList.remove('active');
+}
 
 // demo 位置：http 下由 serve_editor.js 的 /demo/ 路由提供；
 // file:// 直开时按仓库布局（工具包与 游戏Demo 同级）取相对路径
@@ -1676,8 +1727,13 @@ async function initPreview() {
       clearTimeout(previewAckTimer);
       setPreviewStats(currentLevel, e.data.darkCount);
       enablePreviewActions(true);
+      showGameStartBtn(); // 关卡载入后显示"计时并开始游戏"按钮，等玩家主动开始
+    } else if (e.data.type === 'gameStarted') {
+      // 保留兼容：demo 内部若触发 gameStarted，确保遮罩隐藏
+      document.getElementById('gameStartOverlay')?.classList.add('hidden');
     } else if (e.data.type === 'playFinished') {
       // 试玩通关：记录耗时，用于验证难度分
+      stopPreviewTimer(); // 通关，停止计时
       if (currentLevel) {
         currentLevel.playTimeMs = e.data.durationMs;
         const s = Math.round(e.data.durationMs / 1000);
@@ -1755,6 +1811,10 @@ function closePreview() {
   document.getElementById('previewPanel').style.width = '0px';
   document.getElementById('previewEmptyHint').style.display = '';
   currentLevel = null;
+  stopPreviewTimer(); // 关闭预览，停止并重置计时器
+  document.getElementById('gameStartOverlay')?.classList.add('hidden'); // 关闭预览，隐藏开始遮罩
+  const timerEl = document.getElementById('previewTimer');
+  if (timerEl) timerEl.textContent = '⏱ 00:00';
   enablePreviewActions(false);
   setGenStatus('就绪');
 }

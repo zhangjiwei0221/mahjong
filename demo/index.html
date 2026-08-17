@@ -236,6 +236,7 @@ let matchedTileIds = new Set(); // 已永久消除的具体牌 id（按张记录
 let slotTileIds = new Set();
 let gameOver = false;
 let levelStartTime = 0;       // 本轮关卡开始时间（毫秒），用于试玩计时
+let gameStarted = false;      // 玩家是否已首次点击（开始计时）
 let levelData = null;
 let selectedDarkId = null;   // 当前被选中的正面暗牌 id（点暗牌翻面并选中；点同花色一起消除；点异色暗牌转移选中）
 let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动画）
@@ -453,6 +454,11 @@ function showHint(id) {
 // 统一点击入口（符合 PROG-0224 暗牌选取：点暗牌=翻面选中；同花色直接配对；异色暗牌转移选中）
 function clickTile(id) {
   if (gameOver) return;
+  // 首次有效点击 → 通知父窗口"游戏开始"，开始计时
+  if (!gameStarted) {
+    gameStarted = true;
+    try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'gameStarted' }, '*'); } catch (_) {}
+  }
   const active = getActiveTiles();
   const tile = active.find(t => t.id === id);
   if (!tile) return;
@@ -638,6 +644,7 @@ function loadLevel(json) {
   selectedDarkId = null;
   justFlipped = new Set();
   gameOver = false;
+  gameStarted = false;
   levelStartTime = Date.now();  // 记录本轮开始时间（含重玩/导入，均重新计时）
   hideMessage();
   const hasDark = json.tiles.some(t => t.isDark);

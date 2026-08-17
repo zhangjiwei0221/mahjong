@@ -107,7 +107,7 @@ function generateLayer(lowerArr, lowerKeys, style, count, mode = 'ordered', mirr
     if (tooClose) continue;
     // 无全覆盖：仅镜像模式时，镜像位置也不能和下层完全重合
     if (mirror) {
-      const mr = mirrorRow(cand.row);
+      const mr = mirrorRow(cand.row); // row-mirror（内部坐标）
       if (lowerKeys.has(keyOf(mr, cand.col))) continue;
     }
     selected.add(keyOf(cand.row, cand.col));
@@ -119,17 +119,16 @@ function generateLayer(lowerArr, lowerKeys, style, count, mode = 'ordered', mirr
 function expandMirrorWithLimit(left, count, mirror = true) {
   const full = new Set(left);
   if (mirror) {
-    left.forEach(k => {
-      const [r, c] = k.split(',').map(Number);
-      const mr = mirrorRow(r);
-      if (mr !== r) full.add(keyOf(mr, c));
+    left.forEach(function(k) {
+      var p = k.split(',').map(Number), r = p[0], c = p[1];
+      var mr = mirrorRow(r);
+      if (mr !== r) full.add(mr + ',' + c);
     });
   }
-  // 如果太多，按 row 顺序裁剪
-  if (full.size > count * 2) {
-    const arr = Array.from(full);
-    shuffle(arr);
-    return new Set(arr.slice(0, count * 2));
+  if (full.size > 0) {
+    var symmetryErrors = 0;
+    full.forEach(function(k){ var p=k.split(','),r=+p[0],c=+p[1]; if(!full.has(-r+','+c)) symmetryErrors++; });
+    if (symmetryErrors > 0) console.warn('[dbg] asymmetric layer! full=' + full.size + ' errors=' + symmetryErrors + ' selected=' + left.size + ' sample=' + [...left].slice(0,3).join(' '));
   }
   return full;
 }
@@ -231,6 +230,7 @@ function validateShape(shape, opts = {}) {
   if (layerNums.length === 0) return { ok: true, errors: [] };
 
   // 对称（skipSymmetry=true 时跳过：底座不对称时，上层按实际形状堆，不要求镜像）
+  // 内部坐标用 row-mirror（对应 std 坐标的 col-mirror = 左右视觉对称），与底座检测、堆塔展开保持一致
   if (!opts.skipSymmetry) {
     layerNums.forEach(l => {
       const set = new Set(byLayer[l].map(t => keyOf(t.row, t.col)));
@@ -656,14 +656,27 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     const baseSymmetric = editorTiles.every(function (t) { return symSet.has(t.layer + ',' + t.row + ',' + (-t.col)); });
     const mirror = baseSymmetric;
     const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
-    // 不对称堆塔时层不镜像翻倍，总牌数可能为奇数（二消要偶数）→ 从顶层删一张凑偶
+    // 不对称堆塔时层不镜像翻倍，总牌数可能为奇数（二消要偶数）→ 从顶层删牌凑偶
+    // 必须成对删除（一张 + 它的镜像对称牌），否则破坏对称性导致校验失败
     if (shape.tiles.length % 2 !== 0) {
       const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
-      const topIdx = shape.tiles.findIndex(function (t) { return t.layer === maxL; });
-      if (topIdx >= 0) {
-        shape.tiles.splice(topIdx, 1);
-        if (shape.layerCounts) shape.layerCounts[maxL] = (shape.layerCounts[maxL] || 1) - 1;
+      const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL; });
+      // 找一对镜像对称的牌删除（row-mirror 对称：row 相反、col 相同）
+      let removed = false;
+      for (let k = 0; k < topTiles.length && !removed; k++) {
+        const a = topTiles[k];
+        const b = topTiles.find(function (t, j) { return j !== k && t.row === -a.row && t.col === a.col; });
+        if (b) {
+          shape.tiles = shape.tiles.filter(function (t) { return t !== a && t !== b; });
+          removed = true;
+        }
       }
+      // 找不到镜像对（顶层只有中轴线上的牌），则删一张中轴线牌（row=0，自身对称）
+      if (!removed) {
+        const axis = topTiles.find(function (t) { return t.row === 0; });
+        if (axis) shape.tiles = shape.tiles.filter(function (t) { return t !== axis; });
+      }
+      if (shape.layerCounts) shape.layerCounts[maxL] = shape.tiles.filter(function (t) { return t.layer === maxL; }).length;
     }
     const v = validateShape(shape, { skipSymmetry: !mirror });
     if (!v.ok) throw new Error('堆层校验失败: ' + v.errors.slice(0, 2).join('; '));
