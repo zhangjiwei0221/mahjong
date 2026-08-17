@@ -470,7 +470,6 @@ function render() {
       style="left:${x}px; top:${y}px; width:${tileSize}px; height:${tileSize}px; --ld:${t.layer};
              z-index:${t.layer * 1000 + t.id};"
       onclick="clickTile(${t.id})">
-      <span class="layer-badge">L${t.layer}</span>
       <img class="tile-img" src="${src}" alt="">
     </div>`;
   }
