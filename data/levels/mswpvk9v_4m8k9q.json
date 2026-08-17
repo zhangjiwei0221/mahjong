@@ -1,0 +1,372 @@
+{
+  "key": "mswpvk9v_4m8k9q",
+  "name": "未命名关卡",
+  "levelId": 1,
+  "totalPairs": 20,
+  "tiles": [
+    {
+      "id": 1,
+      "layer": 0,
+      "row": -6,
+      "col": -3,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 2,
+      "layer": 0,
+      "row": -4,
+      "col": -3,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 3,
+      "layer": 0,
+      "row": -2,
+      "col": -3,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 4,
+      "layer": 0,
+      "row": 0,
+      "col": -3,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 5,
+      "layer": 0,
+      "row": -6,
+      "col": -1,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 6,
+      "layer": 0,
+      "row": -4,
+      "col": -1,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 7,
+      "layer": 0,
+      "row": -2,
+      "col": -1,
+      "typeId": 23,
+      "isDark": false
+    },
+    {
+      "id": 8,
+      "layer": 0,
+      "row": 0,
+      "col": -1,
+      "typeId": 4,
+      "isDark": false
+    },
+    {
+      "id": 9,
+      "layer": 0,
+      "row": -6,
+      "col": 1,
+      "typeId": 4,
+      "isDark": false
+    },
+    {
+      "id": 10,
+      "layer": 0,
+      "row": -4,
+      "col": 1,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 11,
+      "layer": 0,
+      "row": -2,
+      "col": 1,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 12,
+      "layer": 0,
+      "row": 0,
+      "col": 1,
+      "typeId": 31,
+      "isDark": false
+    },
+    {
+      "id": 13,
+      "layer": 0,
+      "row": -6,
+      "col": 3,
+      "typeId": 19,
+      "isDark": false
+    },
+    {
+      "id": 14,
+      "layer": 0,
+      "row": -4,
+      "col": 3,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 15,
+      "layer": 0,
+      "row": -2,
+      "col": 3,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 16,
+      "layer": 0,
+      "row": 0,
+      "col": 3,
+      "typeId": 23,
+      "isDark": false
+    },
+    {
+      "id": 17,
+      "layer": 1,
+      "row": -5,
+      "col": -3,
+      "typeId": 4,
+      "isDark": true
+    },
+    {
+      "id": 18,
+      "layer": 1,
+      "row": -3,
+      "col": -3,
+      "typeId": 24,
+      "isDark": true
+    },
+    {
+      "id": 19,
+      "layer": 1,
+      "row": -1,
+      "col": -3,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 20,
+      "layer": 1,
+      "row": -5,
+      "col": -1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 21,
+      "layer": 1,
+      "row": -3,
+      "col": -1,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 22,
+      "layer": 1,
+      "row": -1,
+      "col": -1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 23,
+      "layer": 1,
+      "row": -5,
+      "col": 1,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 24,
+      "layer": 1,
+      "row": -3,
+      "col": 1,
+      "typeId": 31,
+      "isDark": true
+    },
+    {
+      "id": 25,
+      "layer": 1,
+      "row": -1,
+      "col": 1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 26,
+      "layer": 1,
+      "row": -5,
+      "col": 3,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 27,
+      "layer": 1,
+      "row": -3,
+      "col": 3,
+      "typeId": 19,
+      "isDark": false
+    },
+    {
+      "id": 28,
+      "layer": 1,
+      "row": -1,
+      "col": 3,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 29,
+      "layer": 2,
+      "row": -4,
+      "col": -3,
+      "typeId": 17,
+      "isDark": false
+    },
+    {
+      "id": 30,
+      "layer": 2,
+      "row": -2,
+      "col": -3,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 31,
+      "layer": 2,
+      "row": -5,
+      "col": 0,
+      "typeId": 16,
+      "isDark": true
+    },
+    {
+      "id": 32,
+      "layer": 2,
+      "row": -3,
+      "col": 0,
+      "typeId": 3,
+      "isDark": false
+    },
+    {
+      "id": 33,
+      "layer": 2,
+      "row": -1,
+      "col": 0,
+      "typeId": 4,
+      "isDark": false
+    },
+    {
+      "id": 34,
+      "layer": 2,
+      "row": -4,
+      "col": 3,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 35,
+      "layer": 2,
+      "row": -2,
+      "col": 3,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 36,
+      "layer": 3,
+      "row": -3,
+      "col": -3,
+      "typeId": 33,
+      "isDark": false
+    },
+    {
+      "id": 37,
+      "layer": 3,
+      "row": -4,
+      "col": 0,
+      "typeId": 17,
+      "isDark": false
+    },
+    {
+      "id": 38,
+      "layer": 3,
+      "row": -2,
+      "col": 0,
+      "typeId": 16,
+      "isDark": false
+    },
+    {
+      "id": 39,
+      "layer": 3,
+      "row": -3,
+      "col": 3,
+      "typeId": 3,
+      "isDark": false
+    },
+    {
+      "id": 40,
+      "layer": 4,
+      "row": -3,
+      "col": 0,
+      "typeId": 33,
+      "isDark": false
+    }
+  ],
+  "specialTiles": [
+    {
+      "id": 24,
+      "type": "dark",
+      "layer": 1,
+      "row": -3,
+      "col": 1
+    },
+    {
+      "id": 18,
+      "type": "dark",
+      "layer": 1,
+      "row": -3,
+      "col": -3
+    },
+    {
+      "id": 17,
+      "type": "dark",
+      "layer": 1,
+      "row": -5,
+      "col": -3
+    },
+    {
+      "id": 31,
+      "type": "dark",
+      "layer": 2,
+      "row": -5,
+      "col": 0
+    }
+  ],
+  "_difficulty": {
+    "score": 79,
+    "clickRatio": 0.075,
+    "clickable": 3,
+    "total": 40,
+    "maxLayer": 4,
+    "typeCount": 14,
+    "hooks": 0,
+    "darkHooks": 0
+  },
+  "order": null,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-17T04:11:36.163Z"
+}
