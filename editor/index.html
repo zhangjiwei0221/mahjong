@@ -1934,7 +1934,10 @@ function generateCurrentShape() {
         } else {
           setTimeout(tryGen, 0);
         }
-      } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
+      } catch (e) {
+        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(牌形可能过于复杂或不规则，试试简化形状)' : e.message;
+        setGenStatus('<span class="bad">失败: ' + msg + '</span>');
+      }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
 }
@@ -1961,7 +1964,10 @@ function generateStackFromCurrent() {
         } else {
           setTimeout(tryGen, 0);
         }
-      } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
+      } catch (e) {
+        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(牌形可能过于复杂或不规则，试试简化形状)' : e.message;
+        setGenStatus('<span class="bad">失败: ' + msg + '</span>');
+      }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
 }
@@ -2165,15 +2171,21 @@ function batchGenerate() {
   const mode = document.getElementById('batchMode').value;
 
   const results = [];
+  let candidates = []; // 候选池:收集所有在分数范围内的关卡,按偏差排序
   let attempts = 0;
-  const maxAttempts = count * 60 + 300;
+  const maxAttempts = count * 80 + 400;
 
   setGenStatus('批量生成中… 0/' + count);
   function step() {
     attempts++;
     if (results.length >= count) { finish(); return; }
     if (attempts > maxAttempts) {
-      setGenStatus('<span class="bad">只生成出 ' + results.length + ' 个（凑不齐，试试放宽分数范围）</span>');
+      if (results.length === 0 && candidates.length > 0) {
+        // 没严格命中,但从候选池取最接近的
+        candidates.sort((a, b) => a._mm - b._mm);
+        results.push(...candidates.slice(0, count));
+        setGenStatus('批量生成中… ' + results.length + '/' + count + '（取最接近目标的）');
+      }
       finish();
       return;
     }
@@ -2185,9 +2197,16 @@ function batchGenerate() {
         level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
       }
       const s = level._difficulty.score;
-      if (s >= scoreMin && s <= scoreMax && matchStructTarget(level._difficulty, target)) {
-        results.push(level);
-        setGenStatus('批量生成中… ' + results.length + '/' + count);
+      if (s >= scoreMin && s <= scoreMax) {
+        const mm = structMismatch(level._difficulty, target);
+        if (matchStructTarget(level._difficulty, target)) {
+          results.push(level);
+          setGenStatus('批量生成中… ' + results.length + '/' + count);
+        } else if (candidates.length < count * 3) {
+          // 保留候选(限制池大小避免内存膨胀)
+          level._mm = mm;
+          candidates.push(level);
+        }
       }
     } catch (_) { /* 跳过失败 */ }
     setTimeout(step, 0);
@@ -2195,7 +2214,8 @@ function batchGenerate() {
   function finish() {
     results.forEach(lv => addResult(lv, { preview: false }));
     const modeName = mode === 'shape' ? '按当前形状' : '按底座堆塔';
-    setGenStatus(`<span class="good">✓ 批量生成 ${results.length} 关（${modeName} · ${scoreMin}~${scoreMax}分）→ 已加入右侧列表</span>`);
+    const extra = (results.length < count && candidates.length > 0) ? '（部分取最接近目标的）' : '';
+    setGenStatus(`<span class="good">✓ 批量生成 ${results.length} 关（${modeName} · ${scoreMin}~${scoreMax}分${extra}）→ 已加入右侧列表</span>`);
     if (results.length > 0) previewResult(0);
   }
   step();
