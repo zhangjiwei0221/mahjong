@@ -518,6 +518,7 @@
   </div>
   <div class="tb-spacer"></div>
   <button class="tbtn" onclick="window.open('/workbench.html','_blank')" title="打开关卡工作台（部署版）">📋 工作台</button>
+  <button class="tbtn" onclick="toggleChangelog(event)" title="查看版本变更日志">📜 变更日志</button>
   <button class="tbtn" onclick="fitView()" title="缩放并居中到完整画布">⤢ 视图重置</button>
   <button class="tbtn" id="helpBtn" onclick="toggleHelp(event)">？</button>
 </header>
@@ -660,10 +661,57 @@
       <div class="gh-item">
         <div class="gh-title">各项含义</div>
         <div class="gh-desc">
-          <b>可点率</b>:可点牌占总牌数比例,越低越难(被压住的牌多)<br>
-          <b>层数</b>:最大层号,层越多越难<br>
-          <b>有效钩子</b>:钩子数经稀缺度加权(独占型钩子满分,泛滥型打折)<br>
-          <b>有效暗钩</b>:暗钩数经稀缺度加权(看不到花色的深埋牌)
+          <b>可点率</b>:开局时可点牌占总牌数比例。可点=上方无压牌且左右未被夹住。越低越难(大部分牌被压住)。满分 40 分,范围 0~40。<br>
+          <b>层数</b>:最大层号(从 0 开始)。层越多牌越难到达。每层 +8 分,4 层封顶(32 分)。<br>
+          <b>有效钩子</b>:钩子数经稀缺度加权。钩子=同一对牌层差 ≥ 2(一张在上、一张深埋)。稀缺度加权:独占型钩子(1 对 1 张)计 1.0,泛滥型(3 对 6 张)每张只计 0.33。5 个有效钩子拿满 30 分。<br>
+          <b>有效暗钩</b>:暗钩数经稀缺度加权。暗钩=钩子对里深埋的那张恰好是暗牌(看不到花色,难度更高)。5 个有效暗钩拿满 20 分。<br>
+          <b>保底 10 分</b>:确保最低难度也有基础分。
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">设计理由</div>
+        <div class="gh-desc">
+          分母 5 怎么定的:实测 80~110 张的标准关卡,钩子数观测 0~5(中位 2),5 个封顶正好覆盖。<br>
+          稀缺度加权:避免"1 种牌出 6 张(3 对钩子)"比"3 种牌各出 2 张(3 对钩子)"分数相同——后者实际更难(花色分散)。<br>
+          可点率只拍开局一瞬间,中盘难度不计入(但倒推法保证可解,不会真卡死)。
+        </div>
+      </div>
+    </div>
+
+    <!-- 变更日志弹层 -->
+    <div class="gen-help-pop changelog-pop" id="changelogPop" style="width:420px; max-height:70vh; overflow-y:auto;">
+      <h4>📜 变更日志</h4>
+      <div class="gh-item">
+        <div class="gh-title">v4.3 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 生成参数顺序调整:暗牌总数 → 暗钩比例(先有总数,再分配比例)<br>
+          • 探测分数范围:显示具体错误消息(如"填色无解")<br>
+          • Demo 修复:暗牌与卡槽同花色时添加 checkMatch()调用<br>
+          • 编辑器:拖拽分隔条时禁用 iframe pointer-events,修复松手后继续拖拽<br>
+          • 目标分数问号:修复弹层位置 + 补充维度详细说明
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.2 · 2026-08-18</div>
+        <div class="gh-desc">
+          • Demo 动画系统:飞入卡槽、匹配消除、暗牌先翻后飞<br>
+          • Demo 交互修复:牌不再残留、失败可重来、计时器重置<br>
+          • 生成器冲突检查修正:相邻牌合法,只禁止完全重合<br>
+          • 堆塔死形重搭:外层 30 次重搭新塔形<br>
+          • 批量生成候选池:不再出 0 关<br>
+          • 生成参数重构:删冗余暗钩目标,改为推导显示<br>
+          • 帮助按钮优化:加大按钮 + 新增分数说明<br>
+          • 预览面板修正:计时器误启动 + 默认隐藏开始遮罩
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.1 · 2026-08-17</div>
+        <div class="gh-desc">
+          • 难度公式 v2:钩子稀缺度加权 + 目标改百分比<br>
+          • 编辑器 v4 浅色重构<br>
+          • 工作台独立成页<br>
+          • 试玩计时闭环:按钮 + 最佳成绩<br>
+          • Cloudflare 迁移完成
         </div>
       </div>
     </div>
@@ -1023,8 +1071,18 @@ function toggleCard(id) {
 // ========== 帮助弹层共用 ==========
 function positionPop(pop, btn) {
   const rect = btn.getBoundingClientRect();
-  pop.style.top = (rect.bottom + 6) + 'px';
-  pop.style.left = Math.min(rect.left - 100, window.innerWidth - 300) + 'px';
+  const popWidth = 300;
+  const gap = 8;
+  // 默认:弹层在问号下方,左对齐
+  let left = rect.left;
+  // 如果超出右边界,则右对齐
+  if (left + popWidth > window.innerWidth - 10) {
+    left = window.innerWidth - popWidth - 10;
+  }
+  // 确保不超出左边界
+  if (left < 10) left = 10;
+  pop.style.top = (rect.bottom + gap) + 'px';
+  pop.style.left = left + 'px';
 }
 // ========== 生成参数帮助弹层 ==========
 function toggleGenHelp(e) {
@@ -1040,10 +1098,17 @@ function toggleScoreHelp(e) {
   pop.classList.toggle('show');
   if (pop.classList.contains('show')) positionPop(pop, e.currentTarget);
 }
+// ========== 变更日志弹层 ==========
+function toggleChangelog(e) {
+  e.stopPropagation();
+  const pop = document.getElementById('changelogPop');
+  pop.classList.toggle('show');
+  if (pop.classList.contains('show')) positionPop(pop, e.currentTarget);
+}
 document.addEventListener('click', e => {
-  ['genHelpPop', 'scoreHelpPop'].forEach(id => {
+  ['genHelpPop', 'scoreHelpPop', 'changelogPop'].forEach(id => {
     const pop = document.getElementById(id);
-    if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.classList.contains('gen-help-btn')) {
+    if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.classList.contains('gen-help-btn') && !e.target.textContent.includes('变更日志')) {
       pop.classList.remove('show');
     }
   });
