@@ -2272,22 +2272,30 @@ function probeScoreRange() {
   const N = 20;
   const scores = [];
   let i = 0;
+  let failCount = 0;
   setGenStatus('探测分数范围… 0/' + N);
   function step() {
     if (i >= N) {
+      if (scores.length === 0) {
+        setGenStatus(`<span class="bad">探测失败：${N} 次生成都未成功（本底座可能无法堆塔或填色无解，试试调整底座形状或堆层数）</span>`);
+        return;
+      }
       const min = Math.min(...scores), max = Math.max(...scores);
       const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
       document.getElementById('scoreMin').value = min;
       document.getElementById('scoreMax').value = max;
-      setGenStatus(`<span class="good">本底座可出：最低 ${min} / 最高 ${max} / 平均 ${avg}（已填入目标分数框，可再收窄）</span>`);
+      const extra = failCount > 0 ? `（${failCount} 次失败已跳过）` : '';
+      setGenStatus(`<span class="good">本底座可出：最低 ${min} / 最高 ${max} / 平均 ${avg}${extra}（已填入目标分数框，可再收窄）</span>`);
       return;
     }
     try {
       const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
       scores.push(level._difficulty.score);
-    } catch (_) { /* 跳过失败样本 */ }
+    } catch (e) {
+      failCount++;
+    }
     i++;
-    if (i % 4 === 0) setGenStatus('探测分数范围… ' + i + '/' + N);
+    if (i % 4 === 0) setGenStatus('探测分数范围… ' + i + '/' + N + (failCount > 0 ? `（${failCount} 次失败）` : ''));
     setTimeout(step, 0);
   }
   step();
