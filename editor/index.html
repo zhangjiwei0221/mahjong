@@ -417,7 +417,15 @@
   .toast.out { opacity: 0; transform: translateY(6px); transition: all .25s; }
   @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 
-  /* ---- 帮助弹层 ---- */
+  /* ---- 版本更新提示横幅 ---- */
+  .version-banner {
+    position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 200; max-width: 90vw;
+    background: linear-gradient(#c9973a, #b07a22); color: #fff;
+    padding: 10px 16px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    font-size: 13px; line-height: 1.6; animation: toast-in .2s ease-out;
+  }
+  .version-banner code { background: rgba(255,255,255,.25); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
   .help-pop {
     position: fixed; top: 48px; right: 12px; z-index: 90;
     width: 300px;
@@ -1677,6 +1685,32 @@ function buildEditorShape() {
   return { tiles, specialTiles };
 }
 
+// ========== 版本检测：发现新版本时提示强刷 ==========
+window.APP_VERSION = 'bfdfbc2'; // 部署时同步更新，与 version.json 一致
+let versionCheckTimer = null;
+let versionBannerShown = false;
+function checkNewVersion() {
+  if (versionBannerShown) return;
+  fetch('/version.json?t=' + Date.now()).then(r => r.json()).then(j => {
+    if (j && j.version && j.version !== window.APP_VERSION) {
+      showVersionBanner(j.version);
+    }
+  }).catch(_ => {});
+}
+function showVersionBanner(v) {
+  if (document.getElementById('versionBanner')) return;
+  versionBannerShown = true;
+  const b = document.createElement('div');
+  b.id = 'versionBanner';
+  b.className = 'version-banner';
+  b.innerHTML = '🛠 工具已更新（新版本 ' + v.slice(0,7) + '）· 请 <b>强刷页面</b>（<code>Ctrl+Shift+R</code>）以使用最新功能' +
+    '<button onclick="this.parentElement.remove()" style="margin-left:12px;padding:2px 10px;font-size:11px;cursor:pointer;border:1px solid var(--accent2);background:transparent;color:var(--accent2);border-radius:6px">稍后提醒</button>';
+  document.body.appendChild(b);
+  // 每 30 秒重新检测一次（万一用户没刷但部署又更新了）
+  clearInterval(versionCheckTimer);
+  versionCheckTimer = setInterval(checkNewVersion, 30000);
+}
+
 function setGenStatus(html) { document.getElementById('genStatus').innerHTML = html; }
 
 let currentLevel = null;
@@ -2128,6 +2162,9 @@ function clearResults() {
 
 init();
 initPreview();
+// 启动版本检测：每 5 分钟检查一次是否有新版本部署
+setTimeout(checkNewVersion, 30000); // 30 秒后首次检测（避免刚加载就弹）
+versionCheckTimer = setInterval(checkNewVersion, 300000); // 之后每 5 分钟
 </script>
 </body>
 </html>
