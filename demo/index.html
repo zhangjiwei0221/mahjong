@@ -747,20 +747,21 @@ function checkMatch() {
   }
 
   if (matched) {
+    // 立即清空卡槽,让下一个麻将能立刻进来(动画只是视觉效果)
+    for (const idx of matchIndices) {
+      const t = slots[idx];
+      matchedTileIds.add(t.id);
+      slotTileIds.delete(t.id);
+      slots[idx] = null;
+    }
     // 给要消除的卡槽牌加消失动画
     renderSlots();
     for (const idx of matchIndices) {
       const el = document.querySelector(`#slot-${idx} .slot-tile`);
       if (el) el.classList.add('matching');
     }
-    // 动画结束后：标记消除、清空槽位、render
+    // 动画结束后只需 render(checkWin 需要看棋盘状态)
     setTimeout(() => {
-      for (const idx of matchIndices) {
-        const t = slots[idx];
-        matchedTileIds.add(t.id);
-        slotTileIds.delete(t.id);
-        slots[idx] = null;
-      }
       render();
       checkWin();
     }, 320);
