@@ -422,10 +422,17 @@
     position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
     z-index: 200; max-width: 90vw;
     background: linear-gradient(#c9973a, #b07a22); color: #fff;
-    padding: 10px 16px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+    padding: 12px 16px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25);
     font-size: 13px; line-height: 1.6; animation: toast-in .2s ease-out;
   }
-  .version-banner code { background: rgba(255,255,255,.25); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .vb-head { font-weight: 600; margin-bottom: 6px; }
+  .vb-head code { background: rgba(255,255,255,.25); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .vb-notes { background: rgba(255,255,255,.15); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; font-size: 12px; line-height: 1.7; max-width: 420px; }
+  .vb-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .vb-btn { padding: 4px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; }
+  .vb-btn:hover { background: rgba(255,255,255,.15); }
+  .vb-btn-primary { background: #fff; color: #b07a22; border-color: #fff; font-weight: 600; }
+  .vb-btn-primary:hover { background: #f5f5f5; }
   .help-pop {
     position: fixed; top: 48px; right: 12px; z-index: 90;
     width: 300px;
@@ -1686,28 +1693,31 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'bfdfbc2'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'b0ddb08'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
   if (versionBannerShown) return;
   fetch('/version.json?t=' + Date.now()).then(r => r.json()).then(j => {
     if (j && j.version && j.version !== window.APP_VERSION) {
-      showVersionBanner(j.version);
+      showVersionBanner(j);
     }
   }).catch(_ => {});
 }
-function showVersionBanner(v) {
+function showVersionBanner(j) {
   if (document.getElementById('versionBanner')) return;
   versionBannerShown = true;
   const b = document.createElement('div');
   b.id = 'versionBanner';
   b.className = 'version-banner';
-  b.innerHTML = '🛠 工具已更新（新版本 ' + v.slice(0,7) + '）· 请 <b>强刷页面</b>（<code>Ctrl+Shift+R</code>）以使用最新功能' +
-    '<button onclick="this.parentElement.remove()" style="margin-left:12px;padding:2px 10px;font-size:11px;cursor:pointer;border:1px solid var(--accent2);background:transparent;color:var(--accent2);border-radius:6px">稍后提醒</button>';
+  const notes = j.notes ? '<div class="vb-notes">' + String(j.notes).replace(/\n/g,'<br>') + '</div>' : '';
+  b.innerHTML = '<div class="vb-head">🛠 工具已更新（新版本 ' + String(j.version).slice(0,7) + '）· 请 <b>强刷页面</b>（<code>Ctrl+Shift+R</code>）</div>' + notes +
+    '<div class="vb-actions"><button onclick="location.reload(true)" class="vb-btn vb-btn-primary">立即强刷</button>' +
+    '<button onclick="this.closest(\'#versionBanner\').remove()" class="vb-btn">稍后</button></div>';
   document.body.appendChild(b);
-  // 每 30 秒重新检测一次（万一用户没刷但部署又更新了）
   clearInterval(versionCheckTimer);
+  versionCheckTimer = setInterval(checkNewVersion, 30000);
+}
   versionCheckTimer = setInterval(checkNewVersion, 30000);
 }
 
