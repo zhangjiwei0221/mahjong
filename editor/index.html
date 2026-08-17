@@ -457,12 +457,12 @@
   .help-pop .hrow span:last-child { color: var(--sub); }
   .gen-help-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 1px solid var(--line); background: transparent;
-    font-size: 11px; cursor: pointer; color: var(--sub);
-    margin-left: 6px; flex-shrink: 0;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 1.5px solid var(--accent, #e94560); background: rgba(233,69,96,.1);
+    font-size: 13px; font-weight: 700; cursor: pointer; color: var(--accent, #e94560);
+    margin-left: 8px; flex-shrink: 0; transition: all .15s;
   }
-  .gen-help-btn:hover { background: rgba(255,255,255,.1); color: var(--text); }
+  .gen-help-btn:hover { background: var(--accent, #e94560); color: #fff; }
   .gen-help-pop {
     position: absolute; z-index: 90;
     width: 280px;
@@ -596,6 +596,7 @@
         <div class="card-sub">批量</div>
         <div class="field-row">
           <span>目标分数</span>
+          <button class="gen-help-btn" onclick="toggleScoreHelp(event)" title="分数计算公式">?</button>
           <input type="number" id="scoreMin" value="0" min="0" max="999">
           <span class="sep">~</span>
           <input type="number" id="scoreMax" value="999" min="0" max="999">
@@ -634,6 +635,28 @@
       <div class="gh-item">
         <div class="gh-title">暗牌总数</div>
         <div class="gh-desc">暗牌占总牌数的比例。0% = 纯钩子模式(只有钩子对里深埋的那张是暗的)，10% = 额外再标一些随机牌为暗。</div>
+      </div>
+    </div>
+    <div class="gen-help-pop" id="scoreHelpPop">
+      <h4>难度分计算公式</h4>
+      <div class="gh-item">
+        <div class="gh-title">难度分 =</div>
+        <div class="gh-desc" style="font-family:monospace; line-height:1.8">
+          (1 - 可点率) × 40<br>
+          + 层数 × 8<br>
+          + min(有效钩子数 / 5, 1) × 30<br>
+          + min(有效暗钩数 / 5, 1) × 20<br>
+          + 10
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">各项含义</div>
+        <div class="gh-desc">
+          <b>可点率</b>:可点牌占总牌数比例,越低越难(被压住的牌多)<br>
+          <b>层数</b>:最大层号,层越多越难<br>
+          <b>有效钩子</b>:钩子数经稀缺度加权(独占型钩子满分,泛滥型打折)<br>
+          <b>有效暗钩</b>:暗钩数经稀缺度加权(看不到花色的深埋牌)
+        </div>
       </div>
     </div>
 
@@ -985,24 +1008,33 @@ function toggleCard(id) {
   document.getElementById(id).classList.toggle('collapsed');
 }
 
+// ========== 帮助弹层共用 ==========
+function positionPop(pop, btn) {
+  const rect = btn.getBoundingClientRect();
+  pop.style.top = (rect.bottom + 6) + 'px';
+  pop.style.left = Math.min(rect.left - 100, window.innerWidth - 300) + 'px';
+}
 // ========== 生成参数帮助弹层 ==========
 function toggleGenHelp(e) {
   e.stopPropagation();
   const pop = document.getElementById('genHelpPop');
-  const btn = e.currentTarget;
   pop.classList.toggle('show');
-  if (pop.classList.contains('show')) {
-    // Position relative to button
-    const rect = btn.getBoundingClientRect();
-    pop.style.top = (rect.bottom + 6) + 'px';
-    pop.style.left = Math.min(rect.left - 100, window.innerWidth - 300) + 'px';
-  }
+  if (pop.classList.contains('show')) positionPop(pop, e.currentTarget);
+}
+// ========== 分数说明帮助弹层 ==========
+function toggleScoreHelp(e) {
+  e.stopPropagation();
+  const pop = document.getElementById('scoreHelpPop');
+  pop.classList.toggle('show');
+  if (pop.classList.contains('show')) positionPop(pop, e.currentTarget);
 }
 document.addEventListener('click', e => {
-  const pop = document.getElementById('genHelpPop');
-  if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.classList.contains('gen-help-btn')) {
-    pop.classList.remove('show');
-  }
+  ['genHelpPop', 'scoreHelpPop'].forEach(id => {
+    const pop = document.getElementById(id);
+    if (pop.classList.contains('show') && !pop.contains(e.target) && !e.target.classList.contains('gen-help-btn')) {
+      pop.classList.remove('show');
+    }
+  });
 });
 
 // ========== 帮助弹层 ==========
