@@ -543,7 +543,7 @@ function clickTile(id) {
       // 翻开动画结束后再飞入卡槽
       setTimeout(() => {
         selectedDarkId = null;
-        placeInSlot(tile, () => { render(); });
+        placeInSlot(tile, () => { render(); checkMatch(); });
       }, 320);
       return;
     }

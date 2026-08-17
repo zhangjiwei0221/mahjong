@@ -876,6 +876,8 @@ function initDivider(id, targetId, dir) {
     document.body.classList.add('dragging-h');
     div.classList.add('dragging');
     target.classList.add('resizing');
+    // 拖拽期间禁用 iframe 指针事件，防止 mouseup 被 iframe 吞掉导致松手后继续拖拽
+    document.querySelectorAll('iframe').forEach(f => { f.style.pointerEvents = 'none'; });
     const startX = e.clientX;
     const startW = target.getBoundingClientRect().width;
     function move(ev) {
@@ -893,6 +895,8 @@ function initDivider(id, targetId, dir) {
       document.body.classList.remove('dragging-h');
       div.classList.remove('dragging');
       target.classList.remove('resizing');
+      // 恢复 iframe 指针事件
+      document.querySelectorAll('iframe').forEach(f => { f.style.pointerEvents = ''; });
       window.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', up);
       try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(layoutW)); } catch (_) {}
