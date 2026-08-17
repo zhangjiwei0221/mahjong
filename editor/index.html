@@ -577,6 +577,11 @@
           <span class="sval" id="hooksTargetVal">30%</span>
         </div>
         <div class="slider-row">
+          <span class="slabel">暗牌总数</span>
+          <input type="range" id="darkRatio" min="0" max="50" value="10" step="5" oninput="onGenParamChange()">
+          <span class="sval" id="darkRatioVal">10%</span>
+        </div>
+        <div class="slider-row">
           <span class="slabel">暗钩比例</span>
           <input type="range" id="darkCoverage" min="0" max="100" value="100" step="25" oninput="onGenParamChange()">
           <span class="sval" id="darkCoverageVal">100%</span>
@@ -585,12 +590,7 @@
           <span class="slabel">≈ 暗钩目标</span>
           <span class="sval" id="derivedDarkHooksVal" style="color:var(--sub)">30%</span>
         </div>
-        <div class="slider-row">
-          <span class="slabel">暗牌总数</span>
-          <input type="range" id="darkRatio" min="0" max="50" value="10" step="5" oninput="onGenParamChange()">
-          <span class="sval" id="darkRatioVal">10%</span>
-        </div>
-        <div class="hint">单关:生成到接近目标为止(容差±10%);批量:过滤命中。钩子/暗钩百分比 = 钩子数/总对子数</div>
+        <div class="hint">单关:生成到接近目标为止(容差±10%);批量:过滤命中。钩子/暗钩百分比 = 钩子数/总对子数。暗牌总数=整副牌里暗牌占比;暗钩比例=这些暗牌里有多少被标成暗钩</div>
 
         <button class="sbtn primary block" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
 
