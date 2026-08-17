@@ -616,12 +616,12 @@ function placeInSlot(tile, onDone) {
   const fromRect = tileEl ? tileEl.getBoundingClientRect() : null;
   // 立即从棋盘移除(不再可点),飞入动画只是视觉反馈
   slotTileIds.add(tile.id);
+  slots[emptyIdx] = tile;  // 立即入槽,避免点击过快时两个麻将瞄准同一个空槽
   render();
   renderSlots();
   updateProgress();
-  // 飞入动画 → 结束后正式入槽
+  // 飞入动画 → 结束后更新显示
   flyInToSlot(tile, emptyIdx, fromRect, () => {
-    slots[emptyIdx] = tile;
     renderSlots();
     updateProgress();
     if (onDone) onDone();
