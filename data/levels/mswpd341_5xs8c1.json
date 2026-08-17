@@ -1,0 +1,31 @@
+{
+  "key": "mswpd341_5xs8c1",
+  "name": "����-���-�Ժ�ɾ",
+  "levelId": 1,
+  "totalPairs": 1,
+  "tiles": [
+    {
+      "id": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 0,
+      "typeId": 1
+    },
+    {
+      "id": 2,
+      "layer": 0,
+      "row": 0,
+      "col": 2,
+      "typeId": 1
+    }
+  ],
+  "specialTiles": [],
+  "_difficulty": {
+    "score": 10,
+    "maxLayer": 0
+  },
+  "order": null,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-17T03:57:14.113Z"
+}
