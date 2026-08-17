@@ -711,43 +711,48 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     editorTiles.forEach(function (t) { symSet.add(t.layer + ',' + t.row + ',' + t.col); });
     const baseSymmetric = editorTiles.every(function (t) { return symSet.has(t.layer + ',' + t.row + ',' + (-t.col)); });
     const mirror = baseSymmetric;
-    const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
-    // 不对称堆塔时层不镜像翻倍，总牌数可能为奇数（二消要偶数）→ 从顶层删牌凑偶
-    // 必须成对删除（一张 + 它的镜像对称牌），否则破坏对称性导致校验失败
-    if (shape.tiles.length % 2 !== 0) {
-      const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
-      const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL; });
-      // 找一对镜像对称的牌删除（row-mirror 对称：row 相反、col 相同）
-      let removed = false;
-      for (let k = 0; k < topTiles.length && !removed; k++) {
-        const a = topTiles[k];
-        const b = topTiles.find(function (t, j) { return j !== k && t.row === -a.row && t.col === a.col; });
-        if (b) {
-          shape.tiles = shape.tiles.filter(function (t) { return t !== a && t !== b; });
-          removed = true;
+    // 搭塔+填色:塔形可能不可解,需要重搭新塔形(而非同一死形重试)
+    let filled = null;
+    for (let attempt = 0; attempt < 30 && !filled; attempt++) {
+      const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
+      // 不对称堆塔时层不镜像翻倍，总牌数可能为奇数（二消要偶数）→ 从顶层删牌凑偶
+      // 必须成对删除（一张 + 它的镜像对称牌），否则破坏对称性导致校验失败
+      if (shape.tiles.length % 2 !== 0) {
+        const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
+        const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL; });
+        // 找一对镜像对称的牌删除（row-mirror 对称：row 相反、col 相同）
+        let removed = false;
+        for (let k = 0; k < topTiles.length && !removed; k++) {
+          const a = topTiles[k];
+          const b = topTiles.find(function (t, j) { return j !== k && t.row === -a.row && t.col === a.col; });
+          if (b) {
+            shape.tiles = shape.tiles.filter(function (t) { return t !== a && t !== b; });
+            removed = true;
+          }
+        }
+        // 找不到镜像对（顶层只有中轴线上的牌），则删一张中轴线牌（row=0，自身对称）
+        if (!removed) {
+          const axis = topTiles.find(function (t) { return t.row === 0; });
+          if (axis) shape.tiles = shape.tiles.filter(function (t) { return t !== axis; });
+        }
+        if (shape.layerCounts) shape.layerCounts[maxL] = shape.tiles.filter(function (t) { return t.layer === maxL; }).length;
+      }
+      const v = validateShape(shape, { skipSymmetry: !mirror });
+      if (!v.ok) continue; // 校验不过就重搭
+      const level = toEditorJSON(shape, 1);
+      // 填色
+      for (let seed = 1; seed <= 50 && !filled; seed++) {
+        const result = backwardFill(level.tiles, makeRng(seed * 1000 + 42));
+        if (result) {
+          filled = {
+            levelId: level.levelId, totalPairs: level.totalPairs,
+            tiles: level.tiles.map(function (t, j) { return Object.assign({}, t, { typeId: result.assigned[j] }); }),
+            specialTiles: []
+          };
         }
       }
-      // 找不到镜像对（顶层只有中轴线上的牌），则删一张中轴线牌（row=0，自身对称）
-      if (!removed) {
-        const axis = topTiles.find(function (t) { return t.row === 0; });
-        if (axis) shape.tiles = shape.tiles.filter(function (t) { return t !== axis; });
-      }
-      if (shape.layerCounts) shape.layerCounts[maxL] = shape.tiles.filter(function (t) { return t.layer === maxL; }).length;
     }
-    const v = validateShape(shape, { skipSymmetry: !mirror });
-    if (!v.ok) throw new Error('堆层校验失败: ' + v.errors.slice(0, 2).join('; '));
-    const level = toEditorJSON(shape, 1);
-    // 填色
-    let result = null;
-    for (let seed = 1; seed <= 100 && !result; seed++) {
-      result = backwardFill(level.tiles, makeRng(seed * 1000 + 42));
-    }
-    if (!result) throw new Error('填色失败');
-    const filled = {
-      levelId: level.levelId, totalPairs: level.totalPairs,
-      tiles: level.tiles.map(function (t, j) { return Object.assign({}, t, { typeId: result.assigned[j] }); }),
-      specialTiles: []
-    };
+    if (!filled) throw new Error('堆塔后无法完成填色(底座可能过于复杂,试试简化底座或减少堆层数)');
     // 暗牌
     if (darkMode) {
       const darkRng = makeRng(7777);
