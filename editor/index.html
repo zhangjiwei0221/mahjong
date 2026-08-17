@@ -474,6 +474,8 @@
   .gen-help-pop {
     position: absolute; z-index: 90;
     width: 280px;
+    max-height: 70vh;
+    overflow-y: auto;
     background: var(--card); border: 1px solid var(--line);
     border-radius: var(--radius); box-shadow: 0 8px 26px rgba(58,46,31,.2);
     padding: 14px 16px; font-size: 12px; line-height: 1.7;
@@ -1071,17 +1073,28 @@ function toggleCard(id) {
 // ========== 帮助弹层共用 ==========
 function positionPop(pop, btn) {
   const rect = btn.getBoundingClientRect();
-  const popWidth = 300;
+  const popWidth = pop.offsetWidth || 300;
   const gap = 8;
-  // 默认:弹层在问号下方,左对齐
+  const marginTop = 10;
+
+  // 水平位置:默认左对齐,超出右边界则右对齐
   let left = rect.left;
-  // 如果超出右边界,则右对齐
-  if (left + popWidth > window.innerWidth - 10) {
-    left = window.innerWidth - popWidth - 10;
+  if (left + popWidth > window.innerWidth - marginTop) {
+    left = window.innerWidth - popWidth - marginTop;
   }
-  // 确保不超出左边界
-  if (left < 10) left = 10;
-  pop.style.top = (rect.bottom + gap) + 'px';
+  if (left < marginTop) left = marginTop;
+
+  // 垂直位置:默认在按钮下方,超出下边界则显示在按钮上方
+  let top = rect.bottom + gap;
+  const popHeight = pop.scrollHeight || 400;
+  if (top + popHeight > window.innerHeight - marginTop) {
+    // 显示在按钮上方
+    top = rect.top - popHeight - gap;
+    // 如果上方也不够空间,则贴近视口顶部
+    if (top < marginTop) top = marginTop;
+  }
+
+  pop.style.top = top + 'px';
   pop.style.left = left + 'px';
 }
 // ========== 生成参数帮助弹层 ==========
