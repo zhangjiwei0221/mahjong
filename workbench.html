@@ -193,6 +193,7 @@
             <th style="width:90px;">张/对</th>
             <th style="width:70px;">难度分</th>
             <th style="width:60px;">暗牌</th>
+            <th style="width:70px;">钩/暗钩</th>
             <th style="width:60px;">层数</th>
             <th style="width:80px;">试玩</th>
             <th style="width:140px;">保存时间</th>
@@ -296,10 +297,12 @@ function renderSummary() {
   const unnumbered = total - numbered;
   const totalTiles = levels.reduce((s, l) => s + (l.tileCount || 0), 0);
   const sumScore = levels.reduce((s, l) => s + (l.score || 0), 0);
+  const hooksArr = levels.map(l => l.hookDensity).filter(v => v != null);
+  const avgHookPct = hooksArr.length ? Math.round(hooksArr.reduce((a, b) => a + b, 0) / hooksArr.length * 100) : null;
   const avgScore = total ? Math.round(sumScore / total) : 0;
   document.getElementById('summary').innerHTML =
     `共 <b>${total}</b> 关 · 已排号 <b>${numbered}</b> · 未排号 <b>${unnumbered}</b> · ` +
-    `总张数 <b>${totalTiles}</b> · 平均难度 <b>${avgScore}</b> 分`;
+    `总张数 <b>${totalTiles}</b> · 平均难度 <b>${avgScore}</b> 分 · 平均钩子密度 <b>${avgHookPct != null ? avgHookPct + '%' : '—'}</b>`;
 }
 
 function getFilteredSorted() {
@@ -354,6 +357,7 @@ function renderTable() {
       <td class="num">${lv.tileCount || 0}/${lv.totalPairs || 0}</td>
       <td class="num"><b>${lv.score != null ? lv.score : '—'}</b></td>
       <td class="num">${lv.darkCount || 0}</td>
+      <td class="num" title="钩子密度 / 暗钩密度">${lv.hookDensity != null ? Math.round(lv.hookDensity * 100) + '%' : '—'}/${lv.darkHookDensity != null ? Math.round(lv.darkHookDensity * 100) + '%' : '—'}</td>
       <td class="num">${(lv.maxLayer || 0) + 1}</td>
       <td class="num">${formatPlay(lv.playTimeMs)}</td>
       <td class="dim">${formatTime(lv.savedAt)}</td>

@@ -488,30 +488,44 @@ function isClickable(tile, all) {
 }
 
 // ============ 暗牌分配 ============
-function assignDarkTiles(tiles, rng, darkMax) {
+// options: { coverageRate: 0~1 (深埋对子覆盖率), totalCount: 暗牌总数上限(不含 null/undefined=纯钩子模式,不补随机) }
+function assignDarkTiles(tiles, rng, options) {
+  options = options || {};
+  const coverageRate = options.coverageRate != null ? options.coverageRate : 1; // 默认全覆盖
+  const totalCount = options.totalCount; // undefined = 纯钩子模式
   const byType = {};
   tiles.forEach((t, i) => { (byType[t.typeId] ||= []).push({ t, i }); });
   const darkIdx = [];
   const marked = new Set();
+  // 阶段一:收集所有深埋对子,按覆盖率挑(随机)
+  const buriedPairs = [];
   for (const k in byType) {
-    if (darkIdx.length >= darkMax) break;
     const arr = byType[k];
     if (arr.length === 2 && Math.abs(arr[0].t.layer - arr[1].t.layer) >= 2) {
-      const buried = arr[0].t.layer >= arr[1].t.layer ? arr[0] : arr[1];
-      if (!marked.has(buried.i)) { darkIdx.push(buried.i); marked.add(buried.i); }
+      buriedPairs.push(arr);
     }
   }
-  const candidates = tiles.map((_, i) => i).filter(i => !marked.has(i));
-  shuffle(candidates, rng);
-  for (const i of candidates) {
-    if (darkIdx.length >= darkMax) break;
-    darkIdx.push(i); marked.add(i);
+  shuffle(buriedPairs, rng);
+  const hookTarget = Math.round(buriedPairs.length * coverageRate);
+  for (let p = 0; p < hookTarget && p < buriedPairs.length; p++) {
+    const arr = buriedPairs[p];
+    const buried = arr[0].t.layer >= arr[1].t.layer ? arr[0] : arr[1];
+    if (!marked.has(buried.i)) { darkIdx.push(buried.i); marked.add(buried.i); }
+  }
+  // 阶段二:补随机暗牌(纯钩子模式时跳过)
+  if (totalCount != null) {
+    const candidates = tiles.map((_, i) => i).filter(i => !marked.has(i));
+    shuffle(candidates, rng);
+    for (const i of candidates) {
+      if (darkIdx.length >= totalCount) break;
+      darkIdx.push(i); marked.add(i);
+    }
   }
   return darkIdx;
 }
 
-// ============ 难度评估（含暗钩子权重） ============
-function evaluateDifficulty(level, darkIds = new Set()) {
+// ============ 难度评估（含暗钩子权重 + 钩子稀缺度） ============
+function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT) {
   const tiles = level.tiles;
   const total = tiles.length;
   const clickable = tiles.filter(t => isClickable(t, tiles)).length;
@@ -519,28 +533,62 @@ function evaluateDifficulty(level, darkIds = new Set()) {
   const maxLayer = Math.max(...tiles.map(t => t.layer));
   const byType = {};
   tiles.forEach(t => { (byType[t.typeId] ||= []).push(t); });
-  let hooks = 0, darkHooks = 0;
+
+  let hooks = 0, darkHooks = 0;           // 原始钩子数（显示/目标匹配用）
+  let effHooks = 0, effDarkHooks = 0;     // 稀缺度加权钩子数（计分用）
+
   for (const k in byType) {
     const arr = byType[k];
-    if (arr.length === 2 && Math.abs(arr[0].layer - arr[1].layer) >= 2) {
-      hooks++;
-      const buried = arr[0].layer >= arr[1].layer ? arr[0] : arr[1];
-      if (darkIds.has(buried.id)) darkHooks++;
+    const pairs = Math.floor(arr.length / 2);
+    if (pairs < 1) continue;
+    // 按层排序，找出被深埋的牌（层差 >= 2）
+    arr.sort((a, b) => a.layer - b.layer);
+    const topLayer = arr[0].layer;
+    let buried = 0, buriedDark = 0;
+    for (const t of arr) {
+      if (t.layer - topLayer >= 2) {
+        buried++;
+        if (darkIds.has(t.id)) buriedDark++;
+      }
     }
+    // 钩子实例数 = min(被埋牌, 对子数)，不能超过对子数
+    const hookInst = Math.min(buried, pairs);
+    const darkHookInst = Math.min(buriedDark, pairs);
+    hooks += hookInst;
+    darkHooks += darkHookInst;
+    // 稀缺度加权：每个钩子权重 = 1 / 该花色对子数
+    // 整副牌只有这一对 = 1.0（满难度），有 3 对 = 0.33
+    effHooks += hookInst / pairs;
+    effDarkHooks += darkHookInst / pairs;
   }
-  // 钩子/暗钩子按数量给梯度分：每 1 个钩子 +6 分（5 个拿满 30），每 1 个暗钩子 +4 分（5 个拿满 20）
-  // 实测 80~110 张的关卡钩子数 0~5 个（中位 2），5 个封顶正好覆盖观测范围
-  const darkHookTerm = Math.min(darkHooks / 5, 1) * DARK_WEIGHT;
+
+  const totalPairs = Math.floor(total / 2);
+  // 计分使用稀缺度加权后的有效钩子数
+  const darkHookTerm = Math.min(effDarkHooks / 5, 1) * darkWeight;
   const score = Math.round(
     (1 - clickRatio) * 40 + maxLayer * 8 +
-    Math.min(hooks / 5, 1) * 30 + darkHookTerm + 10
+    Math.min(effHooks / 5, 1) * 30 + darkHookTerm + 10
   );
-  return { score: Math.max(0, score), clickRatio: +clickRatio.toFixed(3), clickable, total, maxLayer, typeCount: Object.keys(byType).length, hooks, darkHooks };
+  return {
+    score: Math.max(0, score),
+    clickRatio: +clickRatio.toFixed(3),
+    clickable, total, maxLayer,
+    typeCount: Object.keys(byType).length,
+    hooks, darkHooks,
+    effHooks: +effHooks.toFixed(2),
+    effDarkHooks: +effDarkHooks.toFixed(2),
+    totalPairs,
+    hookDensity: totalPairs ? +(hooks / totalPairs).toFixed(3) : 0,
+    darkHookDensity: totalPairs ? +(darkHooks / totalPairs).toFixed(3) : 0,
+  };
 }
   // ========= 高层辅助 =========
   function fillEditorShape(editorTiles, editorSpecial, options) {
     options = options || {};
     const darkMode = options.darkMode !== false;
+    const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
+    const darkRatio = options.darkRatio;
+    const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
     const editorDarkIdx = [];
     const marked = new Set();
@@ -559,8 +607,9 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     let darkIdx = editorDarkIdx.slice();
     if (darkMode) {
       const darkRng = makeRng(99999);
-      const darkMax = Math.max(1, Math.round(tiles.length * (DARK_RATIO_MIN + darkRng() * (DARK_RATIO_MAX - DARK_RATIO_MIN))));
-      assignDarkTiles(tiles, darkRng, darkMax).forEach(function (i) {
+      const darkOpts = { coverageRate: darkCoverage };
+      if (darkRatio != null) darkOpts.totalCount = Math.max(1, Math.round(tiles.length * darkRatio));
+      assignDarkTiles(tiles, darkRng, darkOpts).forEach(function (i) {
         if (!marked.has(i)) { darkIdx.push(i); marked.add(i); }
       });
     }
@@ -575,13 +624,16 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     const specialTiles = finalTiles.filter(function (t) { return t.isDark; })
       .map(function (t) { return { id: t.id, type: 'dark', layer: t.layer, row: t.row, col: t.col }; });
     const darkIds = new Set(finalTiles.filter(function (t) { return t.isDark; }).map(function (t) { return t.id; }));
-    const diff = evaluateDifficulty({ tiles: finalTiles }, darkIds);
+    const diff = evaluateDifficulty({ tiles: finalTiles }, darkIds, darkWeight);
     return { levelId: 1, totalPairs: Math.floor(finalTiles.length / 2), tiles: finalTiles, specialTiles: specialTiles, _difficulty: diff };
   }
 
   function generateAndFill(options) {
     options = options || {};
     const darkMode = options.darkMode !== false;
+    const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
+    const darkRatio = options.darkRatio;
+    const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const layerMap = {};
     TEMPLATE_T2_GONG.tiles.forEach(function (t) {
       (layerMap[t.layer] = layerMap[t.layer] || []).push({ row: t.col, col: t.row });
@@ -605,8 +657,9 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     };
     if (darkMode) {
       const darkRng = makeRng(7777);
-      const darkMax = Math.max(1, Math.round(filled.tiles.length * (DARK_RATIO_MIN + darkRng() * (DARK_RATIO_MAX - DARK_RATIO_MIN))));
-      const darkIdx = assignDarkTiles(filled.tiles, darkRng, darkMax);
+      const darkOpts = { coverageRate: darkCoverage };
+      if (darkRatio != null) darkOpts.totalCount = Math.max(1, Math.round(filled.tiles.length * darkRatio));
+      const darkIdx = assignDarkTiles(filled.tiles, darkRng, darkOpts);
       const dSet = new Set(darkIdx);
       const special = [];
       darkIdx.forEach(function (j) {
@@ -619,7 +672,7 @@ function evaluateDifficulty(level, darkIds = new Set()) {
       filled.tiles = filled.tiles.map(function (t) { return Object.assign({}, t, { isDark: false }); });
     }
     const darkIds = new Set((filled.specialTiles || []).map(function (s) { return s.id; }));
-    const diff = evaluateDifficulty(filled, darkIds);
+    const diff = evaluateDifficulty(filled, darkIds, darkWeight);
     filled._difficulty = diff;
     return filled;
   }
@@ -637,6 +690,9 @@ function evaluateDifficulty(level, darkIds = new Set()) {
   function generateStackFromShape(editorTiles, options) {
     options = options || {};
     const darkMode = options.darkMode !== false;
+    const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
+    const darkRatio = options.darkRatio;
+    const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const layerCount = options.layerCount || 5;
     // 编辑器形状是 std（row=纵/col=横），生成器内部用 row=横/col=纵 → swap
     const layerMap = {};
@@ -695,8 +751,9 @@ function evaluateDifficulty(level, darkIds = new Set()) {
     // 暗牌
     if (darkMode) {
       const darkRng = makeRng(7777);
-      const darkMax = Math.max(1, Math.round(filled.tiles.length * (DARK_RATIO_MIN + darkRng() * (DARK_RATIO_MAX - DARK_RATIO_MIN))));
-      const darkIdx = assignDarkTiles(filled.tiles, darkRng, darkMax);
+      const darkOpts = { coverageRate: darkCoverage };
+      if (darkRatio != null) darkOpts.totalCount = Math.max(1, Math.round(filled.tiles.length * darkRatio));
+      const darkIdx = assignDarkTiles(filled.tiles, darkRng, darkOpts);
       const dSet = new Set(darkIdx);
       const special = [];
       darkIdx.forEach(function (j) {
@@ -709,7 +766,7 @@ function evaluateDifficulty(level, darkIds = new Set()) {
       filled.tiles = filled.tiles.map(function (t) { return Object.assign({}, t, { isDark: false }); });
     }
     const darkIds = new Set((filled.specialTiles || []).map(function (s) { return s.id; }));
-    const diff = evaluateDifficulty(filled, darkIds);
+    const diff = evaluateDifficulty(filled, darkIds, darkWeight);
     filled._difficulty = diff;
     return filled;
   }

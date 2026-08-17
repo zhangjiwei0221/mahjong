@@ -175,10 +175,12 @@
   }
   .field-row .sep { opacity: .5; }
 
-  .switch-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 5px 0; font-size: 12px;
-  }
+  .switch-row select { flex: 1; margin-left: 8px; max-width: 140px; }
+  .slider-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; }
+  .slider-row .slabel { width: 70px; flex-shrink: 0; color: var(--sub); }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-row .sval { width: 42px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; color: var(--accent2); }
+  .hint { font-size: 10px; color: var(--sub); margin: 2px 0 8px; line-height: 1.4; }
   .toggle {
     width: 34px; height: 19px; flex-shrink: 0;
     background: #e0d7c4; border-radius: 10px;
@@ -323,6 +325,7 @@
   }
   .preview-stats span { background: #fbf8f2; border: 1px solid var(--line-soft); padding: 3px 8px; border-radius: 5px; }
   .preview-stats span.good { color: var(--ok); font-weight: 700; }
+  .preview-stats span sub { font-size: 9px; opacity: .6; margin-left: 1px; }
   .play-history {
     padding: 8px 14px; border-bottom: 1px solid var(--line);
     background: #fbf8f2; font-size: 11px; color: var(--sub); flex-shrink: 0;
@@ -356,6 +359,7 @@
   .result-item .ri-idx { color: var(--sub); font-size: 10px; width: 24px; }
   .result-item .ri-score { font-weight: 700; color: var(--accent2); min-width: 46px; }
   .result-item .ri-meta { flex: 1; color: var(--sub); font-size: 10px; }
+  .result-item .ri-hooks { color: var(--sub); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .result-item .ri-actions { display: flex; gap: 4px; }
   .result-item .ri-actions button {
     padding: 3px 7px;
@@ -536,10 +540,29 @@
 
     <div class="card" id="cardGen">
       <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><span class="chev">▼</span></div>      <div class="card-body">
-        <div class="switch-row">
-          <span>含暗牌 (10–20%)</span>
-          <div class="toggle on" id="darkToggle" onclick="toggleDark()"></div>
+        <div class="card-sub">生成参数（单关重试命中 / 批量筛选）</div>
+        <div class="slider-row">
+          <span class="slabel">暗钩覆盖率</span>
+          <input type="range" id="darkCoverage" min="0" max="100" value="100" step="25" oninput="onGenParamChange()">
+          <span class="sval" id="darkCoverageVal">100%</span>
         </div>
+        <div class="slider-row">
+          <span class="slabel">暗牌总数</span>
+          <input type="range" id="darkRatio" min="0" max="50" value="10" step="5" oninput="onGenParamChange()">
+          <span class="sval" id="darkRatioVal">10%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slabel">钩子目标</span>
+          <input type="range" id="hooksTarget" min="0" max="100" value="30" step="5" oninput="onGenParamChange()">
+          <span class="sval" id="hooksTargetVal">30%</span>
+        </div>
+        <div class="slider-row">
+          <span class="slabel">暗钩目标</span>
+          <input type="range" id="darkHooksTarget" min="0" max="100" value="20" step="5" oninput="onGenParamChange()">
+          <span class="sval" id="darkHooksTargetVal">20%</span>
+        </div>
+        <div class="hint">单关:生成到接近目标为止(容差±10%);批量:过滤命中。钩子/暗钩百分比 = 钩子数/总对子数</div>
+
         <button class="sbtn primary block" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
 
         <div class="card-sub">底座堆塔</div>
@@ -547,9 +570,9 @@
           <span>堆层数</span>
           <input type="number" id="stackCount" value="5" min="2" max="7">
         </div>
-        <button class="sbtn block" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
+        <button class="sbtn primary block" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
 
-        <div class="card-sub">按分数批量</div>
+        <div class="card-sub">批量</div>
         <div class="field-row">
           <span>目标分数</span>
           <input type="number" id="scoreMin" value="0" min="0" max="999">
@@ -558,14 +581,14 @@
         </div>
         <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
         <div class="field-row">
-          <span>批量模式</span>
+          <span>模式</span>
           <select id="batchMode">
             <option value="stack">按底座堆塔</option>
             <option value="shape">按当前形状</option>
           </select>
         </div>
         <div class="field-row">
-          <span>生成数量</span>
+          <span>数量</span>
           <input type="number" id="batchCount" value="5" min="1" max="50">
         </div>
         <button class="sbtn block" onclick="batchGenerate()">⚡ 批量生成</button>
@@ -613,7 +636,7 @@
       </div>
     </div>
     <div class="preview-stats" id="previewStats">
-      <span>-- 张</span><span>-- 对</span><span>-- 分</span><span>暗牌 --</span><span>-- 层</span>
+      <span>-- 张</span><span>-- 对</span><span>-- 分</span><span>暗 --</span><span>可点 --</span><span>钩子 --</span><span>-- 层</span>
     </div>
     <div class="play-history" id="playHistoryBox" style="display:none;"></div>
     <div class="wb-savebox" id="wbSaveBox" style="display:none;">
@@ -1666,10 +1689,64 @@ function clearAll(btn) {
 }
 
 // ========== 生成关卡（依赖 generator.js 的 window.GEN） ==========
-let genDarkMode = true;
-function toggleDark() {
-  genDarkMode = !genDarkMode;
-  document.getElementById('darkToggle').classList.toggle('on', genDarkMode);
+let genDarkCoverage = 1;   // 暗钩子覆盖率 0~1
+let genDarkRatio = 0.1;    // 暗牌总数比例 (0=纯钩子模式, 0.05~0.5)
+function syncSliderVal(id, v, suffix) { document.getElementById(id).textContent = v + (suffix || ''); }
+function onGenParamChange() {
+  genDarkCoverage = parseInt(document.getElementById('darkCoverage').value) / 100;
+  genDarkRatio = parseInt(document.getElementById('darkRatio').value) / 100;
+  syncSliderVal('darkCoverageVal', Math.round(genDarkCoverage * 100), '%');
+  syncSliderVal('darkRatioVal', Math.round(genDarkRatio * 100), '%');
+  syncSliderVal('hooksTargetVal', document.getElementById('hooksTarget').value, '%');
+  syncSliderVal('darkHooksTargetVal', document.getElementById('darkHooksTarget').value, '%');
+}
+function genDarkOptions() {
+  return {
+    darkMode: true,
+    darkCoverage: genDarkCoverage,
+    darkRatio: genDarkRatio <= 0 ? undefined : genDarkRatio, // 0 = 纯钩子
+  };
+}
+
+// 结构目标：百分比（占对子数的比例）
+const TOL_HOOKS = 0.10;   // 钩子/暗钩容差 ±10%
+function getStructTarget() {
+  return {
+    hooks: parseInt(document.getElementById('hooksTarget').value) / 100,
+    darkHooks: parseInt(document.getElementById('darkHooksTarget').value) / 100,
+  };
+}
+// 计算关卡的钩子密度（钩子数/总对子数）
+function getHookDensity(d) {
+  if (!d.totalPairs) return 0;
+  return d.hooks / d.totalPairs;
+}
+function getDarkHookDensity(d) {
+  if (!d.totalPairs) return 0;
+  return d.darkHooks / d.totalPairs;
+}
+function matchStructTarget(d, t) {
+  if (Math.abs(getHookDensity(d) - t.hooks) > TOL_HOOKS) return false;
+  if (Math.abs(getDarkHookDensity(d) - t.darkHooks) > TOL_HOOKS) return false;
+  return true;
+}
+// 生成结果 vs 目标的对比文字
+function structCompareText(d, t) {
+  const hd = Math.round(getHookDensity(d) * 100);
+  const dhd = Math.round(getDarkHookDensity(d) * 100);
+  const parts = [];
+  const diff = (a, b) => a === b ? '' : (a > b ? '(+' + (a - b) + ')' : '(' + (a - b) + ')');
+  parts.push('钩' + hd + '%' + diff(hd, Math.round(t.hooks * 100)));
+  parts.push('暗' + dhd + '%' + diff(dhd, Math.round(t.darkHooks * 100)));
+  return parts.join(' ');
+}
+const STRUCT_MAX_RETRY = 30;
+const STRUCT_MAX_RETRY_STACK = 60; // 堆塔模式重试更多次
+
+// 计算关卡与目标的偏差分（越小越匹配）
+function structMismatch(d, t) {
+  const hd = getHookDensity(d), dhd = getDarkHookDensity(d);
+  return Math.abs(hd - t.hooks) + Math.abs(dhd - t.darkHooks);
 }
 
 function buildEditorShape() {
@@ -1839,14 +1916,24 @@ function generateCurrentShape() {
     const { tiles, specialTiles } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     if (tiles.length % 2 !== 0) { setGenStatus('<span class="bad">牌数必须为偶数（当前 ' + tiles.length + '）</span>'); return; }
+    const target = getStructTarget();
     setGenStatus('生成中…');
     enablePreviewActions(false);
-    setTimeout(() => {
+    let attempts = 0, best = null, bestMismatch = Infinity;
+    setTimeout(function tryGen() {
       try {
-        const level = GEN.fillEditorShape(tiles, specialTiles, { darkMode: genDarkMode });
-        const d = level._difficulty;
-        setGenStatus(`<span class="good">✓ ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length}</span>`);
-        addResult(level);
+        const level = GEN.fillEditorShape(tiles, specialTiles, genDarkOptions());
+        attempts++;
+        const mm = structMismatch(level._difficulty, target);
+        if (mm < bestMismatch) { bestMismatch = mm; best = level; }
+        if (matchStructTarget(level._difficulty, target) || attempts >= STRUCT_MAX_RETRY) {
+          const d = best._difficulty;
+          addResult(best);
+          const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
+          setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · ${structCompareText(d, target)}${retryTxt}</span>`);
+        } else {
+          setTimeout(tryGen, 0);
+        }
       } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
@@ -1857,14 +1944,23 @@ function generateStackFromCurrent() {
     const { tiles, specialTiles } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+    const target = getStructTarget();
     setGenStatus('堆层生成中…');
     enablePreviewActions(false);
-    setTimeout(() => {
+    let attempts = 0, best = null, bestMismatch = Infinity;
+    setTimeout(function tryGen() {
       try {
-        const level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
-        const d = level._difficulty;
-        setGenStatus(`<span class="good">✓ 堆塔 ${level.tiles.length}张 · ${d.score}分 · 暗${level.specialTiles.length} · ${d.maxLayer + 1}层</span>`);
-        addResult(level);
+        const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
+        attempts++;
+        const mm = structMismatch(level._difficulty, target);
+        if (mm < bestMismatch) { bestMismatch = mm; best = level; }
+        if (matchStructTarget(level._difficulty, target) || attempts >= STRUCT_MAX_RETRY_STACK) {
+          const d = best._difficulty;
+          addResult(best);
+          setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
+        } else {
+          setTimeout(tryGen, 0);
+        }
       } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
@@ -1929,11 +2025,14 @@ function updateStatsPending() {
 
 function setPreviewStats(level, darkCount) {
   const d = level._difficulty;
+  const pct = d.total ? Math.round(d.clickable / d.total * 100) : 0;
   document.getElementById('previewStats').innerHTML =
     `<span>${level.tiles.length} 张</span>` +
     `<span>${level.totalPairs} 对</span>` +
     `<span class="good">${d.score} 分</span>` +
-    `<span>暗牌 ${darkCount ?? level.specialTiles.length}</span>` +
+    `<span title="暗牌数 / 暗钩子数">暗${darkCount ?? level.specialTiles.length}<sub>${d.darkHooks}钩</sub></span>` +
+    `<span title="即时难度：可点牌占比（越低越卡）">可点${pct}%</span>` +
+    `<span title="深埋对子数（钩子）">钩子${d.hooks}</span>` +
     `<span>${d.maxLayer + 1} 层</span>`;
 }
 
@@ -2039,7 +2138,7 @@ function probeScoreRange() {
       return;
     }
     try {
-      const level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
+      const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
       scores.push(level._difficulty.score);
     } catch (_) { /* 跳过失败样本 */ }
     i++;
@@ -2060,6 +2159,7 @@ function batchGenerate() {
   const hi = parseInt(document.getElementById('scoreMax').value);
   const scoreMin = Number.isFinite(lo) ? lo : 0;
   const scoreMax = Number.isFinite(hi) ? hi : 999;
+  const target = getStructTarget();
   const count = Math.min(50, Math.max(1, parseInt(document.getElementById('batchCount').value) || 5));
   const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
   const mode = document.getElementById('batchMode').value;
@@ -2080,12 +2180,12 @@ function batchGenerate() {
     try {
       let level;
       if (mode === 'shape') {
-        level = GEN.fillEditorShape(tiles, specialTiles, { darkMode: genDarkMode });
+        level = GEN.fillEditorShape(tiles, specialTiles, genDarkOptions());
       } else {
-        level = GEN.generateStackFromShape(tiles, { darkMode: genDarkMode, layerCount });
+        level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
       }
       const s = level._difficulty.score;
-      if (s >= scoreMin && s <= scoreMax) {
+      if (s >= scoreMin && s <= scoreMax && matchStructTarget(level._difficulty, target)) {
         results.push(level);
         setGenStatus('批量生成中… ' + results.length + '/' + count);
       }
@@ -2129,7 +2229,8 @@ function renderResults() {
     return `<div class="result-item${active}" onclick="previewResult(${i})">
       <span class="ri-idx">#${i + 1}</span>
       <span class="ri-score">${d.score ?? '?'}分</span>
-      <span class="ri-meta">${lv.tiles.length}张/${lv.totalPairs}对 · ${(d.maxLayer ?? 0) + 1}层 · 暗${(lv.specialTiles || []).length}</span>
+      <span class="ri-meta">${lv.tiles.length}张/${lv.totalPairs}对 · ${(d.maxLayer ?? 0) + 1}层</span>
+      <span class="ri-hooks" title="钩子密度/暗钩密度/可点比">钩${d.totalPairs ? Math.round(d.hooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.darkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}%</span>
       <span class="ri-actions" onclick="event.stopPropagation()">
         <button class="primary" onclick="previewResult(${i})">预览</button>
         <button onclick="downloadResult(${i})">下载</button>
