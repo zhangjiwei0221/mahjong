@@ -116,7 +116,7 @@ body {
   75% { transform: translateX(4px); }
 }
 
-/* 底部卡槽 */
+/* 底部卡槽：尺寸与棋盘麻将一致(--slot-size 由 render 设置)，动画位移自然 */
 .slots-area {
   display: flex; justify-content: center; gap: 12px;
   padding: 14px 0 18px;
@@ -124,7 +124,7 @@ body {
   border-top: 1px solid #0f3460;
 }
 .slot {
-  width: 56px; height: 56px;
+  width: var(--slot-size, 56px); height: var(--slot-size, 56px);
   border-radius: 3px;
   border: 2px dashed #2a3a5a;
   background: #0a1628;
@@ -136,12 +136,13 @@ body {
   background: #0a1628;
 }
 .slot .slot-tile {
-  width: 50px; height: 50px;
+  width: 100%; height: 100%;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   position: relative;
-  animation: slideIn 0.2s ease;
   box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+  border-radius: 15%;
+  overflow: hidden;
 }
 .slot .slot-tile .tile-img {
   width: 100%; height: 100%;
@@ -152,21 +153,16 @@ body {
   user-select: none;
 }
 
-@keyframes slideIn {
-  from { transform: translateY(-20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-/* 飞入卡槽动画：从牌位置飞向卡槽 */
+/* 飞入卡槽动画：牌从棋盘原位平移到卡槽中心，落进去不消失 */
 @keyframes flyIn {
-  0% { transform: translate(0,0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--fly-dx), var(--fly-dy)) scale(0.4); opacity: 0; }
+  0% { transform: translate(0,0); }
+  100% { transform: translate(var(--fly-dx), var(--fly-dy)); }
 }
 .fly-in-clone {
-  position: absolute;
+  position: fixed;
   z-index: 99999;
   pointer-events: none;
-  animation: flyIn var(--fly-dur, 0.35s) cubic-bezier(0.4, 0, 0.6, 1) forwards;
+  animation: flyIn var(--fly-dur, 0.35s) cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   border-radius: 15%;
   overflow: hidden;
@@ -218,8 +214,7 @@ body {
 #file-input { display: none; }
 
 @media (max-width: 600px) {
-  .slot { width: 44px; height: 44px; }
-  .slot .slot-tile { width: 38px; height: 38px; font-size: 14px; }
+  .slots-area { --slot-size: 40px; }
 }
 </style>
 </head>
@@ -270,6 +265,7 @@ let levelData = null;
 let levelBestMs = null;       // 当前关卡的历史最佳耗时（毫秒），从 localStorage 读
 let selectedDarkId = null;   // 当前被选中的正面暗牌 id（点暗牌翻面并选中；点同花色一起消除；点异色暗牌转移选中）
 let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动画）
+let baseBounds = null;        // 初始布局边界（loadLevel 时固定，消除后棋盘不缩放）
 
 function getActiveTiles() {
   return tiles.filter(t => !matchedTileIds.has(t.id) && !slotTileIds.has(t.id));
@@ -397,6 +393,18 @@ function isClickable(tile, allTiles) {
   return true;
 }
 
+// 计算一组牌的布局边界（std 坐标：row=纵向/上下，col=横向/左右）
+function computeBounds(list) {
+  if (!list.length) return null;
+  return {
+    minCol: Math.min(...list.map(t => t.col)),
+    maxCol: Math.max(...list.map(t => t.col)),
+    minRow: Math.min(...list.map(t => t.row)),
+    maxRow: Math.max(...list.map(t => t.row)),
+    maxLayer: Math.max(...list.map(t => t.layer)),
+  };
+}
+
 // ========== 渲染（编辑器俯视风格） ==========
 function render() {
   const board = document.getElementById('board');
@@ -406,12 +414,11 @@ function render() {
 
   if (active.length === 0) { board.innerHTML = ''; renderSlots(); updateProgress(); return; }
 
-  // std 坐标：row = 纵向(上下)，col = 横向(左右)
-  const minCol = Math.min(...active.map(t => t.col));
-  const maxCol = Math.max(...active.map(t => t.col));
-  const minRow = Math.min(...active.map(t => t.row));
-  const maxRow = Math.max(...active.map(t => t.row));
-  const maxLayer = Math.max(...active.map(t => t.layer));
+  // 固定用初始边界计算缩放：消除后棋盘大小不随剩余牌数变动
+  const bounds = baseBounds || computeBounds(active);
+  const minCol = bounds.minCol, maxCol = bounds.maxCol;
+  const minRow = bounds.minRow, maxRow = bounds.maxRow;
+  const maxLayer = bounds.maxLayer;
 
   // 牌是正方形，2x2 格
   // 每层向上偏移 20% 格（编辑器风格）
@@ -443,6 +450,8 @@ function render() {
   const offsetX = (boardW - actualW) / 2;
 
   const tileSize = 2 * cell;
+  // 卡槽与麻将同尺寸：动画从棋盘飞到卡槽，位移自然
+  document.getElementById('slots').style.setProperty('--slot-size', tileSize + 'px');
 
   let html = '';
   // 从低层到高层画
@@ -548,25 +557,23 @@ function clickTile(id) {
   placeInSlot(tile, () => { render(); checkMatch(); });
 }
 
-// 飞入卡槽动画：克隆一张牌从棋盘飞向卡槽，动画结束后再正式入槽
-function flyInToSlot(tile, slotIdx, onDone) {
-  const board = document.querySelector('.board');
+// 进槽动画：牌从棋盘原位直接飞到卡槽中心并落进去（不再缩小消失 + 槽内弹出）
+// clone 挂到 body 用 fixed 定位（卡槽在 board 外面，挂 board 内会被 overflow 裁剪）
+function flyInToSlot(tile, slotIdx, fromRect, onDone) {
   const slotEl = document.getElementById(`slot-${slotIdx}`);
-  const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
-  const boardRect = board.getBoundingClientRect();
-  const slotRect = slotEl.getBoundingClientRect();
 
-  // 起始位置：取牌当前位置（若牌已消失则用棋盘中心）
-  let startX = boardRect.width / 2, startY = boardRect.height / 2, size = 40;
-  if (tileEl) {
-    const r = tileEl.getBoundingClientRect();
-    startX = r.left - boardRect.left;
-    startY = r.top - boardRect.top;
-    size = r.width;
+  // 起始位置：传进来的牌当前屏幕位置（若已消失则用卡槽中心兜底）
+  let startX, startY, size;
+  if (fromRect) {
+    startX = fromRect.left; startY = fromRect.top; size = fromRect.width;
+  } else {
+    const r = slotEl.getBoundingClientRect();
+    startX = r.left; startY = r.top; size = r.width;
   }
-  // 目标：卡槽中心
-  const endX = slotRect.left - boardRect.left + slotRect.width / 2 - size / 2;
-  const endY = slotRect.top - boardRect.top + slotRect.height / 2 - size / 2;
+  // 目标：卡槽中心（fixed 用视口坐标）
+  const slotRect = slotEl.getBoundingClientRect();
+  const endX = slotRect.left + slotRect.width / 2 - size / 2;
+  const endY = slotRect.top + slotRect.height / 2 - size / 2;
 
   const clone = document.createElement('div');
   clone.className = 'fly-in-clone';
@@ -577,10 +584,23 @@ function flyInToSlot(tile, slotIdx, onDone) {
   clone.style.setProperty('--fly-dx', (endX - startX) + 'px');
   clone.style.setProperty('--fly-dy', (endY - startY) + 'px');
   clone.innerHTML = `<img class="tile-img" src="${tileImgSrc(tile.typeId)}" alt="">`;
-  board.appendChild(clone);
+  document.body.appendChild(clone);
 
   clone.addEventListener('animationend', () => {
-    clone.remove();
+    // 动画结束：清掉 fixed/动画残留，作为卡槽内的牌停在原位（视觉连续）
+    clone.style.animation = 'none';
+    clone.style.transform = 'none';
+    clone.style.position = 'static';
+    clone.style.left = 'auto';
+    clone.style.top = 'auto';
+    clone.style.width = '100%';
+    clone.style.height = '100%';
+    clone.classList.remove('fly-in-clone');
+    clone.classList.add('slot-tile');
+    clone.dataset.type = String(tile.typeId);
+    slotEl.innerHTML = '';
+    slotEl.appendChild(clone);
+    slotEl.className = 'slot filled';
     if (onDone) onDone();
   });
 }
@@ -591,13 +611,16 @@ function placeInSlot(tile, onDone) {
     showMessage('💀 卡槽满了', '没有可匹配的牌，游戏结束', true);
     return;
   }
+  // 先取牌当前屏幕位置：render 会把牌从棋盘移除，动画要从这个位置起飞
+  const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
+  const fromRect = tileEl ? tileEl.getBoundingClientRect() : null;
   // 立即从棋盘移除(不再可点),飞入动画只是视觉反馈
   slotTileIds.add(tile.id);
   render();
   renderSlots();
   updateProgress();
   // 飞入动画 → 结束后正式入槽
-  flyInToSlot(tile, emptyIdx, () => {
+  flyInToSlot(tile, emptyIdx, fromRect, () => {
     slots[emptyIdx] = tile;
     renderSlots();
     updateProgress();
@@ -660,8 +683,14 @@ function renderSlots() {
   for (let i = 0; i < 4; i++) {
     const el = document.getElementById(`slot-${i}`);
     const tile = slots[i];
+    const existing = el.querySelector('.slot-tile');
     if (tile) {
-      el.innerHTML = `<div class="slot-tile" onclick="returnSlot(${i})">
+      if (existing && existing.dataset.type === String(tile.typeId)) {
+        // 已有同牌，不重建 DOM（避免每步都重触发进场动画、已有牌上下跳）
+        el.className = 'slot filled';
+        continue;
+      }
+      el.innerHTML = `<div class="slot-tile" data-type="${tile.typeId}" onclick="returnSlot(${i})">
         <img class="tile-img" src="${tileImgSrc(tile.typeId)}" alt="">
       </div>`;
       el.className = 'slot filled';
@@ -784,6 +813,8 @@ function loadLevel(json) {
   gameOver = false;
   gameStarted = false;
   levelStartTime = Date.now();  // 记录本轮开始时间（含重玩/导入，均重新计时）
+  // 固定初始布局边界：棋盘渲染尺寸不随消除变化
+  baseBounds = computeBounds(tiles);
   // 读取本关历史最佳成绩
   try { const v = localStorage.getItem('mahjong_best_' + levelKey()); levelBestMs = v ? parseInt(v, 10) : null; } catch (_) { levelBestMs = null; }
   hideMessage();

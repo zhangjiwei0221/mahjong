@@ -348,19 +348,27 @@
     display: flex; flex-direction: column; gap: 4px;
   }
   .result-item {
-    display: flex; align-items: center; gap: 8px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;
     background: #fbf8f2; border: 1px solid var(--line-soft);
     border-radius: 7px; padding: 5px 8px;
     font-size: 11px; cursor: pointer;
-    transition: all .12s; white-space: nowrap;
+    transition: all .12s;
   }
   .result-item:hover { border-color: var(--accent); }
   .result-item.active { border-color: var(--accent); background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }
   .result-item .ri-idx { color: var(--sub); font-size: 10px; width: 24px; }
   .result-item .ri-score { font-weight: 700; color: var(--accent2); min-width: 46px; }
-  .result-item .ri-meta { flex: 1; color: var(--sub); font-size: 10px; }
-  .result-item .ri-hooks { color: var(--sub); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .result-item .ri-actions { display: flex; gap: 4px; }
+  .result-item .ri-meta { flex: 0 0 auto; color: var(--sub); font-size: 10px; white-space: nowrap; }
+  .result-item .ri-params {
+    flex: 0 0 auto;
+    color: var(--accent2); font-size: 10px; font-weight: 600;
+    background: var(--accent-bg); border: 1px solid var(--accent);
+    border-radius: 4px; padding: 1px 6px;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .result-item .ri-params::before { content: '参数 '; color: var(--sub); font-weight: 400; }
+  .result-item .ri-hooks { flex: 1 1 auto; min-width: 0; text-align: right; color: var(--sub); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-item .ri-actions { display: flex; gap: 4px; margin-left: auto; }
   .result-item .ri-actions button {
     padding: 3px 7px;
     background: #fff; color: var(--ink);
@@ -1846,6 +1854,29 @@ function structMismatch(d, t) {
   return Math.abs(hd - t.hooks) + Math.abs(dhd - t.darkHooks);
 }
 
+// 把生成参数挂到 level 上,后续渲染结果列表用得到
+function attachGenParams(level, mode, layerCount) {
+  const hooks = parseInt(document.getElementById('hooksTarget').value) || 0;
+  const darkCov = Math.round(genDarkCoverage * 100);
+  const darkR = Math.round(genDarkRatio * 100);
+  level._genParams = {
+    hooksTarget: hooks,           // 钩子目标(%)
+    darkCoverage: darkCov,        // 暗钩比例(%)
+    darkHooks: Math.round(hooks * genDarkCoverage),  // 推导暗钩目标(%)
+    darkRatio: darkR,             // 暗牌总数比例(%)
+    mode: mode || 'shape',        // 形状/堆塔
+    layerCount: layerCount || 0,  // 堆层数(堆塔模式)
+  };
+  return level;
+}
+
+// 把 _genParams 渲染成短标签串(用于结果列表行内)
+// 前缀"参数"由 CSS ::before 加上,这里只输出值,更紧凑
+function genParamText(p) {
+  if (!p) return '';
+  return `钩${p.hooksTarget} 暗钩${p.darkHooks} 暗${p.darkRatio}` + (p.mode === 'stack' ? ` ${p.layerCount}L` : '');
+}
+
 function buildEditorShape() {
   const tiles = [];
   const specialTiles = [];
@@ -2023,7 +2054,7 @@ function generateCurrentShape() {
     let attempts = 0, best = null, bestMismatch = Infinity;
     setTimeout(function tryGen() {
       try {
-        const level = GEN.fillEditorShape(tiles, specialTiles, genDarkOptions());
+        const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
         attempts++;
         const mm = structMismatch(level._difficulty, target);
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
@@ -2054,7 +2085,10 @@ function generateStackFromCurrent() {
     let attempts = 0, best = null, bestMismatch = Infinity;
     setTimeout(function tryGen() {
       try {
-        const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
+        const level = attachGenParams(
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions())),
+          'stack', layerCount
+        );
         attempts++;
         const mm = structMismatch(level._difficulty, target);
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
@@ -2276,7 +2310,7 @@ function batchGenerate() {
   let attempts = 0;
   const maxAttempts = count * 80 + 400;
 
-  setGenStatus('批量生成中… 0/' + count);
+  setGenStatus('批量生成中… 已就绪 0 / ' + count);
   function step() {
     attempts++;
     if (results.length >= count) { finish(); return; }
@@ -2285,7 +2319,7 @@ function batchGenerate() {
         // 没严格命中,但从候选池取最接近的
         candidates.sort((a, b) => a._mm - b._mm);
         results.push(...candidates.slice(0, count));
-        setGenStatus('批量生成中… ' + results.length + '/' + count + '（取最接近目标的）');
+        setGenStatus('批量生成中… 已就绪 ' + results.length + ' / ' + count + '（取最接近目标的）');
       }
       finish();
       return;
@@ -2293,16 +2327,20 @@ function batchGenerate() {
     try {
       let level;
       if (mode === 'shape') {
-        level = GEN.fillEditorShape(tiles, specialTiles, genDarkOptions());
+        level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
       } else {
-        level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
+        level = attachGenParams(
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions())),
+          'stack', layerCount
+        );
       }
       const s = level._difficulty.score;
       if (s >= scoreMin && s <= scoreMax) {
         const mm = structMismatch(level._difficulty, target);
         if (matchStructTarget(level._difficulty, target)) {
           results.push(level);
-          setGenStatus('批量生成中… ' + results.length + '/' + count);
+          // 每凑到一个就推一次状态(序列号清晰可见)
+          setGenStatus('批量生成中… 已就绪 <b>' + results.length + '</b> / ' + count + '（尝试 ' + attempts + ' 次）');
         } else if (candidates.length < count * 3) {
           // 保留候选(限制池大小避免内存膨胀)
           level._mm = mm;
@@ -2347,15 +2385,21 @@ function renderResults() {
   el.innerHTML = resultsList.map((lv, i) => {
     const d = lv._difficulty || {};
     const active = i === activeResultIdx ? ' active' : '';
+    const paramChip = lv._genParams
+      ? `<span class="ri-params" title="生成时所用的参数(预期值)">${genParamText(lv._genParams)}</span>`
+      : '';
+    // 行 1: #idx / 分数 / 元信息 / actions
+    // 行 2: 参数 chip(预期) / 钩子密度(实际,右对齐)
     return `<div class="result-item${active}" onclick="previewResult(${i})">
       <span class="ri-idx">#${i + 1}</span>
       <span class="ri-score">${d.score ?? '?'}分</span>
       <span class="ri-meta">${lv.tiles.length}张/${lv.totalPairs}对 · ${(d.maxLayer ?? 0) + 1}层</span>
-      <span class="ri-hooks" title="钩子密度/暗钩密度/可点比">钩${d.totalPairs ? Math.round(d.hooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.darkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}%</span>
       <span class="ri-actions" onclick="event.stopPropagation()">
         <button class="primary" onclick="previewResult(${i})">预览</button>
         <button onclick="downloadResult(${i})">下载</button>
       </span>
+      ${paramChip}
+      <span class="ri-hooks" title="钩子密度/暗钩密度/可点比(实际)">钩${d.totalPairs ? Math.round(d.hooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.darkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}%</span>
     </div>`;
   }).join('');
 }
