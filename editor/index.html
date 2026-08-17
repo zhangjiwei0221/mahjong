@@ -735,7 +735,7 @@
           <div class="placeholder-sub" id="placeholderSub">在左侧画形状 → 点「按当前形状生成」或「按当前底座搭建后生成」<br>批量生成的结果会列在上方「生成结果」里，点任意一行预览</div>
         </div>
       </div>
-      <div class="game-start-overlay" id="gameStartOverlay">
+      <div class="game-start-overlay hidden" id="gameStartOverlay">
         <button class="game-start-btn" id="gameStartBtn" onclick="startGame()">⏱ 计时并开始游戏</button>
       </div>
       <iframe id="previewFrame" src="about:blank" frameborder="0"></iframe>
@@ -1928,6 +1928,7 @@ function fmtTime(ms) {
   return Math.floor(s / 60).toString().padStart(2, '0') + ':' + (s % 60).toString().padStart(2, '0');
 }
 function startGame() {
+  if (!currentLevel) return; // 没有关卡时不启动计时
   const overlay = document.getElementById('gameStartOverlay');
   overlay.classList.add('hidden');
   startPreviewTimer(); // 点击"计时并开始游戏"，启动计时
