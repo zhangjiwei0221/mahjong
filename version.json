@@ -1,12 +1,12 @@
 {
-  "version": "1b2c90a",
+  "version": "9cf569b",
   "updated": "2026-08-18",
-  "notes": "目标分数范围挪到顶部，单关生成也匹配分数",
+  "notes": "修复单关生成空指针bug（best 为 null 时不再崩溃）",
   "changelog": [
     {
-      "version": "1b2c90a",
+      "version": "9cf569b",
       "date": "2026-08-18",
-      "notes": "目标分数范围挪到顶部（结构参数上方）；单关（按形状/按底座）重试逻辑加入分数匹配；三按钮行为统一"
+      "notes": "修复单关生成空指针bug：best 为 null（重试全部失败）时不再访问 best._difficulty，明确报错"
     },
     {
       "version": "f602f75",
