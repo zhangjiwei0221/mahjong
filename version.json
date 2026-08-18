@@ -1,8 +1,13 @@
 {
-  "version": "7ba9c33",
+  "version": "2fe497b",
   "updated": "2026-08-18",
-  "notes": "① 生成结果行新增参数chip(钩/暗钩/暗牌目标值)，一眼对比预期vs实际；② 批量生成左下角序列号逐条推进；③ Demo动画优化：棋盘不再随消除缩放、卡槽与麻将同尺寸、牌直接飞到卡槽落进去、去掉槽内已有牌跳动",
+  "notes": "加槽位压力维度 minSlots：computeMinSlots 贪心模拟；evaluateDifficulty 加槽位压力项(30分)；backwardFill 加 slotPressure 叠层配对策略；结果行/预览条/问号弹层加槽位显示和说明",
   "changelog": [
+    {
+      "version": "2fe497b",
+      "date": "2026-08-18",
+      "notes": "加槽位压力维度 minSlots：computeMinSlots 贪心模拟最优打法下卡槽最大占用；evaluateDifficulty 加槽位压力项(30分，6槽拿满)；backwardFill 加 slotPressure 叠层配对策略(0~1)；结果行显示 槽X/7（≥5 加 🔥）；预览统计条加 槽X/7；目标分数问号弹层更新公式和说明"
+    },
     {
       "version": "7ba9c33",
       "date": "2026-08-18",
