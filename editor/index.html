@@ -2222,7 +2222,7 @@ function generateCurrentShape() {
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
           if (!best) {
-            setGenStatus('<span class="bad">生成失败：重试 ' + attempts + ' 次都未命中</span>');
+            setGenStatus(`<span class="bad">生成失败：重试 ${attempts} 次都未生成有效关卡（当前形状 ${tiles.length} 张太简单？试试加张或调宽分数范围）</span>`);
             return;
           }
           // 即使命中也返回 best;未命中时显示诊断
@@ -2281,7 +2281,7 @@ function generateStackFromCurrent() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          if (!best) { setGenStatus('<span class="bad">堆塔失败：重试 ' + attempts + ' 次都未命中</span>'); return; }
+          if (!best) { setGenStatus(`<span class="bad">堆塔失败：重试 ${attempts} 次都未生成有效关卡（底座形状太简单？堆层数 ${layerCount} 太多？试试加底座或减堆层）</span>`); return; }
           if (structHit && scoreHit) {
             const d = best._difficulty;
             addResult(best);
