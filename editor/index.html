@@ -2258,10 +2258,9 @@ function generateCurrentShape() {
           } else {
             // 没命中:展示实际最佳值,客观说明与目标的差距
             const parts = [];
-            if (!scoreHit) {
-              if (score > scoreHi) parts.push(`分数 ${score} 高于上限 ${scoreHi}`);
-              else if (score < scoreLo) parts.push(`分数 ${score} 低于下限 ${scoreLo}`);
-            }
+            const actualScore = d.score;
+            if (actualScore > scoreHi) parts.push(`分数 ${actualScore} 高于上限 ${scoreHi}`);
+            else if (actualScore < scoreLo) parts.push(`分数 ${actualScore} 低于下限 ${scoreLo}`);
             const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
             const targetHooks = Math.round(target.hooks * 100);
             if (actualHooks < targetHooks - 10) parts.push(`钩子 ${actualHooks}% 低于目标 ${targetHooks}%`);
@@ -2317,10 +2316,9 @@ function generateStackFromCurrent() {
           } else {
             // 没命中:展示实际最佳值,客观说明与目标的差距
             const parts = [];
-            if (!scoreHit) {
-              if (score > scoreHi) parts.push(`分数 ${score} 高于上限 ${scoreHi}`);
-              else if (score < scoreLo) parts.push(`分数 ${score} 低于下限 ${scoreLo}`);
-            }
+            const actualScore = d.score; // 用 best 的分数(最接近的)
+            if (actualScore > scoreHi) parts.push(`分数 ${actualScore} 高于上限 ${scoreHi}`);
+            else if (actualScore < scoreLo) parts.push(`分数 ${actualScore} 低于下限 ${scoreLo}`);
             const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
             const targetHooks = Math.round(target.hooks * 100);
             if (actualHooks < targetHooks - 10) parts.push(`钩子 ${actualHooks}% 低于目标 ${targetHooks}%`);
