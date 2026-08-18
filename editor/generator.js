@@ -524,6 +524,23 @@ function assignDarkTiles(tiles, rng, options) {
 }
 
 // ============ 难度评估（含暗钩子权重 + 钩子稀缺度） ============
+// 判断单张牌是否被埋:任意埋法(上压 / 左右夹)都算
+function isTileBuried(tile, allTiles) {
+  // 1. 同层被压:有上层牌覆盖
+  const hasUpper = allTiles.some(other =>
+    other.id !== tile.id &&
+    other.layer > tile.layer &&
+    Math.abs(other.row - tile.row) < 2 &&
+    Math.abs(other.col - tile.col) < 2
+  );
+  if (hasUpper) return true;
+  // 2. 左右夹:同层左右都被夹住
+  const sameLayer = allTiles.filter(t => t.layer === tile.layer && t.id !== tile.id);
+  const hasLeft = sameLayer.some(t => t.col === tile.col - 2 && t.row === tile.row);
+  const hasRight = sameLayer.some(t => t.col === tile.col + 2 && t.row === tile.row);
+  return hasLeft && hasRight;
+}
+
 function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT) {
   const tiles = level.tiles;
   const total = tiles.length;
@@ -540,33 +557,31 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const arr = byType[k];
     const pairs = Math.floor(arr.length / 2);
     if (pairs < 1) continue;
-    // 按层排序，找出被深埋的牌（层差 >= 2）
-    arr.sort((a, b) => a.layer - b.layer);
-    const topLayer = arr[0].layer;
+    // 新定义:任意埋牌(上压/左右夹)都算钩子,不只看层差 ≥ 2
     let buried = 0, buriedDark = 0;
     for (const t of arr) {
-      if (t.layer - topLayer >= 2) {
+      if (isTileBuried(t, tiles)) {
         buried++;
         if (darkIds.has(t.id)) buriedDark++;
       }
     }
-    // 钩子实例数 = min(被埋牌, 对子数)，不能超过对子数
+    // 钩子实例数 = min(被埋牌, 对子数),不能超过对子数
     const hookInst = Math.min(buried, pairs);
     const darkHookInst = Math.min(buriedDark, pairs);
     hooks += hookInst;
     darkHooks += darkHookInst;
-    // 稀缺度加权：每个钩子权重 = 1 / 该花色对子数
-    // 整副牌只有这一对 = 1.0（满难度），有 3 对 = 0.33
+    // 稀缺度加权:每个钩子权重 = 1 / 该花色对子数
+    // 整副牌只有这一对 = 1.0(满难度),有 3 对 = 0.33
     effHooks += hookInst / pairs;
     effDarkHooks += darkHookInst / pairs;
   }
 
   const totalPairs = Math.floor(total / 2);
-  // 计分使用稀缺度加权后的有效钩子数
-  const darkHookTerm = Math.min(effDarkHooks / 5, 1) * darkWeight;
+  // 封顶调整:5 → 8,让钩子数拉开分数差距
+  const darkHookTerm = Math.min(effDarkHooks / 8, 1) * darkWeight;
   const score = Math.round(
     (1 - clickRatio) * 40 + maxLayer * 8 +
-    Math.min(effHooks / 5, 1) * 30 + darkHookTerm + 10
+    Math.min(effHooks / 8, 1) * 30 + darkHookTerm + 10
   );
   return {
     score: Math.max(0, score),
