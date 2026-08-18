@@ -2221,11 +2221,30 @@ function generateCurrentShape() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
-          if (!best) { setGenStatus('<span class="bad">生成失败：重试 ' + attempts + ' 次都未命中目标分数+参数（试试调宽分数范围或降低钩子/暗牌目标）</span>'); return; }
-          const d = best._difficulty;
-          addResult(best);
-          const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
-          setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · ${structCompareText(d, target)}${retryTxt}</span>`);
+          if (!best) {
+            setGenStatus('<span class="bad">生成失败：重试 ' + attempts + ' 次都未命中</span>');
+            return;
+          }
+          // 即使命中也返回 best;未命中时显示诊断
+          if (structHit && scoreHit) {
+            const d = best._difficulty;
+            addResult(best);
+            const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
+            setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · ${structCompareText(d, target)}${retryTxt}</span>`);
+          } else {
+            // 未命中:展示实际最佳值的诊断,告诉用户该往哪调
+            const d = best._difficulty;
+            addResult(best); // 还是展示给用户看
+            const diag = [];
+            if (!scoreHit) {
+              if (score > scoreHi) diag.push(`分数 ${score} > 上限 ${scoreHi} → 把上限改到 ≥${score}`);
+              else if (score < scoreLo) diag.push(`分数 ${score} < 下限 ${scoreLo} → 把下限改到 ≤${score}`);
+            }
+            const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
+            const targetHooks = Math.round(target.hooks * 100);
+            if (actualHooks < targetHooks - 10) diag.push(`钩子 ${actualHooks}% < 目标 ${targetHooks}% → 目标降到 ≤${actualHooks}%`);
+            setGenStatus(`<span class="bad">重试 ${attempts} 次未命中，已展示最接近的关卡（${d.score}分）。调参建议：${diag.join('；') || '试试调宽分数范围'}</span>`);
+          }
         } else {
           if (attempts % 10 === 0) setGenStatus(`生成中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY}`);
           setTimeout(tryGen, 0);
@@ -2262,10 +2281,24 @@ function generateStackFromCurrent() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          if (!best) { setGenStatus('<span class="bad">堆塔失败：重试 ' + attempts + ' 次都未命中目标分数+参数（试试调宽分数范围或降低堆层数）</span>'); return; }
-          const d = best._difficulty;
-          addResult(best);
-          setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
+          if (!best) { setGenStatus('<span class="bad">堆塔失败：重试 ' + attempts + ' 次都未命中</span>'); return; }
+          if (structHit && scoreHit) {
+            const d = best._difficulty;
+            addResult(best);
+            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
+          } else {
+            const d = best._difficulty;
+            addResult(best);
+            const diag = [];
+            if (!scoreHit) {
+              if (score > scoreHi) diag.push(`分数 ${score} > 上限 ${scoreHi} → 把上限改到 ≥${score}`);
+              else if (score < scoreLo) diag.push(`分数 ${score} < 下限 ${scoreLo} → 把下限改到 ≤${score}`);
+            }
+            const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
+            const targetHooks = Math.round(target.hooks * 100);
+            if (actualHooks < targetHooks - 10) diag.push(`钩子 ${actualHooks}% < 目标 ${targetHooks}% → 目标降到 ≤${actualHooks}%`);
+            setGenStatus(`<span class="bad">堆塔重试 ${attempts} 次未命中，已展示最接近的关卡（${d.score}分）。调参建议：${diag.join('；') || '试试调宽分数范围'}</span>`);
+          }
         } else {
           if (attempts % 15 === 0) setGenStatus(`堆塔中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY_STACK}`);
           setTimeout(tryGen, 0);
