@@ -593,17 +593,19 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const arr = byType[k];
     const pairs = Math.floor(arr.length / 2);
     if (pairs < 1) continue;
-    // 收集埋牌 + 各自的可见伴侣权重
-    // 权重 = 1 / (同花色可见张数 + 1)
-    // 同色 0 张可见 -> 1.0（独占型，最难记）
-    // 同色 1 张可见 -> 0.5
-    // 同色 2+ 张可见 -> ≤ 0.33（容易找到伴侣）
+    // 新定义:一对里**两张都埋**才算钩子。一张见一张埋的不算(玩家看到那张就能联想到同色另一张)
     const buriedList = arr.filter(t => isTileBuried(t, tiles));
-    const hookInst = Math.min(buriedList.length, pairs);
+    const visibleCount = arr.length - buriedList.length;
+    // 双埋对子数 = floor(埋的张数 / 2),上限不超过 pairs
+    const doubleBuriedPairs = Math.floor(buriedList.length / 2);
+    const hookInst = Math.min(doubleBuriedPairs, pairs);
+    const buriedDarkList = buriedList.filter(t => darkIds.has(t.id));
+    const doubleBuriedDarkPairs = Math.floor(buriedDarkList.length / 2);
+    const darkHookInst = Math.min(doubleBuriedDarkPairs, pairs);
     hooks += hookInst;
-    darkHooks += Math.min(buriedList.filter(t => darkIds.has(t.id)).length, pairs);
-    for (let i = 0; i < hookInst; i++) {
-      const t = buriedList[i];
+    darkHooks += darkHookInst;
+    // 加权:埋的那张同色越容易看到越不重要,weight = 1 / (同色可见 + 1)
+    for (const t of buriedList) {
       const sameVisible = arr.filter(o => o.id !== t.id && clickableSet.has(o.id)).length;
       const w = 1 / (sameVisible + 1);
       effHooks += w;
