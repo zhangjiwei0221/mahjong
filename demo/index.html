@@ -389,8 +389,9 @@ function isClickable(tile, allTiles) {
     if (other.id !== tile.id && other.layer > tile.layer && overlaps(other, tile)) return false;
   }
   const sameLayer = allTiles.filter(t => t.layer === tile.layer && t.id !== tile.id);
-  const hasLeft = sameLayer.some(t => t.col === tile.col - 2 && t.row === tile.row);
-  const hasRight = sameLayer.some(t => t.col === tile.col + 2 && t.row === tile.row);
+  // 麻将占 2 格高,左/右邻居可能错一行,用范围匹配覆盖行重叠的情况
+  const hasLeft = sameLayer.some(t => t.col === tile.col - 2 && Math.abs(t.row - tile.row) < 2);
+  const hasRight = sameLayer.some(t => t.col === tile.col + 2 && Math.abs(t.row - tile.row) < 2);
   if (hasLeft && hasRight) return false;
   return true;
 }
