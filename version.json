@@ -1,12 +1,17 @@
 {
-  "version": "2fe497b",
+  "version": "2addbcb",
   "updated": "2026-08-18",
-  "notes": "加槽位压力维度 minSlots：computeMinSlots 贪心模拟；evaluateDifficulty 加槽位压力项(30分)；backwardFill 加 slotPressure 叠层配对策略；结果行/预览条/问号弹层加槽位显示和说明",
+  "notes": "钩子加权改为"可见伴侣加权"：1/(同花色可见张数+1)，更符合玩家直觉",
   "changelog": [
+    {
+      "version": "2addbcb",
+      "date": "2026-08-18",
+      "notes": "钩子加权改为"可见伴侣加权"：原稀缺度(1/对子数)改为 1/(同花色可见张数+1)。同色露在外面的越多，埋的那张越不容易忘，权重越低。实测 raw 钩 95%→加权钩 60%，分数更符合直觉"
+    },
     {
       "version": "2fe497b",
       "date": "2026-08-18",
-      "notes": "加槽位压力维度 minSlots：computeMinSlots 贪心模拟最优打法下卡槽最大占用；evaluateDifficulty 加槽位压力项(30分，6槽拿满)；backwardFill 加 slotPressure 叠层配对策略(0~1)；结果行显示 槽X/7（≥5 加 🔥）；预览统计条加 槽X/7；目标分数问号弹层更新公式和说明"
+      "notes": "加槽位压力维度 minSlots：computeMinSlots 贪心模拟；evaluateDifficulty 加槽位压力项(30分)；backwardFill 加 slotPressure 叠层配对策略；结果行/预览条/问号弹层加槽位显示和说明"
     },
     {
       "version": "7ba9c33",
