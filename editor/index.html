@@ -575,7 +575,16 @@
 
     <div class="card" id="cardGen">
       <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><button class="gen-help-btn" onclick="toggleGenHelp(event)" title="查看参数说明">?</button><span class="chev">▼</span></div>      <div class="card-body">
-        <div class="card-sub">生成参数（单关重试命中 / 批量筛选）</div>
+        <div class="card-sub">目标分数（单关和批量都匹配这个范围）</div>
+        <div class="field-row">
+          <span>目标分数</span>
+          <button class="gen-help-btn" onclick="toggleScoreHelp(event)" title="分数计算公式">?</button>
+          <input type="number" id="scoreMin" value="0" min="0" max="999">
+          <span class="sep">~</span>
+          <input type="number" id="scoreMax" value="999" min="0" max="999">
+        </div>
+        <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
+        <div class="card-sub">结构参数（单关重试命中，批量过滤命中）</div>
         <div class="slider-row">
           <span class="slabel">钩子目标</span>
           <input type="range" id="hooksTarget" min="0" max="100" value="30" step="5" oninput="onGenParamChange()">
@@ -595,7 +604,7 @@
           <span class="slabel">≈ 暗钩目标</span>
           <span class="sval" id="derivedDarkHooksVal" style="color:var(--sub)">30%</span>
         </div>
-        <div class="hint">单关:生成到接近目标为止(容差±10%);批量:过滤命中。钩子/暗钩百分比 = 钩子数/总对子数。暗牌总数=整副牌里暗牌占比;暗钩比例=这些暗牌里有多少被标成暗钩</div>
+        <div class="hint">单关和批量都匹配目标分数范围 + 钩子/暗牌参数。</div>
 
         <button class="sbtn primary block" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
 
@@ -607,14 +616,6 @@
         <button class="sbtn primary block" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
 
         <div class="card-sub">批量</div>
-        <div class="field-row">
-          <span>目标分数</span>
-          <button class="gen-help-btn" onclick="toggleScoreHelp(event)" title="分数计算公式">?</button>
-          <input type="number" id="scoreMin" value="0" min="0" max="999">
-          <span class="sep">~</span>
-          <input type="number" id="scoreMax" value="999" min="0" max="999">
-        </div>
-        <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
         <div class="field-row">
           <span>模式</span>
           <select id="batchMode">
@@ -2205,6 +2206,8 @@ function generateCurrentShape() {
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     if (tiles.length % 2 !== 0) { setGenStatus('<span class="bad">牌数必须为偶数（当前 ' + tiles.length + '）</span>'); return; }
     const target = getStructTarget();
+    const scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
+    const scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
     setGenStatus('生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity;
@@ -2212,9 +2215,12 @@ function generateCurrentShape() {
       try {
         const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
         attempts++;
-        const mm = structMismatch(level._difficulty, target);
+        const score = level._difficulty.score;
+        const structHit = matchStructTarget(level._difficulty, target);
+        const scoreHit = score >= scoreLo && score <= scoreHi;
+        const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
-        if (matchStructTarget(level._difficulty, target) || attempts >= STRUCT_MAX_RETRY) {
+        if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
           const d = best._difficulty;
           addResult(best);
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
@@ -2236,6 +2242,8 @@ function generateStackFromCurrent() {
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
     const target = getStructTarget();
+    const scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
+    const scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
     setGenStatus('堆层生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity;
@@ -2246,9 +2254,12 @@ function generateStackFromCurrent() {
           'stack', layerCount
         );
         attempts++;
-        const mm = structMismatch(level._difficulty, target);
+        const score = level._difficulty.score;
+        const structHit = matchStructTarget(level._difficulty, target);
+        const scoreHit = score >= scoreLo && score <= scoreHi;
+        const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
-        if (matchStructTarget(level._difficulty, target) || attempts >= STRUCT_MAX_RETRY_STACK) {
+        if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
           const d = best._difficulty;
           addResult(best);
           setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
