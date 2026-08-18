@@ -2002,8 +2002,8 @@ function structCompareText(d, t) {
   parts.push('暗' + dhd + '%' + diff(dhd, Math.round(t.darkHooks * 100)));
   return parts.join(' ');
 }
-const STRUCT_MAX_RETRY = 30;
-const STRUCT_MAX_RETRY_STACK = 60; // 堆塔模式重试更多次
+const STRUCT_MAX_RETRY = 60;
+const STRUCT_MAX_RETRY_STACK = 100; // 堆塔模式重试更多次
 
 // 计算关卡与目标的偏差分（越小越匹配）
 function structMismatch(d, t) {
@@ -2221,12 +2221,13 @@ function generateCurrentShape() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
-          if (!best) { setGenStatus('<span class="bad">生成失败：重试 ' + attempts + ' 次都未成功（试试调整参数或形状）</span>'); return; }
+          if (!best) { setGenStatus('<span class="bad">生成失败：重试 ' + attempts + ' 次都未命中目标分数+参数（试试调宽分数范围或降低钩子/暗牌目标）</span>'); return; }
           const d = best._difficulty;
           addResult(best);
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · ${structCompareText(d, target)}${retryTxt}</span>`);
         } else {
+          if (attempts % 10 === 0) setGenStatus(`生成中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY}`);
           setTimeout(tryGen, 0);
         }
       } catch (e) {
@@ -2261,11 +2262,12 @@ function generateStackFromCurrent() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          if (!best) { setGenStatus('<span class="bad">堆塔失败：重试 ' + attempts + ' 次都未成功（试试调整底座或堆层数）</span>'); return; }
+          if (!best) { setGenStatus('<span class="bad">堆塔失败：重试 ' + attempts + ' 次都未命中目标分数+参数（试试调宽分数范围或降低堆层数）</span>'); return; }
           const d = best._difficulty;
           addResult(best);
           setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
         } else {
+          if (attempts % 15 === 0) setGenStatus(`堆塔中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY_STACK}`);
           setTimeout(tryGen, 0);
         }
       } catch (e) {
