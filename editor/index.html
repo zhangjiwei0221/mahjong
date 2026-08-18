@@ -2574,7 +2574,7 @@ function renderResults() {
         <button onclick="downloadResult(${i})">下载</button>
       </span>
       ${paramChip}
-      <span class="ri-hooks" title="钩子密度/暗钩密度/可点比/槽位压力(实际)">钩${d.totalPairs ? Math.round(d.hooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.darkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}% · 槽${d.minSlots ?? '?'}/7${d.minSlots >= 5 ? ' 🔥' : ''}</span>
+      <span class="ri-hooks" title="钩子加权密度(可见伴侣加权)/暗钩加权密度/可点比/槽位压力(实际)">钩${d.totalPairs ? Math.round(d.effHooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.effDarkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}% · 槽${d.minSlots ?? '?'}/7${d.minSlots >= 5 ? ' 🔥' : ''}</span>
     </div>`;
   }).join('');
 }
