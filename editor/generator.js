@@ -604,13 +604,11 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const darkHookInst = Math.min(doubleBuriedDarkPairs, pairs);
     hooks += hookInst;
     darkHooks += darkHookInst;
-    // 加权:埋的那张同色越容易看到越不重要,weight = 1 / (同色可见 + 1)
-    for (const t of buriedList) {
-      const sameVisible = arr.filter(o => o.id !== t.id && clickableSet.has(o.id)).length;
-      const w = 1 / (sameVisible + 1);
-      effHooks += w;
-      if (darkIds.has(t.id)) effDarkHooks += w;
-    }
+    // 加权:每个钩子对子的权重 = 1 / (同花色可见张数 + 1)
+    // 同色可见越多 → 越容易找到伴侣 → 权重越低
+    const w = 1 / (visibleCount + 1);
+    effHooks += hookInst * w;
+    effDarkHooks += darkHookInst * w;
   }
 
   const totalPairs = Math.floor(total / 2);
