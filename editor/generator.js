@@ -496,11 +496,17 @@ function assignDarkTiles(tiles, rng, options) {
   tiles.forEach((t, i) => { (byType[t.typeId] ||= []).push({ t, i }); });
   const darkIdx = [];
   const marked = new Set();
-  // 阶段一:收集所有深埋对子,按覆盖率挑(随机)
+  // 阶段一:用新钩子定义收集所有"对中有一张被埋"的对子
   const buriedPairs = [];
   for (const k in byType) {
     const arr = byType[k];
-    if (arr.length === 2 && Math.abs(arr[0].t.layer - arr[1].t.layer) >= 2) {
+    if (arr.length < 2) continue;
+    const pairs = Math.floor(arr.length / 2);
+    // 找出该花色中被埋的牌(用新定义 isTileBuried)
+    const buriedInType = arr.filter(x => isTileBuried(x.t, tiles));
+    // 每对中有一张被埋就算埋对,埋对最多 pairs 个
+    const pairCount = Math.min(buriedInType.length, pairs);
+    for (let p = 0; p < pairCount; p++) {
       buriedPairs.push(arr);
     }
   }
@@ -508,8 +514,9 @@ function assignDarkTiles(tiles, rng, options) {
   const hookTarget = Math.round(buriedPairs.length * coverageRate);
   for (let p = 0; p < hookTarget && p < buriedPairs.length; p++) {
     const arr = buriedPairs[p];
-    const buried = arr[0].t.layer >= arr[1].t.layer ? arr[0] : arr[1];
-    if (!marked.has(buried.i)) { darkIdx.push(buried.i); marked.add(buried.i); }
+    // 找该花色中第一个被埋的牌作为暗牌
+    const buried = arr.find(x => isTileBuried(x.t, tiles));
+    if (buried && !marked.has(buried.i)) { darkIdx.push(buried.i); marked.add(buried.i); }
   }
   // 阶段二:补随机暗牌(纯钩子模式时跳过)
   if (totalCount != null) {
