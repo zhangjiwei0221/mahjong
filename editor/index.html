@@ -657,8 +657,9 @@
         <div class="gh-desc" style="font-family:monospace; line-height:1.8">
           (1 - 可点率) × 40<br>
           + 层数 × 8<br>
-          + min(有效钩子数 / 5, 1) × 30<br>
-          + min(有效暗钩数 / 5, 1) × 20<br>
+          + min(有效钩子数 / 8, 1) × 30<br>
+          + min(有效暗钩数 / 8, 1) × 20<br>
+          + min((槽位压力 - 2) / 4, 1) × 30<br>
           + 10
         </div>
       </div>
@@ -667,16 +668,18 @@
         <div class="gh-desc">
           <b>可点率</b>:开局时可点牌占总牌数比例。可点=上方无压牌且左右未被夹住。越低越难(大部分牌被压住)。满分 40 分,范围 0~40。<br>
           <b>层数</b>:最大层号(从 0 开始)。层越多牌越难到达。每层 +8 分,4 层封顶(32 分)。<br>
-          <b>有效钩子</b>:钩子数经稀缺度加权。钩子=同一对牌层差 ≥ 2(一张在上、一张深埋)。稀缺度加权:独占型钩子(1 对 1 张)计 1.0,泛滥型(3 对 6 张)每张只计 0.33。5 个有效钩子拿满 30 分。<br>
-          <b>有效暗钩</b>:暗钩数经稀缺度加权。暗钩=钩子对里深埋的那张恰好是暗牌(看不到花色,难度更高)。5 个有效暗钩拿满 20 分。<br>
+          <b>有效钩子</b>:钩子数经稀缺度加权。钩子=同一对牌层差 ≥ 2(一张在上、一张深埋)。稀缺度加权:独占型钩子(1 对 1 张)计 1.0,泛滥型(3 对 6 张)每张只计 0.33。8 个有效钩子拿满 30 分。<br>
+          <b>有效暗钩</b>:暗钩数经稀缺度加权。暗钩=钩子对里深埋的那张恰好是暗牌(看不到花色,难度更高)。8 个有效暗钩拿满 20 分。<br>
+          <b>槽位压力</b>:最优打法下卡槽最多同时占几个花色位(7 格上限)。值越高容错率越低——走错一步顺序就容易把槽堆满。2 槽起 0 分,每 +1 槽 +7.5 分,6 槽拿满 30 分。这是"消除顺序不对就死局"的核心指标。<br>
           <b>保底 10 分</b>:确保最低难度也有基础分。
         </div>
       </div>
       <div class="gh-item">
         <div class="gh-title">设计理由</div>
         <div class="gh-desc">
-          分母 5 怎么定的:实测 80~110 张的标准关卡,钩子数观测 0~5(中位 2),5 个封顶正好覆盖。<br>
+          分母 8 怎么定的:实测 80~110 张的标准关卡,钩子数观测 0~8,8 个封顶正好覆盖。<br>
           稀缺度加权:避免"1 种牌出 6 张(3 对钩子)"比"3 种牌各出 2 张(3 对钩子)"分数相同——后者实际更难(花色分散)。<br>
+          槽位压力:模拟一个聪明玩家的贪心打法,统计卡槽中最大同时存在的花色数。值接近 7 时,玩家必须严格按正确顺序消除,否则槽位会被"存着等另一半"的牌堆满。<br>
           可点率只拍开局一瞬间,中盘难度不计入(但倒推法保证可解,不会真卡死)。
         </div>
       </div>
@@ -2327,6 +2330,7 @@ function setPreviewStats(level, darkCount) {
     `<span title="暗牌数 / 暗钩子数">暗${darkCount ?? level.specialTiles.length}<sub>${d.darkHooks}钩</sub></span>` +
     `<span title="即时难度：可点牌占比（越低越卡）">可点${pct}%</span>` +
     `<span title="深埋对子数（钩子）">钩子${d.hooks}</span>` +
+    `<span title="最优打法下卡槽最大占用（越高容错越低）">槽${d.minSlots ?? '?'}/7</span>` +
     `<span>${d.maxLayer + 1} 层</span>`;
 }
 
@@ -2570,7 +2574,7 @@ function renderResults() {
         <button onclick="downloadResult(${i})">下载</button>
       </span>
       ${paramChip}
-      <span class="ri-hooks" title="钩子密度/暗钩密度/可点比(实际)">钩${d.totalPairs ? Math.round(d.hooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.darkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}%</span>
+      <span class="ri-hooks" title="钩子密度/暗钩密度/可点比/槽位压力(实际)">钩${d.totalPairs ? Math.round(d.hooks / d.totalPairs * 100) : '?'}%/${d.totalPairs ? Math.round(d.darkHooks / d.totalPairs * 100) : '?'}% · 可点${d.total ? Math.round(d.clickable / d.total * 100) : '-'}% · 槽${d.minSlots ?? '?'}/7${d.minSlots >= 5 ? ' 🔥' : ''}</span>
     </div>`;
   }).join('');
 }

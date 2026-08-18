@@ -417,10 +417,13 @@ function covers(a, b) {
 }
 
 // ============ 倒推填色 ============
-function backwardFill(tiles, rng) {
+// slotPressure: 0~1 槽位压力偏好。越大越倾向配"层高差大"的对(一张早露、一张深埋)，
+// 正向玩时玩家被迫把早露那张存进卡槽 -> 槽位占用升高、容错率降低
+function backwardFill(tiles, rng, slotPressure) {
   const n = tiles.length;
   const totalPairs = n / 2;
   if (totalPairs !== Math.floor(totalPairs)) throw new Error(`牌数为奇数 ${n}`);
+  slotPressure = slotPressure != null ? slotPressure : 0.5;
 
   const counts = new Array(TYPE_COUNT).fill(0);
   let placedPairs = 0;
@@ -444,9 +447,35 @@ function backwardFill(tiles, rng) {
     if (++guard > n * 4) return null;
     const clickable = remaining.filter(t => isClickable(t, remaining));
     if (clickable.length < 2) return null;
-    shuffle(clickable, rng);
-    const t1 = clickable[0], t2 = clickable[1];
+
     const type = typePool[pairsPlaced.length];
+    let t1, t2;
+
+    // 叠层配对:倒推前中期(棋盘还满)按概率把一张最高层 + 一张最低层配对
+    // 倒推的逆序 = 正向消除序列 -> 早配的对(带高层张)在正向玩时很晚才消,低层那张一直压着
+    const progress = pairsPlaced.length / totalPairs;
+    const useLayering = slotPressure > 0 && progress < 0.7 && clickable.length >= 4;
+
+    if (useLayering) {
+      const sorted = clickable.slice().sort((a, b) => a.layer - b.layer);
+      const lowLayer = sorted[0].layer;
+      const highLayer = sorted[sorted.length - 1].layer;
+      if (highLayer - lowLayer >= 2 && rng() < slotPressure) {
+        const topCandidates = sorted.filter(t => t.layer === highLayer);
+        const bottomCandidates = sorted.filter(t => t.layer === lowLayer);
+        shuffle(topCandidates, rng);
+        t1 = topCandidates[0];
+        t2 = bottomCandidates.find(c => c._idx !== t1._idx);
+        if (!t2) t1 = null;
+      }
+    }
+
+    if (!t1 || !t2) {
+      shuffle(clickable, rng);
+      t1 = clickable[0];
+      t2 = clickable[1];
+    }
+
     assigned[t1._idx] = type;
     assigned[t2._idx] = type;
     pairsPlaced.push([t1._idx, t2._idx]);
@@ -584,11 +613,16 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
   }
 
   const totalPairs = Math.floor(total / 2);
+  // 槽位压力:最优打法下卡槽最多同时占几个花色位
+  const slotsResult = computeMinSlots(tiles);
+  const minSlots = slotsResult.minSlots;
+  // 槽位压力项:2 槽起 0 分,每 +1 槽 +7.5 分,6 槽拿满 30 分
+  const slotTerm = Math.min(Math.max(0, minSlots - 2) / 4, 1) * 30;
   // 封顶调整:5 → 8,让钩子数拉开分数差距
   const darkHookTerm = Math.min(effDarkHooks / 8, 1) * darkWeight;
   const score = Math.round(
     (1 - clickRatio) * 40 + maxLayer * 8 +
-    Math.min(effHooks / 8, 1) * 30 + darkHookTerm + 10
+    Math.min(effHooks / 8, 1) * 30 + darkHookTerm + slotTerm + 10
   );
   return {
     score: Math.max(0, score),
@@ -601,7 +635,75 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     totalPairs,
     hookDensity: totalPairs ? +(hooks / totalPairs).toFixed(3) : 0,
     darkHookDensity: totalPairs ? +(darkHooks / totalPairs).toFixed(3) : 0,
+    minSlots,
+    slotSolvable: slotsResult.solvable,
   };
+}
+
+// ============ 最小槽位需求 ============
+// 模拟一个聪明玩家的打法,统计卡槽中最大同时存在的花色数。
+// 这个值越接近 7(卡槽上限),容错率越低 -- 顺序走错一步就容易把槽堆满。
+// 模型:
+//   board = 场上未点的牌;slot = 已进槽未配对的牌
+//   1. 场上有可点的牌,其花色槽里已有 -> 点它配掉槽里那张(槽位 -1)
+//   2. 场上有两张可点同花色 -> 点掉(短暂过槽即消,不计峰值)
+//   3. 只能点单张 -> 选"底下压牌最多"的进槽(尽早解锁),槽位 +1
+// 每次单张进槽后记录 slot.size 峰值。
+// 返回 { minSlots, solvable } -- solvable=false 表示贪心走到死局(不代表关卡无解,但说明需要精确顺序)
+function computeMinSlots(tiles) {
+  const board = new Set(tiles.map(t => t.id));
+  const tileMap = new Map(tiles.map(t => [t.id, t]));
+  const slot = new Map(); // typeId -> tile(该花色槽里那张)
+  let maxSlots = 0;
+  let guard = 0;
+
+  while (board.size > 0 || slot.size > 0) {
+    if (++guard > tiles.length * 2 + 10) return { minSlots: 7, solvable: false };
+    if (board.size === 0) break; // 槽里还有单张 = 死局(配不掉了)
+    const all = tiles.filter(t => board.has(t.id));
+    const clickable = all.filter(t => isClickable(t, all));
+    if (clickable.length === 0) return { minSlots: 7, solvable: false };
+
+    // 优先级 1:可点牌的花色在槽里 -> 立即配对
+    let done = false;
+    for (const t of clickable) {
+      if (slot.has(t.typeId)) {
+        slot.delete(t.typeId);
+        board.delete(t.id);
+        done = true;
+        break;
+      }
+    }
+    if (done) continue;
+
+    // 优先级 2:两张可点同花色 -> 消掉
+    const byType = {};
+    clickable.forEach(t => { (byType[t.typeId] ||= []).push(t); });
+    let pair = null;
+    for (const typeId in byType) {
+      if (byType[typeId].length >= 2) { pair = byType[typeId].slice(0, 2); break; }
+    }
+    if (pair) {
+      board.delete(pair[0].id);
+      board.delete(pair[1].id);
+      continue;
+    }
+
+    // 优先级 3:只能点单张 -> 选底下压牌最多的进槽
+    let bestTile = null, bestUnder = -1;
+    for (const t of clickable) {
+      let under = 0;
+      for (const o of tiles) {
+        if (o.id === t.id || !board.has(o.id)) continue;
+        if (covers(t, o)) under++;
+      }
+      if (under > bestUnder) { bestUnder = under; bestTile = t; }
+    }
+    board.delete(bestTile.id);
+    slot.set(bestTile.typeId, bestTile);
+    maxSlots = Math.max(maxSlots, slot.size);
+  }
+  return { minSlots: Math.max(1, maxSlots), solvable: true };
 }
   // ========= 高层辅助 =========
   function fillEditorShape(editorTiles, editorSpecial, options) {
@@ -610,6 +712,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
     const darkRatio = options.darkRatio;
     const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
+    const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
     const editorDarkIdx = [];
     const marked = new Set();
@@ -621,7 +724,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     });
     let result = null;
     for (let seed = 1; seed <= 100 && !result; seed++) {
-      result = backwardFill(tiles, makeRng(seed * 9301 + 49297));
+      result = backwardFill(tiles, makeRng(seed * 9301 + 49297), slotPressure);
     }
     if (!result) throw new Error('fill failed after 100 retries');
     tiles.forEach(function (t, i) { t.typeId = result.assigned[i]; });
@@ -655,6 +758,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
     const darkRatio = options.darkRatio;
     const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
+    const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
     const layerMap = {};
     TEMPLATE_T2_GONG.tiles.forEach(function (t) {
       (layerMap[t.layer] = layerMap[t.layer] || []).push({ row: t.col, col: t.row });
@@ -668,7 +772,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const level = toEditorJSON(shape, 1);
     let result = null;
     for (let seed = 1; seed <= 100 && !result; seed++) {
-      result = backwardFill(level.tiles, makeRng(seed * 1000 + 42));
+      result = backwardFill(level.tiles, makeRng(seed * 1000 + 42), slotPressure);
     }
     if (!result) throw new Error('fill failed');
     const filled = {
@@ -715,6 +819,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const darkRatio = options.darkRatio;
     const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const layerCount = options.layerCount || 5;
+    const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
     // 编辑器形状是 std（row=纵/col=横），生成器内部用 row=横/col=纵 → swap
     const layerMap = {};
     editorTiles.forEach(function (t) {
@@ -763,7 +868,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
       const level = toEditorJSON(shape, 1);
       // 填色
       for (let seed = 1; seed <= 50 && !filled; seed++) {
-        const result = backwardFill(level.tiles, makeRng(seed * 1000 + 42));
+        const result = backwardFill(level.tiles, makeRng(seed * 1000 + 42), slotPressure);
         if (result) {
           filled = {
             levelId: level.levelId, totalPairs: level.totalPairs,
