@@ -2232,6 +2232,7 @@ function generateCurrentShape() {
     setGenStatus('生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
+    let closest = null;
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
@@ -2241,8 +2242,10 @@ function generateCurrentShape() {
         const scoreHit = score >= scoreLo && score <= scoreHi;
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
+        if (!closest) closest = level;
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
           // 始终返回最接近的结果(命中或未命中都返回 best)
+          if (!best && closest) { best = closest; }
           if (!best) {
             setGenStatus(`<span class="bad">生成失败：${attempts} 次都没生成有效关卡${lastErr ? '（' + lastErr + '）' : '（当前形状无法完成填色）'}</span>`);
             return;
@@ -2289,6 +2292,7 @@ function generateStackFromCurrent() {
     setGenStatus('堆层生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
+    let closest = null;
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(
@@ -2301,11 +2305,10 @@ function generateStackFromCurrent() {
         const scoreHit = score >= scoreLo && score <= scoreHi;
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
+        if (!closest) closest = level;
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          if (!best) {
-            setGenStatus(`<span class="bad">堆塔失败：${attempts} 次都没生成有效关卡${lastErr ? '（' + lastErr + '）' : '（底座无法堆塔）'}</span>`);
-            return;
-          }
+          // 未命中但生成了关卡:展示最接近的那个
+          if (!best && closest) { best = closest; }
           addResult(best);
           const d = best._difficulty;
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
