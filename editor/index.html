@@ -2268,7 +2268,7 @@ function generateStackFromCurrent() {
     const scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
     setGenStatus('堆层生成中…');
     enablePreviewActions(false);
-    let attempts = 0, best = null, bestMismatch = Infinity;
+    let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(
@@ -2282,7 +2282,10 @@ function generateStackFromCurrent() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          if (!best) { setGenStatus(`<span class="bad">堆塔失败：${attempts} 次都没生成出任何有效关卡（底座无法填色）</span>`); return; }
+          if (!best) {
+            setGenStatus(`<span class="bad">堆塔失败：${attempts} 次都没生成有效关卡${lastErr ? '（' + lastErr + '）' : '（底座无法堆塔）'}</span>`);
+            return;
+          }
           addResult(best);
           const d = best._difficulty;
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
@@ -2306,7 +2309,7 @@ function generateStackFromCurrent() {
         }
       } catch (e) {
         const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色' : e.message;
-        setGenStatus(`<span class="bad">失败: ${msg}</span>`);
+        lastErr = msg;
       }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
