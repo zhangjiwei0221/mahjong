@@ -206,6 +206,7 @@
     overflow-y: auto;
   }
   .good { color: var(--ok); }
+  .warn { color: #c97a1f; font-weight: 600; }
   .bad { color: var(--danger); }
 
   .layer-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 8px; }
@@ -2221,37 +2222,37 @@ function generateCurrentShape() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
+          // 始终返回最接近的结果(命中或未命中都返回 best)
           if (!best) {
-            setGenStatus(`<span class="bad">生成失败：重试 ${attempts} 次都未生成有效关卡（当前形状 ${tiles.length} 张太简单？试试加张或调宽分数范围）</span>`);
+            setGenStatus(`<span class="bad">生成失败：${attempts} 次都没生成出任何有效关卡（底座无法填色）</span>`);
             return;
           }
-          // 即使命中也返回 best;未命中时显示诊断
+          addResult(best);
+          const d = best._difficulty;
+          const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           if (structHit && scoreHit) {
-            const d = best._difficulty;
-            addResult(best);
-            const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
             setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · ${structCompareText(d, target)}${retryTxt}</span>`);
           } else {
-            // 未命中:展示实际最佳值的诊断,告诉用户该往哪调
-            const d = best._difficulty;
-            addResult(best); // 还是展示给用户看
-            const diag = [];
+            // 没命中:展示实际最佳值,客观说明与目标的差距
+            const parts = [];
             if (!scoreHit) {
-              if (score > scoreHi) diag.push(`分数 ${score} > 上限 ${scoreHi} → 把上限改到 ≥${score}`);
-              else if (score < scoreLo) diag.push(`分数 ${score} < 下限 ${scoreLo} → 把下限改到 ≤${score}`);
+              if (score > scoreHi) parts.push(`分数 ${score} 高于上限 ${scoreHi}`);
+              else if (score < scoreLo) parts.push(`分数 ${score} 低于下限 ${scoreLo}`);
             }
             const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
             const targetHooks = Math.round(target.hooks * 100);
-            if (actualHooks < targetHooks - 10) diag.push(`钩子 ${actualHooks}% < 目标 ${targetHooks}% → 目标降到 ≤${actualHooks}%`);
-            setGenStatus(`<span class="bad">重试 ${attempts} 次未命中，已展示最接近的关卡（${d.score}分）。调参建议：${diag.join('；') || '试试调宽分数范围'}</span>`);
+            if (actualHooks < targetHooks - 10) parts.push(`钩子 ${actualHooks}% 低于目标 ${targetHooks}%`);
+            const targetDarkRatio = targetHooks * genDarkCoverage;
+            if (d.darkHooks / d.totalPairs * 100 < targetDarkRatio - 10) parts.push(`暗钩 ${Math.round(d.darkHooks / d.totalPairs * 100)}% 低于目标`);
+            setGenStatus(`<span class="warn">⚠ 重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分）。偏差：${parts.join('；') || '微小差距'}</span>`);
           }
         } else {
           if (attempts % 10 === 0) setGenStatus(`生成中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY}`);
           setTimeout(tryGen, 0);
         }
       } catch (e) {
-        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(底座形状可能导致无解,试试调整底座形状)' : e.message;
-        setGenStatus('<span class="bad">失败: ' + msg + '</span>');
+        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色' : e.message;
+        setGenStatus(`<span class="bad">失败: ${msg}</span>`);
       }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
@@ -2281,31 +2282,31 @@ function generateStackFromCurrent() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          if (!best) { setGenStatus(`<span class="bad">堆塔失败：重试 ${attempts} 次都未生成有效关卡（底座形状太简单？堆层数 ${layerCount} 太多？试试加底座或减堆层）</span>`); return; }
+          if (!best) { setGenStatus(`<span class="bad">堆塔失败：${attempts} 次都没生成出任何有效关卡（底座无法填色）</span>`); return; }
+          addResult(best);
+          const d = best._difficulty;
+          const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           if (structHit && scoreHit) {
-            const d = best._difficulty;
-            addResult(best);
-            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
+            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${retryTxt}</span>`);
           } else {
-            const d = best._difficulty;
-            addResult(best);
-            const diag = [];
+            // 没命中:展示实际最佳值,客观说明与目标的差距
+            const parts = [];
             if (!scoreHit) {
-              if (score > scoreHi) diag.push(`分数 ${score} > 上限 ${scoreHi} → 把上限改到 ≥${score}`);
-              else if (score < scoreLo) diag.push(`分数 ${score} < 下限 ${scoreLo} → 把下限改到 ≤${score}`);
+              if (score > scoreHi) parts.push(`分数 ${score} 高于上限 ${scoreHi}`);
+              else if (score < scoreLo) parts.push(`分数 ${score} 低于下限 ${scoreLo}`);
             }
             const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
             const targetHooks = Math.round(target.hooks * 100);
-            if (actualHooks < targetHooks - 10) diag.push(`钩子 ${actualHooks}% < 目标 ${targetHooks}% → 目标降到 ≤${actualHooks}%`);
-            setGenStatus(`<span class="bad">堆塔重试 ${attempts} 次未命中，已展示最接近的关卡（${d.score}分）。调参建议：${diag.join('；') || '试试调宽分数范围'}</span>`);
+            if (actualHooks < targetHooks - 10) parts.push(`钩子 ${actualHooks}% 低于目标 ${targetHooks}%`);
+            setGenStatus(`<span class="warn">⚠ 堆塔重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分）。偏差：${parts.join('；') || '微小差距'}</span>`);
           }
         } else {
           if (attempts % 15 === 0) setGenStatus(`堆塔中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY_STACK}`);
           setTimeout(tryGen, 0);
         }
       } catch (e) {
-        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色(底座形状可能导致无解,试试调整底座形状)' : e.message;
-        setGenStatus('<span class="bad">失败: ' + msg + '</span>');
+        const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色' : e.message;
+        setGenStatus(`<span class="bad">失败: ${msg}</span>`);
       }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
