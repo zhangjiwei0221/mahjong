@@ -580,36 +580,35 @@ function isTileBuried(tile, allTiles) {
 function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT) {
   const tiles = level.tiles;
   const total = tiles.length;
-  const clickable = tiles.filter(t => isClickable(t, tiles)).length;
-  const clickRatio = clickable / total;
+  const clickableSet = new Set(tiles.filter(t => isClickable(t, tiles)).map(t => t.id));
+  const clickRatio = clickableSet.size / total;
   const maxLayer = Math.max(...tiles.map(t => t.layer));
   const byType = {};
   tiles.forEach(t => { (byType[t.typeId] ||= []).push(t); });
 
   let hooks = 0, darkHooks = 0;           // 原始钩子数（显示/目标匹配用）
-  let effHooks = 0, effDarkHooks = 0;     // 稀缺度加权钩子数（计分用）
+  let effHooks = 0, effDarkHooks = 0;     // 可见伴侣加权钩子数（计分用）
 
   for (const k in byType) {
     const arr = byType[k];
     const pairs = Math.floor(arr.length / 2);
     if (pairs < 1) continue;
-    // 新定义:任意埋牌(上压/左右夹)都算钩子,不只看层差 ≥ 2
-    let buried = 0, buriedDark = 0;
-    for (const t of arr) {
-      if (isTileBuried(t, tiles)) {
-        buried++;
-        if (darkIds.has(t.id)) buriedDark++;
-      }
-    }
-    // 钩子实例数 = min(被埋牌, 对子数),不能超过对子数
-    const hookInst = Math.min(buried, pairs);
-    const darkHookInst = Math.min(buriedDark, pairs);
+    // 收集埋牌 + 各自的可见伴侣权重
+    // 权重 = 1 / (同花色可见张数 + 1)
+    // 同色 0 张可见 -> 1.0（独占型，最难记）
+    // 同色 1 张可见 -> 0.5
+    // 同色 2+ 张可见 -> ≤ 0.33（容易找到伴侣）
+    const buriedList = arr.filter(t => isTileBuried(t, tiles));
+    const hookInst = Math.min(buriedList.length, pairs);
     hooks += hookInst;
-    darkHooks += darkHookInst;
-    // 稀缺度加权:每个钩子权重 = 1 / 该花色对子数
-    // 整副牌只有这一对 = 1.0(满难度),有 3 对 = 0.33
-    effHooks += hookInst / pairs;
-    effDarkHooks += darkHookInst / pairs;
+    darkHooks += Math.min(buriedList.filter(t => darkIds.has(t.id)).length, pairs);
+    for (let i = 0; i < hookInst; i++) {
+      const t = buriedList[i];
+      const sameVisible = arr.filter(o => o.id !== t.id && clickableSet.has(o.id)).length;
+      const w = 1 / (sameVisible + 1);
+      effHooks += w;
+      if (darkIds.has(t.id)) effDarkHooks += w;
+    }
   }
 
   const totalPairs = Math.floor(total / 2);
@@ -627,7 +626,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
   return {
     score: Math.max(0, score),
     clickRatio: +clickRatio.toFixed(3),
-    clickable, total, maxLayer,
+    clickable: clickableSet.size, total, maxLayer,
     typeCount: Object.keys(byType).length,
     hooks, darkHooks,
     effHooks: +effHooks.toFixed(2),
