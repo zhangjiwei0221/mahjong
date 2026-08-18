@@ -197,7 +197,19 @@
   }
   .toggle.on::after { left: 17px; }
 
-  .status-box {
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 10px; }
+  .tab-btn {
+    flex: 1; padding: 7px 4px; font-size: 11px;
+    background: #fbf8f2; border: 1px solid var(--line);
+    border-radius: 6px; cursor: pointer; color: var(--sub);
+    transition: all .12s;
+  }
+  .tab-btn:hover { border-color: var(--accent); }
+  .tab-btn.active {
+    background: var(--accent-bg); border-color: var(--accent);
+    color: var(--accent2); font-weight: 600;
+  }
+  .tab-content.hidden { display: none; }
     background: #fbf8f2; border: 1px solid var(--line-soft);
     padding: 8px 10px; border-radius: 7px;
     font-size: 11px; line-height: 1.7; color: var(--sub);
@@ -575,37 +587,70 @@
     </div>
 
     <div class="card" id="cardGen">
-      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><button class="gen-help-btn" onclick="toggleGenHelp(event)" title="查看参数说明">?</button><span class="chev">▼</span></div>      <div class="card-body">
-        <div class="card-sub">目标分数（单关和批量都匹配这个范围）</div>
-        <div class="field-row">
-          <span>目标分数</span>
-          <button class="gen-help-btn" onclick="toggleScoreHelp(event)" title="分数计算公式">?</button>
-          <input type="number" id="scoreMin" value="0" min="0" max="999">
-          <span class="sep">~</span>
-          <input type="number" id="scoreMax" value="999" min="0" max="999">
+      <div class="card-head" onclick="toggleCard('cardGen')"><span>🎯 生成关卡</span><button class="gen-help-btn" onclick="toggleGenHelp(event)" title="查看参数说明">?</button><span class="chev">▼</span></div>
+      <div class="card-body">
+        <!-- Tab 切换 -->
+        <div class="tab-bar">
+          <button class="tab-btn active" id="tabBtnParams" onclick="switchTab('params')">参数模式</button>
+          <button class="tab-btn" id="tabBtnDifficulty" onclick="switchTab('difficulty')">难度模式</button>
         </div>
-        <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
-        <div class="card-sub">结构参数（单关重试命中，批量过滤命中）</div>
-        <div class="slider-row">
-          <span class="slabel">钩子目标</span>
-          <input type="range" id="hooksTarget" min="0" max="100" value="30" step="5" oninput="onGenParamChange()">
-          <span class="sval" id="hooksTargetVal">30%</span>
+
+        <!-- Tab 1: 参数模式 -->
+        <div class="tab-content" id="tab-params">
+          <div class="card-sub">目标分数（单关和批量都匹配这个范围）</div>
+          <div class="field-row">
+            <span>目标分数</span>
+            <button class="gen-help-btn" onclick="toggleScoreHelp(event)" title="分数计算公式">?</button>
+            <input type="number" id="scoreMin" value="0" min="0" max="999">
+            <span class="sep">~</span>
+            <input type="number" id="scoreMax" value="999" min="0" max="999">
+          </div>
+          <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
+          <div class="card-sub">结构参数（单关重试命中，批量过滤命中）</div>
+          <div class="slider-row">
+            <span class="slabel">钩子目标</span>
+            <input type="range" id="hooksTarget" min="0" max="100" value="30" step="5" oninput="onGenParamChange()">
+            <span class="sval" id="hooksTargetVal">30%</span>
+          </div>
+          <div class="slider-row">
+            <span class="slabel">暗牌总数</span>
+            <input type="range" id="darkRatio" min="0" max="50" value="10" step="5" oninput="onGenParamChange()">
+            <span class="sval" id="darkRatioVal">10%</span>
+          </div>
+          <div class="slider-row">
+            <span class="slabel">暗钩比例</span>
+            <input type="range" id="darkCoverage" min="0" max="100" value="100" step="25" oninput="onGenParamChange()">
+            <span class="sval" id="darkCoverageVal">100%</span>
+          </div>
+          <div class="slider-row" style="opacity:.8">
+            <span class="slabel">≈ 暗钩目标</span>
+            <span class="sval" id="derivedDarkHooksVal" style="color:var(--sub)">30%</span>
+          </div>
+          <div class="hint">单关和批量都匹配目标分数范围 + 钩子/暗牌参数。</div>
         </div>
-        <div class="slider-row">
-          <span class="slabel">暗牌总数</span>
-          <input type="range" id="darkRatio" min="0" max="50" value="10" step="5" oninput="onGenParamChange()">
-          <span class="sval" id="darkRatioVal">10%</span>
+
+        <!-- Tab 2: 难度模式 -->
+        <div class="tab-content hidden" id="tab-difficulty">
+          <div class="card-sub">难度等级（1=最简单, 10=最难）</div>
+          <div class="slider-row">
+            <span class="slabel">难度</span>
+            <input type="range" id="difficultyLevel" min="1" max="10" value="5" step="1" oninput="onDifficultyChange()">
+            <span class="sval" id="difficultyVal">5</span>
+          </div>
+          <div class="hint">系统自动分配目标分数、钩子/暗牌比例。</div>
+          <div class="slider-row" style="opacity:.8">
+            <span class="slabel">≈ 目标分数</span>
+            <span class="sval" id="autoScoreVal" style="color:var(--sub)">100~120</span>
+          </div>
+          <div class="slider-row" style="opacity:.8">
+            <span class="slabel">≈ 钩子目标</span>
+            <span class="sval" id="autoHooksVal" style="color:var(--sub)">40%</span>
+          </div>
+          <div class="slider-row" style="opacity:.8">
+            <span class="slabel">≈ 暗牌总数</span>
+            <span class="sval" id="autoDarkVal" style="color:var(--sub)">10%</span>
+          </div>
         </div>
-        <div class="slider-row">
-          <span class="slabel">暗钩比例</span>
-          <input type="range" id="darkCoverage" min="0" max="100" value="100" step="25" oninput="onGenParamChange()">
-          <span class="sval" id="darkCoverageVal">100%</span>
-        </div>
-        <div class="slider-row" style="opacity:.8">
-          <span class="slabel">≈ 暗钩目标</span>
-          <span class="sval" id="derivedDarkHooksVal" style="color:var(--sub)">30%</span>
-        </div>
-        <div class="hint">单关和批量都匹配目标分数范围 + 钩子/暗牌参数。</div>
 
         <button class="sbtn primary block" onclick="generateCurrentShape()">🎯 按当前形状生成</button>
 
@@ -1967,6 +2012,31 @@ function clearAll(btn) {
 }
 
 // ========== 生成关卡（依赖 generator.js 的 window.GEN） ==========
+// ============ Tab 切换 ============
+function switchTab(tab) {
+  document.getElementById('tab-params').classList.toggle('hidden', tab !== 'params');
+  document.getElementById('tab-difficulty').classList.toggle('hidden', tab !== 'difficulty');
+  document.getElementById('tabBtnParams').classList.toggle('active', tab === 'params');
+  document.getElementById('tabBtnDifficulty').classList.toggle('active', tab === 'difficulty');
+  genMode = tab;
+}
+
+// ============ 难度模式 ============
+let genMode = 'params'; // 'params' | 'difficulty'
+
+function onDifficultyChange() {
+  const d = parseInt(document.getElementById('difficultyLevel').value);
+  document.getElementById('difficultyVal').textContent = d;
+  // 线性映射: 1→最简单, 10→最难
+  const scoreMin = Math.round(60 + (d - 1) * 8.9);   // 60~140
+  const scoreMax = Math.round(80 + (d - 1) * 10);    // 80~170
+  const hooks = Math.round(10 + (d - 1) * 7.8);      // 10~80%
+  const dark = Math.round(5 + (d - 1) * 1.7);        // 5~20%
+  document.getElementById('autoScoreVal').textContent = scoreMin + '~' + scoreMax;
+  document.getElementById('autoHooksVal').textContent = hooks + '%';
+  document.getElementById('autoDarkVal').textContent = dark + '%';
+}
+
 let genDarkCoverage = 1;   // 暗钩子覆盖率 0~1
 let genDarkRatio = 0.1;    // 暗牌总数比例 (0=纯钩子模式, 0.05~0.5)
 function syncSliderVal(id, v, suffix) { document.getElementById(id).textContent = v + (suffix || ''); }
@@ -1983,17 +2053,30 @@ function onGenParamChange() {
   if (derivedEl) derivedEl.textContent = derivedDarkHooks + '%';
 }
 function genDarkOptions() {
+  let darkRatio;
+  if (genMode === 'difficulty') {
+    const d = parseInt(document.getElementById('difficultyLevel').value);
+    darkRatio = Math.round(5 + (d - 1) * 1.7) / 100; // 5~20%
+  } else {
+    darkRatio = genDarkRatio;
+  }
   return {
     darkMode: true,
     darkCoverage: genDarkCoverage,
-    darkRatio: genDarkRatio <= 0 ? undefined : genDarkRatio, // 0 = 纯钩子
+    darkRatio: darkRatio <= 0 ? undefined : darkRatio,
   };
 }
 
 // 结构目标：百分比（占对子数的比例）
 const TOL_HOOKS = 0.10;   // 钩子/暗钩容差 ±10%
 function getStructTarget() {
-  const hooks = parseInt(document.getElementById('hooksTarget').value) / 100;
+  let hooks;
+  if (genMode === 'difficulty') {
+    const d = parseInt(document.getElementById('difficultyLevel').value);
+    hooks = Math.round(10 + (d - 1) * 7.8) / 100; // 10~80%
+  } else {
+    hooks = parseInt(document.getElementById('hooksTarget').value) / 100;
+  }
   return {
     hooks: hooks,
     darkHooks: hooks * genDarkCoverage, // 推导值
@@ -2227,8 +2310,16 @@ function generateCurrentShape() {
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     if (tiles.length % 2 !== 0) { setGenStatus('<span class="bad">牌数必须为偶数（当前 ' + tiles.length + '）</span>'); return; }
     const target = getStructTarget();
-    const scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
-    const scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
+    // 根据当前 tab 决定参数来源
+    let scoreLo, scoreHi;
+    if (genMode === 'difficulty') {
+      const d = parseInt(document.getElementById('difficultyLevel').value);
+      scoreLo = Math.round(60 + (d - 1) * 8.9);
+      scoreHi = Math.round(80 + (d - 1) * 10);
+    } else {
+      scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
+      scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
+    }
     setGenStatus('生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
@@ -2286,8 +2377,16 @@ function generateStackFromCurrent() {
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
     const target = getStructTarget();
-    const scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
-    const scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
+    // 根据当前 tab 决定参数来源
+    let scoreLo, scoreHi;
+    if (genMode === 'difficulty') {
+      const d = parseInt(document.getElementById('difficultyLevel').value);
+      scoreLo = Math.round(60 + (d - 1) * 8.9);
+      scoreHi = Math.round(80 + (d - 1) * 10);
+    } else {
+      scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
+      scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
+    }
     setGenStatus('堆层生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
@@ -2537,10 +2636,18 @@ function batchGenerate() {
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
 
-  const lo = parseInt(document.getElementById('scoreMin').value);
-  const hi = parseInt(document.getElementById('scoreMax').value);
-  const scoreMin = Number.isFinite(lo) ? lo : 0;
-  const scoreMax = Number.isFinite(hi) ? hi : 999;
+  // 根据当前 tab 决定参数来源
+  let scoreMin, scoreMax;
+  if (genMode === 'difficulty') {
+    const d = parseInt(document.getElementById('difficultyLevel').value);
+    scoreMin = Math.round(60 + (d - 1) * 8.9);
+    scoreMax = Math.round(80 + (d - 1) * 10);
+  } else {
+    const lo = parseInt(document.getElementById('scoreMin').value);
+    const hi = parseInt(document.getElementById('scoreMax').value);
+    scoreMin = Number.isFinite(lo) ? lo : 0;
+    scoreMax = Number.isFinite(hi) ? hi : 999;
+  }
   const target = getStructTarget();
   const count = Math.min(50, Math.max(1, parseInt(document.getElementById('batchCount').value) || 5));
   const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
