@@ -2509,6 +2509,13 @@ function batchGenerate() {
   function finish() {
     results.forEach(lv => addResult(lv, { preview: false }));
     const modeName = mode === 'shape' ? '按当前形状' : '按底座堆塔';
+    if (results.length === 0) {
+      // 0 关时给出具体提示
+      let hint = '试试调整目标分数范围';
+      if (scoreMax > 140) hint = '分数上限超过 140(理论最大值),建议调低 scoreMax';
+      setGenStatus(`<span class="bad">✗ 批量生成 0 关（${modeName} · ${scoreMin}~${scoreMax}分）→ ${hint}</span>`);
+      return;
+    }
     const extra = (results.length < count && candidates.length > 0) ? '（部分取最接近目标的）' : '';
     setGenStatus(`<span class="good">✓ 批量生成 ${results.length} 关（${modeName} · ${scoreMin}~${scoreMax}分${extra}）→ 已加入右侧列表</span>`);
     if (results.length > 0) previewResult(0);
