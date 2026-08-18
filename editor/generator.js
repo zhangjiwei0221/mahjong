@@ -541,10 +541,10 @@ function isTileBuried(tile, allTiles) {
     Math.abs(other.col - tile.col) < 2
   );
   if (hasUpper) return true;
-  // 2. 左右夹:同层左右都被夹住
+  // 2. 左右夹:同层左右都被夹住,row 范围匹配(与 isClickable 一致)
   const sameLayer = allTiles.filter(t => t.layer === tile.layer && t.id !== tile.id);
-  const hasLeft = sameLayer.some(t => t.col === tile.col - 2 && t.row === tile.row);
-  const hasRight = sameLayer.some(t => t.col === tile.col + 2 && t.row === tile.row);
+  const hasLeft = sameLayer.some(t => t.col === tile.col - 2 && Math.abs(t.row - tile.row) < 2);
+  const hasRight = sameLayer.some(t => t.col === tile.col + 2 && Math.abs(t.row - tile.row) < 2);
   return hasLeft && hasRight;
 }
 
