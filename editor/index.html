@@ -2092,6 +2092,8 @@ function getDarkHookDensity(d) {
   return d.darkHooks / d.totalPairs;
 }
 function matchStructTarget(d, t) {
+  // 难度模式下不严格匹配:参数是自动分配的,直接接受
+  if (genMode === 'difficulty') return true;
   if (Math.abs(getHookDensity(d) - t.hooks) > TOL_HOOKS) return false;
   if (Math.abs(getDarkHookDensity(d) - t.darkHooks) > TOL_HOOKS) return false;
   return true;
