@@ -517,12 +517,12 @@ function clickTile(id) {
         placeInSlot(A, () => { render(); checkMatch(); });
         return;
       }
-      if (tile.typeId === A.typeId) {   // 同花色 → 两张一起消除
-        matchedTileIds.add(A.id);
-        matchedTileIds.add(tile.id);
+      if (tile.typeId === A.typeId) {   // 同花色 → 两张一起飞入卡槽并消除
         selectedDarkId = null;
-        render();
-        checkWin();
+        // A(暗牌)先飞入卡槽,动画完成后再让 tile(明牌)飞入,然后触发 checkMatch
+        placeInSlot(A, () => {
+          placeInSlot(tile, () => { render(); checkMatch(); });
+        });
         return;
       }
       if (tile.isDark) {                // 异色暗牌 B → B 翻面、选中转移（A 翻回背面）
