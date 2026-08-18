@@ -2221,6 +2221,7 @@ function generateCurrentShape() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY) {
+          if (!best) { setGenStatus('<span class="bad">生成失败：重试 ' + attempts + ' 次都未成功（试试调整参数或形状）</span>'); return; }
           const d = best._difficulty;
           addResult(best);
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
@@ -2260,6 +2261,7 @@ function generateStackFromCurrent() {
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
+          if (!best) { setGenStatus('<span class="bad">堆塔失败：重试 ' + attempts + ' 次都未成功（试试调整底座或堆层数）</span>'); return; }
           const d = best._difficulty;
           addResult(best);
           setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${attempts > 1 ? '（重试' + attempts + '次）' : ''}</span>`);
