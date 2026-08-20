@@ -722,7 +722,8 @@ function computeMinSlots(tiles) {
       }
     });
     let result = null;
-    for (let seed = 1; seed <= 100 && !result; seed++) {
+    const startSeed = Math.floor(Math.random() * 1000) + 1;
+    for (let seed = startSeed; seed <= startSeed + 100 && !result; seed++) {
       result = backwardFill(tiles, makeRng(seed * 9301 + 49297), slotPressure);
     }
     if (!result) throw new Error('fill failed after 100 retries');
@@ -770,7 +771,8 @@ function computeMinSlots(tiles) {
     if (!v.ok) throw new Error('validate failed: ' + v.errors.slice(0, 2).join('; '));
     const level = toEditorJSON(shape, 1);
     let result = null;
-    for (let seed = 1; seed <= 100 && !result; seed++) {
+    const startSeed = Math.floor(Math.random() * 1000) + 1;
+    for (let seed = startSeed; seed <= startSeed + 100 && !result; seed++) {
       result = backwardFill(level.tiles, makeRng(seed * 1000 + 42), slotPressure);
     }
     if (!result) throw new Error('fill failed');
@@ -866,7 +868,8 @@ function computeMinSlots(tiles) {
       if (!v.ok) continue; // 校验不过就重搭
       const level = toEditorJSON(shape, 1);
       // 填色
-      for (let seed = 1; seed <= 50 && !filled; seed++) {
+      const startSeed = Math.floor(Math.random() * 1000) + 1;
+      for (let seed = startSeed; seed <= startSeed + 50 && !filled; seed++) {
         const result = backwardFill(level.tiles, makeRng(seed * 1000 + 42), slotPressure);
         if (result) {
           filled = {
