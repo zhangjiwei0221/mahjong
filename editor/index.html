@@ -2225,7 +2225,10 @@ function buildEditorShape() {
     Object.keys(layer.tiles).forEach(key => {
       const tile = layer.tiles[key];
       const [r, c] = key.split(',').map(Number);
-      tiles.push({ id: 0, layer: layerIdx, row: r, col: c, typeId: null });
+      // 保留 type 字段（spitter/dark 需要）
+      const tileEntry = { id: 0, layer: layerIdx, row: r, col: c, typeId: null };
+      if (tile.type && tile.type !== 'normal') tileEntry.type = tile.type;
+      tiles.push(tileEntry);
       if (tile.type !== 'normal') {
         specialTiles.push({ id: 0, type: tile.type, layer: layerIdx, row: r, col: c, direction: tile.dir, count: tile.count });
       }

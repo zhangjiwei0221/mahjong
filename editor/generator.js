@@ -722,13 +722,19 @@ function computeMinSlots(tiles) {
         if (i >= 0 && !marked.has(i)) { editorDarkIdx.push(i); marked.add(i); }
       }
     });
+    // 吐牌机 tile 不参与填色（保持原样）
+    const spitterIdxSet = new Set();
+    tiles.forEach((t, i) => { if (t.type === 'spitter') spitterIdxSet.add(i); });
+
     let result = null;
     const startSeed = Math.floor(Math.random() * 1000) + 1;
     for (let seed = startSeed; seed <= startSeed + 100 && !result; seed++) {
       result = backwardFill(tiles, makeRng(seed * 9301 + 49297), slotPressure);
     }
     if (!result) throw new Error('fill failed after 100 retries');
-    tiles.forEach(function (t, i) { t.typeId = result.assigned[i]; });
+    tiles.forEach(function (t, i) {
+      if (!spitterIdxSet.has(i)) t.typeId = result.assigned[i];
+    });
 
     // 吐牌机验证
     const spitterTiles = tiles.filter(t => t.spitterOrder != null);
@@ -738,9 +744,10 @@ function computeMinSlots(tiles) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
     }
-    // 2. 总牌数必须为偶数（二消需要成对）
-    if (tiles.length % 2 !== 0) {
-      throw new Error(`总牌数 ${tiles.length} 为奇数，二消需要偶数张牌`);
+    // 2. 总牌数必须为偶数（二消需要成对）- 排除吐牌机本身（它不需要配对）
+    const nonSpitterCount = tiles.filter(t => t.type !== 'spitter').length;
+    if (nonSpitterCount % 2 !== 0) {
+      throw new Error(`总牌数 ${nonSpitterCount} 为奇数，二消需要偶数张牌`);
     }
 
     let darkIdx = editorDarkIdx.slice();
@@ -904,9 +911,10 @@ function computeMinSlots(tiles) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
     }
-    // 最终偶数校验
-    if (filled.tiles.length % 2 !== 0) {
-      throw new Error(`总牌数 ${filled.tiles.length} 为奇数，二消需要偶数张牌`);
+    // 最终偶数校验（排除吐牌机本身）
+    const nonSpitterCount = filled.tiles.filter(t => t.type !== 'spitter').length;
+    if (nonSpitterCount % 2 !== 0) {
+      throw new Error(`总牌数 ${nonSpitterCount} 为奇数，二消需要偶数张牌`);
     }
 
     // 暗牌
