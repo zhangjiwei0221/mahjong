@@ -2310,6 +2310,8 @@ function genParamText(p) {
 function buildEditorShape() {
   const tiles = [];
   const specialTiles = [];
+  const spitters = [];
+  const queueTiles = [];
   state.layers.forEach((layer, layerIdx) => {
     Object.keys(layer.tiles).forEach(key => {
       const tile = layer.tiles[key];
@@ -2318,6 +2320,14 @@ function buildEditorShape() {
       const tileEntry = { id: 0, layer: layerIdx, row: r, col: c, typeId: null };
       if (tile.type && tile.type !== 'normal') tileEntry.type = tile.type;
       tiles.push(tileEntry);
+      if (tile.type === 'spitter') {
+        const dir = tile.dir || 'up';
+        const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[dir] || [-2, 0];
+        spitters.push({
+          layer: layerIdx, row: r + offset[0], col: c + offset[1],
+          count: tile.count || 3,
+        });
+      }
       if (tile.type !== 'normal') {
         specialTiles.push({ id: 0, type: tile.type, layer: layerIdx, row: r, col: c, direction: tile.dir, count: tile.count });
       }
@@ -2335,7 +2345,7 @@ function buildEditorShape() {
   const posToId = {};
   tiles.forEach((t, i) => { t.id = i + 1; posToId[`${t.layer},${t.row},${t.col}`] = t.id; });
   specialTiles.forEach(s => { s.id = posToId[`${s.layer},${s.row},${s.col}`] || 0; });
-  return { tiles, specialTiles };
+  return { tiles, specialTiles, spitters };
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
@@ -2553,7 +2563,7 @@ function generateCurrentShape() {
 
 function generateStackFromCurrent() {
   try {
-    const { tiles, specialTiles } = buildEditorShape();
+    const { tiles, specialTiles, spitters } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
     const target = getStructTarget();
@@ -2574,7 +2584,7 @@ function generateStackFromCurrent() {
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions())),
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions())),
           'stack', layerCount
         );
         attempts++;
@@ -2803,7 +2813,7 @@ function probeScoreRange() {
       return;
     }
     try {
-      const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions()));
+      const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions()));
       scores.push(level._difficulty.score);
     } catch (e) {
       failCount++;
@@ -2818,8 +2828,8 @@ function probeScoreRange() {
 
 // ========== 批量生成（模式 = 当前形状 / 底座堆塔，分数范围过滤） ==========
 function batchGenerate() {
-  let tiles, specialTiles;
-  try { ({ tiles, specialTiles } = buildEditorShape()); }
+  let tiles, specialTiles, spitters;
+  try { ({ tiles, specialTiles, spitters } = buildEditorShape()); }
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
 
@@ -2865,7 +2875,7 @@ function batchGenerate() {
         level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
       } else {
         level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount }, genDarkOptions())),
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions())),
           'stack', layerCount
         );
       }

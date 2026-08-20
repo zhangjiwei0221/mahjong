@@ -722,10 +722,12 @@ function computeMinSlots(tiles) {
         if (i >= 0 && !marked.has(i)) { editorDarkIdx.push(i); marked.add(i); }
       }
     });
-    // 吐牌机 tile 不参与填色也不参与配对（从 backwardFill 中排除）
+    // 吐牌机和队列牌都不参与填色（保持原样）
     const spitterIdxSet = new Set();
+    const queueIdxSet = new Set();
     const fillTiles = tiles.filter(function (t, i) {
       if (t.type === 'spitter') { spitterIdxSet.add(i); return false; }
+      if (t.spitterOrder != null) { queueIdxSet.add(i); return false; }
       return true;
     });
 
@@ -735,13 +737,21 @@ function computeMinSlots(tiles) {
       result = backwardFill(fillTiles, makeRng(seed * 9301 + 49297), slotPressure);
     }
     if (!result) throw new Error('fill failed after 100 retries');
-    // 把填色结果写回（跳过吐牌机）
+    // 把填色结果写回（跳过吐牌机和队列牌）
     let fillIdx = 0;
     tiles.forEach(function (t, i) {
-      if (!spitterIdxSet.has(i) && result.assigned[fillIdx] !== undefined) {
+      if (spitterIdxSet.has(i) || queueIdxSet.has(i)) return;
+      if (result.assigned[fillIdx] !== undefined) {
         t.typeId = result.assigned[fillIdx];
       }
-      if (!spitterIdxSet.has(i)) fillIdx++;
+      fillIdx++;
+    });
+    // 队列牌分配剩余的 typeId（从填色池里抽）
+    const assignedTypeIds = result.assigned.filter(x => x);
+    const queueTiles = [...queueIdxSet].map(i => tiles[i]);
+    queueTiles.forEach((t, i) => {
+      // 按顺序分配（spitterOrder 1, 2, 3...）
+      t.typeId = assignedTypeIds[i] || (assignedTypeIds[i % assignedTypeIds.length]);
     });
 
     // 吐牌机验证
@@ -851,6 +861,9 @@ function computeMinSlots(tiles) {
     const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const layerCount = options.layerCount || 5;
     const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
+    // 吐牌机信息（从 editor 传过来）
+    const editorSpitters = options.spitters || []; // [{ targetLayer, targetRow, targetCol, count }]
+    const editorQueueTiles = options.queueTiles || []; // [{ layer, row, col, spitterOrder }]
     // 编辑器形状是 std（row=纵/col=横），生成器内部用 row=横/col=纵 → swap
     const layerMap = {};
     editorTiles.forEach(function (t) {
@@ -897,10 +910,13 @@ function computeMinSlots(tiles) {
       const v = validateShape(shape, { skipSymmetry: !mirror });
       if (!v.ok) continue; // 校验不过就重搭
       const level = toEditorJSON(shape, 1);
+      // 把编辑器的吐牌机队列牌和吐牌机标记加到 stacked 结果中
+      const editorSpitters = options.spitters || [];
+      const editorQueueTiles = options.queueTiles || [];
       // 吐牌机 tile 不参与填色也不参与配对
-      const spitterIdxSet = new Set();
-      level.tiles.forEach((t, i) => { if (t.type === 'spitter') spitterIdxSet.add(i); });
-      const fillTiles = level.tiles.filter((t, i) => !spitterIdxSet.has(i));
+      const levelSpitterIdxSet = new Set();
+      level.tiles.forEach((t, i) => { if (t.type === 'spitter') levelSpitterIdxSet.add(i); });
+      const fillTiles = level.tiles.filter((t, i) => !levelSpitterIdxSet.has(i));
       // 填色
       const startSeed = Math.floor(Math.random() * 1000) + 1;
       for (let seed = startSeed; seed <= startSeed + 50 && !filled; seed++) {
@@ -909,15 +925,35 @@ function computeMinSlots(tiles) {
           // 把填色结果写回（跳过吐牌机）
           let fillIdx = 0;
           const assignedTiles = level.tiles.map((t, i) => {
-            if (spitterIdxSet.has(i)) return Object.assign({}, t, { typeId: null });
+            if (levelSpitterIdxSet.has(i)) return Object.assign({}, t, { typeId: null });
             const newT = Object.assign({}, t, { typeId: result.assigned[fillIdx] });
             fillIdx++;
             return newT;
           });
+          // 加上编辑器的吐牌机队列牌（用剩余的 typeId）
+          const usedTypeIds = result.assigned.filter(x => x);
+          const allTypeIds = [];
+          for (let i = 1; i <= 34; i++) allTypeIds.push(i);
+          const remaining = allTypeIds.filter(id => !usedTypeIds.includes(id));
+          // 队列牌分配 typeId
+          editorQueueTiles.forEach((qt, i) => {
+            const typeId = remaining[i % Math.max(remaining.length, 1)] || usedTypeIds[i % usedTypeIds.length];
+            assignedTiles.push({
+              id: 0, layer: qt.layer, row: qt.row, col: qt.col,
+              typeId: typeId, spitterOrder: qt.spitterOrder,
+            });
+          });
+          // 加上吐牌机标记（放在 stacked 形状里）
+          editorSpitters.forEach(sp => {
+            assignedTiles.push({
+              id: 0, layer: sp.layer, row: sp.row, col: sp.col,
+              typeId: null, type: 'spitter',
+            });
+          });
           filled = {
             levelId: level.levelId, totalPairs: level.totalPairs,
             tiles: assignedTiles,
-            specialTiles: []
+            specialTiles: [] // spitter 标记在 level.tiles 里通过 type 字段标识
           };
         }
       }
