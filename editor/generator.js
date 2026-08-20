@@ -157,15 +157,16 @@ function generateFromTemplate(template, options = {}) {
     return Math.max(2, Math.round(b * jitter));
   }
 
-  // 始终重新生成 L1+（即使模板有 L1+）
-  // 第一层（底层）使用模板的 L0
-  const newLayers = [{ layer: 0, cells: [...template.layers[0].cells] }];
-
-  for (let l = 1; l < generateLayerCount; l++) {
+  // 使用编辑器已有的层（L0, L1, ...），只生成缺少的层
+  const newLayers = [];
+  for (let l = 0; l < template.layers.length; l++) {
+    newLayers.push({ layer: l, cells: [...template.layers[l].cells] });
+  }
+  // 如果编辑器层数不够，继续往上堆
+  for (let l = template.layers.length; l < generateLayerCount; l++) {
     const lowerArr = newLayers[l - 1].cells;
     const lowerKeys = new Set(lowerArr.map(c => keyOf(c.row, c.col)));
     const count = calcCount(l, generateLayerCount);
-    // L1 用 ordered 有序密排（互锁骨架，喂饱上层）；L2+ 用 random 随机有机
     const mode = l === 1 ? 'ordered' : 'random';
     const selected = generateLayer(lowerArr, lowerKeys, style, count, mode, mirror);
     const arr = Array.from(selected).map(k => {
