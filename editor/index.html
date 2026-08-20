@@ -2042,9 +2042,9 @@ let genMode = 'params'; // 'params' | 'difficulty'
 function onDifficultyChange() {
   const d = parseInt(document.getElementById('difficultyLevel').value);
   document.getElementById('difficultyVal').textContent = d;
-  // 线性映射: 1→最简单, 10→最难
-  const scoreMin = Math.round(60 + (d - 1) * 8.9);   // 60~140
-  const scoreMax = Math.round(80 + (d - 1) * 10);    // 80~170
+  // 线性映射: 1→最简单, 10→最难(根据实测分数范围 60~150)
+  const scoreMin = Math.round(50 + (d - 1) * 8);   // 50~122
+  const scoreMax = Math.round(70 + (d - 1) * 9);   // 70~151
   const hooks = Math.round(10 + (d - 1) * 7.8);      // 10~80%
   const dark = Math.round(5 + (d - 1) * 1.7);        // 5~20%
   document.getElementById('autoScoreVal').textContent = scoreMin + '~' + scoreMax;
@@ -2331,8 +2331,8 @@ function generateCurrentShape() {
     let scoreLo, scoreHi;
     if (genMode === 'difficulty') {
       const d = parseInt(document.getElementById('difficultyLevel').value);
-      scoreLo = Math.round(60 + (d - 1) * 8.9);
-      scoreHi = Math.round(80 + (d - 1) * 10);
+      scoreLo = Math.round(50 + (d - 1) * 8);
+      scoreHi = Math.round(70 + (d - 1) * 9);
     } else {
       scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
       scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
@@ -2398,8 +2398,8 @@ function generateStackFromCurrent() {
     let scoreLo, scoreHi;
     if (genMode === 'difficulty') {
       const d = parseInt(document.getElementById('difficultyLevel').value);
-      scoreLo = Math.round(60 + (d - 1) * 8.9);
-      scoreHi = Math.round(80 + (d - 1) * 10);
+      scoreLo = Math.round(50 + (d - 1) * 8);
+      scoreHi = Math.round(70 + (d - 1) * 9);
     } else {
       scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
       scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
@@ -2657,8 +2657,8 @@ function batchGenerate() {
   let scoreMin, scoreMax;
   if (genMode === 'difficulty') {
     const d = parseInt(document.getElementById('difficultyLevel').value);
-    scoreMin = Math.round(60 + (d - 1) * 8.9);
-    scoreMax = Math.round(80 + (d - 1) * 10);
+    scoreMin = Math.round(50 + (d - 1) * 8);
+    scoreMax = Math.round(70 + (d - 1) * 9);
   } else {
     const lo = parseInt(document.getElementById('scoreMin').value);
     const hi = parseInt(document.getElementById('scoreMax').value);
