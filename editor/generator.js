@@ -730,12 +730,17 @@ function computeMinSlots(tiles) {
     if (!result) throw new Error('fill failed after 100 retries');
     tiles.forEach(function (t, i) { t.typeId = result.assigned[i]; });
 
-    // 吐牌机验证：队列牌必须有支撑（不能悬空）
+    // 吐牌机验证
     const spitterTiles = tiles.filter(t => t.spitterOrder != null);
+    // 1. 队列牌必须有支撑（不能悬空）
     for (const st of spitterTiles) {
       if (!hasSupport(st.row, st.col, tiles.filter(t => t !== st && t.layer < st.layer))) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
+    }
+    // 2. 总牌数必须为偶数（二消需要成对）
+    if (tiles.length % 2 !== 0) {
+      throw new Error(`总牌数 ${tiles.length} 为奇数，二消需要偶数张牌`);
     }
 
     let darkIdx = editorDarkIdx.slice();
@@ -891,6 +896,19 @@ function computeMinSlots(tiles) {
       }
     }
     if (!filled) throw new Error('堆塔后无法完成填色(底座形状可能导致无解,试试调整底座形状或减少堆层数)');
+
+    // 吐牌机验证
+    const spitterTiles = filled.tiles.filter(t => t.spitterOrder != null);
+    for (const st of spitterTiles) {
+      if (!hasSupport(st.row, st.col, filled.tiles.filter(t => t !== st && t.layer < st.layer))) {
+        throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
+      }
+    }
+    // 最终偶数校验
+    if (filled.tiles.length % 2 !== 0) {
+      throw new Error(`总牌数 ${filled.tiles.length} 为奇数，二消需要偶数张牌`);
+    }
+
     // 暗牌
     if (darkMode) {
       const darkRng = makeRng(7777);
