@@ -746,12 +746,21 @@ function computeMinSlots(tiles) {
       }
       fillIdx++;
     });
-    // 队列牌分配剩余的 typeId（从填色池里抽）
-    const assignedTypeIds = result.assigned.filter(x => x);
+    // 队列牌分配独立的 typeId（不复用普通牌的，避免同花色三张）
+    const usedTypeIds = new Set(result.assigned.filter(x => x));
     const queueTiles = [...queueIdxSet].map(i => tiles[i]);
-    queueTiles.forEach((t, i) => {
-      // 按顺序分配（spitterOrder 1, 2, 3...）
-      t.typeId = assignedTypeIds[i] || (assignedTypeIds[i % assignedTypeIds.length]);
+    // 按吐牌机方向排序队列牌（1 先出现）
+    queueTiles.sort((a, b) => (a.spitterOrder || 0) - (b.spitterOrder || 0));
+    queueTiles.forEach((t) => {
+      // 找一个当前关卡没用过的花色
+      let typeId = null;
+      for (let id = 1; id <= 34; id++) {
+        if (!usedTypeIds.has(id)) { typeId = id; break; }
+      }
+      if (typeId) {
+        t.typeId = typeId;
+        usedTypeIds.add(typeId);
+      }
     });
 
     // 吐牌机验证
@@ -930,18 +939,22 @@ function computeMinSlots(tiles) {
             fillIdx++;
             return newT;
           });
-          // 加上编辑器的吐牌机队列牌（用剩余的 typeId）
-          const usedTypeIds = result.assigned.filter(x => x);
-          const allTypeIds = [];
-          for (let i = 1; i <= 34; i++) allTypeIds.push(i);
-          const remaining = allTypeIds.filter(id => !usedTypeIds.includes(id));
-          // 队列牌分配 typeId
-          editorQueueTiles.forEach((qt, i) => {
-            const typeId = remaining[i % Math.max(remaining.length, 1)] || usedTypeIds[i % usedTypeIds.length];
-            assignedTiles.push({
-              id: 0, layer: qt.layer, row: qt.row, col: qt.col,
-              typeId: typeId, spitterOrder: qt.spitterOrder,
-            });
+          // 加上编辑器的吐牌机队列牌（用独立 typeId 池，避免和普通牌重复）
+          const usedTypeIds = new Set(result.assigned.filter(x => x));
+          // 队列牌按 spitterOrder 排序
+          editorQueueTiles.sort((a, b) => (a.spitterOrder || 0) - (b.spitterOrder || 0));
+          editorQueueTiles.forEach((qt) => {
+            let typeId = null;
+            for (let id = 1; id <= 34; id++) {
+              if (!usedTypeIds.has(id)) { typeId = id; break; }
+            }
+            if (typeId) {
+              assignedTiles.push({
+                id: 0, layer: qt.layer, row: qt.row, col: qt.col,
+                typeId: typeId, spitterOrder: qt.spitterOrder,
+              });
+              usedTypeIds.add(typeId);
+            }
           });
           // 加上吐牌机标记（放在 stacked 形状里）
           editorSpitters.forEach(sp => {
