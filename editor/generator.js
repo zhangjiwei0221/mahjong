@@ -897,14 +897,26 @@ function computeMinSlots(tiles) {
       const v = validateShape(shape, { skipSymmetry: !mirror });
       if (!v.ok) continue; // 校验不过就重搭
       const level = toEditorJSON(shape, 1);
+      // 吐牌机 tile 不参与填色也不参与配对
+      const spitterIdxSet = new Set();
+      level.tiles.forEach((t, i) => { if (t.type === 'spitter') spitterIdxSet.add(i); });
+      const fillTiles = level.tiles.filter((t, i) => !spitterIdxSet.has(i));
       // 填色
       const startSeed = Math.floor(Math.random() * 1000) + 1;
       for (let seed = startSeed; seed <= startSeed + 50 && !filled; seed++) {
-        const result = backwardFill(level.tiles, makeRng(seed * 1000 + 42), slotPressure);
+        const result = backwardFill(fillTiles, makeRng(seed * 1000 + 42), slotPressure);
         if (result) {
+          // 把填色结果写回（跳过吐牌机）
+          let fillIdx = 0;
+          const assignedTiles = level.tiles.map((t, i) => {
+            if (spitterIdxSet.has(i)) return Object.assign({}, t, { typeId: null });
+            const newT = Object.assign({}, t, { typeId: result.assigned[fillIdx] });
+            fillIdx++;
+            return newT;
+          });
           filled = {
             levelId: level.levelId, totalPairs: level.totalPairs,
-            tiles: level.tiles.map(function (t, j) { return Object.assign({}, t, { typeId: result.assigned[j] }); }),
+            tiles: assignedTiles,
             specialTiles: []
           };
         }
