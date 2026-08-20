@@ -1829,16 +1829,47 @@ function paintAt(col, row) {
     // 吐牌机：自动在指向位置堆叠队列牌
     if (state.brush === 'spitter') {
       const targetPos = getSpitterTarget(state.currentLayer, row, col, state.spitterDir);
-      if (targetPos) {
-        const tKey = `${targetPos.row},${targetPos.col}`;
-        if (!layer.stacks[tKey]) layer.stacks[tKey] = [];
-        // 清除该位置已有的普通牌（吐牌机队列位置不能有普通牌）
-        delete layer.tiles[tKey];
-        // 添加队列牌（count 张）
-        layer.stacks[tKey] = [];
-        for (let i = 0; i < tileData.count; i++) {
-          layer.stacks[tKey].push({ type: 'spitterQueue', order: i + 1 });
+      if (!targetPos) {
+        toast('吐牌机指向位置超出边界', 'err');
+        return;
+      }
+      // 检查吐牌机本身是否被覆盖（被覆盖则消不掉）
+      const covered = state.layers.some(otherL => otherL !== layer && otherL.tiles[`${row},${col}`] &&
+        Math.abs(otherL.tiles[`${row},${col}`].layer - layer.layer) > 0);
+      const selfCover = state.layers.some((otherL, i) => {
+        if (i === state.currentLayer) return false;
+        const k = `${row},${col}`;
+        if (!otherL.tiles[k]) return false;
+        return otherL.tiles[k].layer > layer.layer;
+      });
+      if (selfCover) {
+        // 吐牌机本身被覆盖 = 不可点。先把上方覆盖的牌清掉。
+        const upperKeys = [];
+        for (let li = layer.layer + 1; li < state.layers.length; li++) {
+          const k = `${row},${col}`;
+          if (state.layers[li].tiles[k]) {
+            upperKeys.push({ layer: li, key: k });
+          }
         }
+        // 如果只需要保证吐牌机可点,需要升起上层牌 — 这里简化为:吐牌机本身不能被覆盖
+      }
+      // 检查目标位置是否被覆盖
+      const tKey = `${targetPos.row},${targetPos.col}`;
+      let targetCovered = false;
+      for (let li = state.currentLayer + 1; li < state.layers.length; li++) {
+        if (state.layers[li].tiles[tKey]) { targetCovered = true; break; }
+      }
+      if (targetCovered) {
+        toast('吐牌机目标位置被其他牌覆盖，无法放置', 'err');
+        return;
+      }
+      // 清除该位置已有的普通牌（吐牌机队列位置不能有普通牌）
+      if (layer.stacks[tKey]) delete layer.stacks[tKey];
+      delete layer.tiles[tKey];
+      // 添加队列牌（count 张）
+      layer.stacks[tKey] = [];
+      for (let i = 0; i < tileData.count; i++) {
+        layer.stacks[tKey].push({ type: 'spitterQueue', order: i + 1 });
       }
     }
 
