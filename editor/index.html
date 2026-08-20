@@ -591,8 +591,8 @@
       <div class="card-body">
         <!-- Tab 切换 -->
         <div class="tab-bar">
-          <button class="tab-btn active" id="tabBtnParams" onclick="switchTab('params')">参数模式</button>
-          <button class="tab-btn" id="tabBtnDifficulty" onclick="switchTab('difficulty')">难度模式</button>
+          <button class="tab-btn active" id="tabBtnParams" onclick="switchTabTo('params')">参数模式</button>
+          <button class="tab-btn" id="tabBtnDifficulty" onclick="switchTabTo('difficulty')">难度模式</button>
         </div>
 
         <!-- Tab 1: 参数模式 -->
@@ -2028,12 +2028,25 @@ function clearAll(btn) {
 
 // ========== 生成关卡（依赖 generator.js 的 window.GEN） ==========
 // ============ Tab 切换 ============
-function switchTab(tab) {
+function switchTabTo(tab) {
   document.getElementById('tab-params').classList.toggle('hidden', tab !== 'params');
   document.getElementById('tab-difficulty').classList.toggle('hidden', tab !== 'difficulty');
   document.getElementById('tabBtnParams').classList.toggle('active', tab === 'params');
   document.getElementById('tabBtnDifficulty').classList.toggle('active', tab === 'difficulty');
   genMode = tab;
+  // 切到难度模式时,把自动计算的值同步到滑轮,避免两个 Tab 显示不一致
+  if (tab === 'difficulty') {
+    const d = parseInt(document.getElementById('difficultyLevel').value);
+    const scoreMin = Math.round(50 + (d - 1) * 8);
+    const scoreMax = Math.round(70 + (d - 1) * 9);
+    const hooks = Math.round(10 + (d - 1) * 7.8);
+    const dark = Math.round(5 + (d - 1) * 1.7);
+    document.getElementById('scoreMin').value = scoreMin;
+    document.getElementById('scoreMax').value = scoreMax;
+    document.getElementById('hooksTarget').value = hooks;
+    document.getElementById('darkRatio').value = dark;
+    onGenParamChange();
+  }
 }
 
 // ============ 难度模式 ============
