@@ -1,5 +1,5 @@
 {
-  "version": "v4.6.6",
+  "version": "c143b3e",
   "updated": "2026-08-18",
   "notes": "删除试玩Demo卡片,修复version.json嵌套引号导致changelog加载失败,JSON有效",
   "changelog": [
