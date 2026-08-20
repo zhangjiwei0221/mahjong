@@ -722,18 +722,26 @@ function computeMinSlots(tiles) {
         if (i >= 0 && !marked.has(i)) { editorDarkIdx.push(i); marked.add(i); }
       }
     });
-    // 吐牌机 tile 不参与填色（保持原样）
+    // 吐牌机 tile 不参与填色也不参与配对（从 backwardFill 中排除）
     const spitterIdxSet = new Set();
-    tiles.forEach((t, i) => { if (t.type === 'spitter') spitterIdxSet.add(i); });
+    const fillTiles = tiles.filter(function (t, i) {
+      if (t.type === 'spitter') { spitterIdxSet.add(i); return false; }
+      return true;
+    });
 
     let result = null;
     const startSeed = Math.floor(Math.random() * 1000) + 1;
     for (let seed = startSeed; seed <= startSeed + 100 && !result; seed++) {
-      result = backwardFill(tiles, makeRng(seed * 9301 + 49297), slotPressure);
+      result = backwardFill(fillTiles, makeRng(seed * 9301 + 49297), slotPressure);
     }
     if (!result) throw new Error('fill failed after 100 retries');
+    // 把填色结果写回（跳过吐牌机）
+    let fillIdx = 0;
     tiles.forEach(function (t, i) {
-      if (!spitterIdxSet.has(i)) t.typeId = result.assigned[i];
+      if (!spitterIdxSet.has(i) && result.assigned[fillIdx] !== undefined) {
+        t.typeId = result.assigned[fillIdx];
+      }
+      if (!spitterIdxSet.has(i)) fillIdx++;
     });
 
     // 吐牌机验证
