@@ -106,6 +106,11 @@ body {
   z-index: 99999 !important;
   filter: brightness(1.06);
 }
+
+.tile.spitter {
+  border: 2px solid #8a4a12;
+  box-shadow: 0 0 8px rgba(176,106,42,0.6);
+}
 /* 点到不可操作的牌：轻微横向抖动提示 */
 .tile.shake {
   animation: shake 0.2s ease;
@@ -462,21 +467,28 @@ function render() {
   let html = '';
   // 从低层到高层画
   const sorted = [...active].sort((a, b) => a.layer - b.layer || a.id - b.id);
+  // 找出吐牌机位置和队列位置（用于渲染判断）
+  const spitterIds = new Set((currentSpecialTiles || []).filter(s => s.type === 'spitter').map(s => s.id));
   for (const t of sorted) {
+    if (t.spitterOrder) continue; // 队列牌不直接渲染（隐藏在 spitter 位置后）
     const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
     const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
     const clickable = isClickable(t, active);
-    const isBack = t.isDark && t.id !== selectedDarkId; // 暗牌背面 = 未被选中（点暗牌即翻面选中，可随选中转移翻回）
+    const isBack = t.isDark && t.id !== selectedDarkId;
     const selectedCls = t.id === selectedDarkId ? ' selected' : '';
     const flipCls = justFlipped.has(t.id) ? ' flipping' : '';
-    const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}`;
-    const src = isBack ? TILE_BACK_IMAGE : tileImgSrc(t.typeId);
+    const isSpitter = spitterIds.has(t.id);
+    const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}${isSpitter ? ' spitter' : ''}`;
+    const src = isBack ? TILE_BACK_IMAGE : (isSpitter ? TILE_BACK_IMAGE : tileImgSrc(t.typeId));
+    const spitterStyle = isSpitter
+      ? 'background:linear-gradient(135deg,#b06a2a 0%,#d8954f 100%);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;'
+      : '';
 
     html += `<div class="${cssClass}" data-id="${t.id}" data-type="${t.typeId}" data-dark="${isBack ? 1 : 0}"
       style="left:${x}px; top:${y}px; width:${tileSize}px; height:${tileSize}px; --ld:${t.layer};
-             z-index:${t.layer * 1000 + t.id};"
+             z-index:${t.layer * 1000 + t.id};${spitterStyle}"
       onclick="clickTile(${t.id})">
-      <img class="tile-img" src="${src}" alt="">
+      ${isSpitter ? '<span style="font-size:32px;">⚙</span>' : '<img class="tile-img" src="' + src + '" alt="">'}
     </div>`;
   }
   justFlipped.clear();
@@ -800,8 +812,10 @@ function hideMessage() {
 }
 
 // ========== 关卡加载 ==========
+let currentSpecialTiles = [];
 function loadLevel(json) {
   levelData = json;
+  currentSpecialTiles = json.specialTiles || [];
   const numPairs = Math.floor(json.tiles.length / 2);
   const typePool = buildTypePool(numPairs);
   tiles = json.tiles.map(t => {
