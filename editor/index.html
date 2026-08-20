@@ -2583,9 +2583,9 @@ function toggleWbSaveBox(show) {
 }
 
 function saveCurrentLevelToWorkbench(btn) {
-  if (!currentLevel) { setWorkbenchStatus('先生成关卡（点上方生成按钮）才能保存', 'error'); return; }
+  if (!currentLevel) { alert('请先生成关卡（点上方生成按钮）才能保存'); toggleWbSaveBox(true); return; }
   const pass = document.getElementById('wbPass').value.trim();
-  if (!pass) { setWorkbenchStatus('请输入共享口令', 'error'); return; }
+  if (!pass) { alert('请输入共享口令（默认 1）'); toggleWbSaveBox(true); document.getElementById('wbPass').focus(); return; }
   sessionStorage.setItem('wbPass', pass);
   const name = document.getElementById('wbSaveName').value.trim() || '未命名关卡';
   const orderVal = document.getElementById('wbSaveOrder').value.trim();
