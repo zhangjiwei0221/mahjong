@@ -1,5 +1,5 @@
 {
-  "version": "3710fb3",
+  "version": "1fe8c22",
   "updated": "2026-08-18",
   "notes": "删除试玩Demo卡片,修复version.json嵌套引号导致changelog加载失败,JSON有效",
   "changelog": [

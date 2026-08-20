@@ -739,6 +739,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.19 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 队列牌用独立typeId池(避免和普通牌重复,防止同花色三张)<br>
+          • 吐牌机放置时检查目标位置是否被覆盖(被覆盖则拒绝放置)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.15 · 2026-08-21</div>
         <div class="gh-desc">
           • 按底座生成也排除吐牌机参与配对+填色
@@ -2380,7 +2387,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '3710fb3'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = '1fe8c22'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
