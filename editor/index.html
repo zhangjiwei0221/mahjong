@@ -1288,7 +1288,7 @@ function armConfirm(btn, label, action) {
 
 // ========== 初始化 ==========
 function init() {
-  state.layers = [{ tiles: {} }, { tiles: {} }];
+  state.layers = [{ tiles: {}, stacks: {} }, { tiles: {}, stacks: {} }];
   state.currentLayer = 0;
   const restored = loadAutosave();
   updateUI();
@@ -1365,6 +1365,15 @@ function draw() {
       const isHover = state.hoverTile && state.hoverTile.key === key && state.hoverTile.layer === layerIdx;
       drawTile(c0, r, layerIdx, tile, isCurrent, isHover, issues && layerIdx > 0 && issues.has(key));
     });
+    // 绘制吐牌机队列（堆叠牌）
+    Object.keys(layer.stacks || {}).forEach(key => {
+      const stack = layer.stacks[key];
+      const [r, c0] = key.split(',').map(Number);
+      stack.forEach((st, idx) => {
+        // 每层稍微偏移，显示堆叠效果
+        drawTile(c0, r, layerIdx, { type: 'spitterQueue', order: st.order }, false, false, false);
+      });
+    });
   });
 
   if (state.hoverCell) drawHover();
@@ -1388,6 +1397,8 @@ function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
     baseColor = '#5a6d95'; accentColor = '#7c8fb8'; borderColor = '#31427a';
   } else if (tile.type === 'spitter') {
     baseColor = '#b06a2a'; accentColor = '#d8954f'; borderColor = '#7a4a12';
+  } else if (tile.type === 'spitterQueue') {
+    baseColor = '#c97a1f'; accentColor = '#e8a54f'; borderColor = '#8a4a12';
   } else {
     const lc = LAYER_COLORS[Math.min(layerIdx, LAYER_COLORS.length - 1)];
     baseColor = lc.base; accentColor = lc.accent;
@@ -1725,6 +1736,23 @@ function paintAt(col, row) {
       count: parseInt(document.getElementById('spitterCount').value) || 3,
     };
     layer.tiles[key] = { ...tileData };
+
+    // 吐牌机：自动在指向位置堆叠队列牌
+    if (state.brush === 'spitter') {
+      const targetPos = getSpitterTarget(state.currentLayer, row, col, state.spitterDir);
+      if (targetPos) {
+        const tKey = `${targetPos.row},${targetPos.col}`;
+        if (!layer.stacks[tKey]) layer.stacks[tKey] = [];
+        // 清除该位置已有的普通牌（吐牌机队列位置不能有普通牌）
+        delete layer.tiles[tKey];
+        // 添加队列牌（count 张）
+        layer.stacks[tKey] = [];
+        for (let i = 0; i < tileData.count; i++) {
+          layer.stacks[tKey].push({ type: 'spitterQueue', order: i + 1 });
+        }
+      }
+    }
+
     if (state.symmetric && mcol !== col) {
       const mTile = { ...tileData };
       if (mTile.type === 'spitter') {
@@ -1740,6 +1768,20 @@ function paintAt(col, row) {
 
   draw();
   updateUI();
+}
+
+// 计算吐牌机指向的目标位置
+function getSpitterTarget(layer, row, col, dir) {
+  let tRow = row, tCol = col, tLayer = layer;
+  switch (dir) {
+    case 'up': tRow = row - 2; break;
+    case 'down': tRow = row + 2; break;
+    case 'left': tCol = col - 2; break;
+    case 'right': tCol = col + 2; break;
+  }
+  // 检查边界
+  if (tCol < -5 || tCol > 5 || tRow < -8 || tRow > 6) return null;
+  return { layer: tLayer, row: tRow, col: tCol };
 }
 
 // ========== 键盘 ==========
@@ -1946,12 +1988,20 @@ function loadFromEditorJSON(json) {
 
   json.tiles.forEach(t => {
     const l = t.layer;
-    if (!layerMap[l]) layerMap[l] = { tiles: {} };
+    if (!layerMap[l]) layerMap[l] = { tiles: {}, stacks: {} };
     const key = `${t.row},${t.col}`;
     const sp = specialMap[`${l},${t.row},${t.col}`];
-    if (sp && sp.type === 'dark') layerMap[l].tiles[key] = { type: 'dark' };
-    else if (sp && sp.type === 'spitter') layerMap[l].tiles[key] = { type: 'spitter', dir: sp.direction || 'up', count: sp.count || 3 };
-    else layerMap[l].tiles[key] = { type: 'normal' };
+    if (sp && sp.type === 'dark') {
+      layerMap[l].tiles[key] = { type: 'dark' };
+    } else if (sp && sp.type === 'spitter') {
+      layerMap[l].tiles[key] = { type: 'spitter', dir: sp.direction || 'up', count: sp.count || 3 };
+    } else if (t.spitterOrder) {
+      // 吐牌机队列牌 → 放入 stacks
+      if (!layerMap[l].stacks[key]) layerMap[l].stacks[key] = [];
+      layerMap[l].stacks[key].push({ type: 'spitterQueue', order: t.spitterOrder });
+    } else {
+      layerMap[l].tiles[key] = { type: 'normal' };
+    }
   });
 
   const before = serializeLayers();
@@ -2179,6 +2229,14 @@ function buildEditorShape() {
       if (tile.type !== 'normal') {
         specialTiles.push({ id: 0, type: tile.type, layer: layerIdx, row: r, col: c, direction: tile.dir, count: tile.count });
       }
+    });
+    // 吐牌机队列：堆叠的牌展开为独立 tile，带 spitterOrder
+    Object.keys(layer.stacks || {}).forEach(key => {
+      const stack = layer.stacks[key];
+      const [r, c] = key.split(',').map(Number);
+      stack.forEach((st, i) => {
+        tiles.push({ id: 0, layer: layerIdx, row: r, col: c, typeId: null, spitterOrder: st.order || (i + 1) });
+      });
     });
   });
   tiles.sort((a, b) => a.layer - b.layer || a.row - b.row || a.col - b.col);

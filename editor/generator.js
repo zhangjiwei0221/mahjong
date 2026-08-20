@@ -729,6 +729,15 @@ function computeMinSlots(tiles) {
     }
     if (!result) throw new Error('fill failed after 100 retries');
     tiles.forEach(function (t, i) { t.typeId = result.assigned[i]; });
+
+    // 吐牌机验证：队列牌必须有支撑（不能悬空）
+    const spitterTiles = tiles.filter(t => t.spitterOrder != null);
+    for (const st of spitterTiles) {
+      if (!hasSupport(st.row, st.col, tiles.filter(t => t !== st && t.layer < st.layer))) {
+        throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
+      }
+    }
+
     let darkIdx = editorDarkIdx.slice();
     if (darkMode) {
       const darkRng = makeRng(99999);
