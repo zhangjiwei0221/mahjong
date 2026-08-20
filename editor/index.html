@@ -739,6 +739,83 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.13 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 吐牌机tile保留type字段(不再显示为普通麻将)<br>
+          • 吐牌机不参与填色+偶数校验排除吐牌机
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.12 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 吐牌机偶数校验+支撑验证(按形状生成和按底座生成都校验)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.11 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 吐牌机编辑器支持:堆叠队列+支撑验证+导入导出<br>
+          • 吐牌机画笔自动在指向位置堆N张队列牌
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.10 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 按底座堆塔时保留编辑器已有的层(不再丢弃L1+)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.9 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 填色用随机起始seed(每次点生成结果不同)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.8 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 修复吐牌机被当作普通麻将填色(fillEditorShape追踪spitter)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.7 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 修复版本检测bug(version字段用commit hash匹配APP_VERSION)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.6 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 删除主页试玩Demo卡片<br>
+          • 修复version.json嵌套引号(清理changelog)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.5 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 修复保存按钮bug(id不匹配wbNewOrder/wbSaveOrder)<br>
+          • 保存失败用alert弹窗
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.4 · 2026-08-18</div>
+        <div class="gh-desc">
+          • Tab双模式(参数模式+难度模式)<br>
+          • 难度模式下不严格匹配(参数自动分配)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.3 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 切换难度模式时同步滑轮值(避免两个Tab显示不一致)
+        </div>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.6.2 · 2026-08-18</div>
+        <div class="gh-desc">
+          • 难度10的分数范围从140~170改为122~151(匹配实际可达范围)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.1 · 2026-08-18</div>
         <div class="gh-desc">
           • 难度模式下不严格匹配(参数自动分配,直接接受)<br>
