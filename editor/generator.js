@@ -747,8 +747,10 @@ function computeMinSlots(tiles) {
       }
     });
     // ===== 校验 target 位置支撑 =====
-    // 吐牌机指向的位置必须有支撑（下方有下层牌托住），否则生成报错
+    // L1+ 的吐牌机：指向的位置必须有支撑（下方有下层牌托住），否则生成报错
+    // L0 的吐牌机：target 在底层，地面就是支撑，无需校验
     for (const sp of spitterTilesAll) {
+      if (sp.layer === 0) continue; // L0 无需检查支撑
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       // 检查 target 位置在 sp.layer 层是否有支撑（象限规则：下方要有下层牌）
@@ -944,8 +946,10 @@ function computeMinSlots(tiles) {
     }
     const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
     // ===== 校验 target 位置支撑 =====
-    // 吐牌机指向的位置必须有支撑（下方有下层牌托住），否则生成报错
+    // L1+ 的吐牌机：指向的位置必须有支撑（下方有下层牌托住），否则生成报错
+    // L0 的吐牌机：target 在底层，地面就是支撑，无需校验
     for (const sp of editorSpitters) {
+      if (sp.layer === 0) continue; // L0 无需检查支撑
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       const lowerTiles = editorTiles.filter(t => t.layer < sp.layer);
