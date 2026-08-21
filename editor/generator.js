@@ -746,6 +746,16 @@ function computeMinSlots(tiles) {
       }
       fillIdx++;
     });
+    // 吐牌机本体也分配 typeId（用独立池避免和普通牌重复）
+    const usedTypeIds = new Set(result.assigned.filter(x => x));
+    const spitterTiles = tiles.filter((t, i) => spitterIdxSet.has(i));
+    for (const t of spitterTiles) {
+      let typeId = null;
+      for (let id = 1; id <= 34; id++) {
+        if (!usedTypeIds.has(id)) { typeId = id; break; }
+      }
+      if (typeId) { t.typeId = typeId; usedTypeIds.add(typeId); }
+    }
     // 队列牌分配独立的 typeId（不复用普通牌的，避免同花色三张）
     const usedTypeIds = new Set(result.assigned.filter(x => x));
     const queueTiles = [...queueIdxSet].map(i => tiles[i]);

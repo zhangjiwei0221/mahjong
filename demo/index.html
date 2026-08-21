@@ -467,28 +467,23 @@ function render() {
   let html = '';
   // 从低层到高层画
   const sorted = [...active].sort((a, b) => a.layer - b.layer || a.id - b.id);
-  // 找出吐牌机位置和队列位置（用于渲染判断）
   const spitterIds = new Set((currentSpecialTiles || []).filter(s => s.type === 'spitter').map(s => s.id));
   for (const t of sorted) {
-    if (t.spitterOrder) continue; // 队列牌不直接渲染（隐藏在 spitter 位置后）
+    if (t.spitterOrder) continue; // 队列牌不直接渲染
     const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
     const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
     const clickable = isClickable(t, active);
     const isBack = t.isDark && t.id !== selectedDarkId;
     const selectedCls = t.id === selectedDarkId ? ' selected' : '';
     const flipCls = justFlipped.has(t.id) ? ' flipping' : '';
-    const isSpitter = spitterIds.has(t.id);
-    const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}${isSpitter ? ' spitter' : ''}`;
-    const src = isBack ? TILE_BACK_IMAGE : (isSpitter ? TILE_BACK_IMAGE : tileImgSrc(t.typeId));
-    const spitterStyle = isSpitter
-      ? 'background:linear-gradient(135deg,#b06a2a 0%,#d8954f 100%);display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;'
-      : '';
+    const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}`;
+    const src = isBack ? TILE_BACK_IMAGE : tileImgSrc(t.typeId);
 
     html += `<div class="${cssClass}" data-id="${t.id}" data-type="${t.typeId}" data-dark="${isBack ? 1 : 0}"
       style="left:${x}px; top:${y}px; width:${tileSize}px; height:${tileSize}px; --ld:${t.layer};
-             z-index:${t.layer * 1000 + t.id};${spitterStyle}"
+             z-index:${t.layer * 1000 + t.id};"
       onclick="clickTile(${t.id})">
-      ${isSpitter ? '<span style="font-size:32px;">⚙</span>' : '<img class="tile-img" src="' + src + '" alt="">'}
+      <img class="tile-img" src="${src}" alt="">
     </div>`;
   }
   justFlipped.clear();
