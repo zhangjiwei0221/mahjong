@@ -713,6 +713,30 @@ function computeMinSlots(tiles) {
     const darkRatio = options.darkRatio;
     const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
+    // ===== 填色前校验（吐牌机相关）=====
+    // 普通牌(不含 spitter 和队列牌)必须是偶数（每对消除需要 2 张）
+    const spitterTilesAll = editorTiles.filter(function (t) { return t.type === 'spitter'; });
+    const queueTilesAll = editorTiles.filter(function (t) { return t.spitterOrder != null; });
+    const normalCount = editorTiles.length - spitterTilesAll.length - queueTilesAll.length;
+    if (normalCount % 2 !== 0) {
+      throw new Error('场上普通牌 ' + normalCount + ' 张为奇数，二消要偶数张才能成对，请加一张或删一张');
+    }
+    // 队列牌（spitterOrder != null）也必须成对，且 spitter.count 必须 > 0
+    for (const sp of spitterTilesAll) {
+      // 队列牌 row/col = spitter 指向位置（不是 spitter 自身）
+      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
+      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
+      const queueCount = queueTilesAll.filter(function (t) { return t.row === targetRow && t.col === targetCol; }).length;
+      if (!sp.count || sp.count < 1 || sp.count > 6) {
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 的 count=' + sp.count + ' 不合理（应为 1~6）');
+      }
+      if (queueCount !== sp.count) {
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 配置 count=' + sp.count + ' 但实际队列牌有 ' + queueCount + ' 张');
+      }
+      if (queueCount % 2 !== 0) {
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 队列牌 ' + queueCount + ' 张为奇数，二消要偶数张，请调整 count 为偶数');
+      }
+    }
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
     const editorDarkIdx = [];
     const marked = new Set();
@@ -766,7 +790,7 @@ function computeMinSlots(tiles) {
       }
     }
     // 2. 总牌数必须为偶数（二消需要成对）- 排除吐牌机本身（它不需要配对）
-    const nonSpitterCount = tiles.filter(t => t.type !== 'spitter').length;
+    const nonSpitterCount = tiles.filter(t => t.type !== 'spitter' && t.spitterOrder == null).length;
     if (nonSpitterCount % 2 !== 0) {
       throw new Error(`总牌数 ${nonSpitterCount} 为奇数，二消需要偶数张牌`);
     }
@@ -874,8 +898,16 @@ function computeMinSlots(tiles) {
     });
     const layerNums = Object.keys(layerMap).map(Number).sort(function (a, b) { return a - b; });
     if (layerNums.length === 0) throw new Error('空形状');
-    if (editorTiles.length % 2 !== 0) {
-      throw new Error('底座是 ' + editorTiles.length + ' 张（奇数），二消要偶数张才能成对，请加一张或删一张');
+    // ===== 底座校验（含吐牌机）=====
+    const editorSpitterCount = editorTiles.filter(function (t) { return t.type === 'spitter'; }).length;
+    const editorNormalCount = editorTiles.length - editorSpitterCount;
+    if (editorNormalCount % 2 !== 0) {
+      throw new Error('底座普通牌 ' + editorNormalCount + ' 张为奇数，二消要偶数张才能成对，请加一张或删一张');
+    }
+    // 队列牌总数（spitter.count 总和）也必须是偶数
+    const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
+    if (totalQueueCount % 2 !== 0) {
+      throw new Error('吐牌机队列牌总数 ' + totalQueueCount + ' 张为奇数，二消要偶数张。请调整每个吐牌机的 count 为偶数');
     }
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
     // 检测底座是否左右对称（std 坐标：每个 (layer,row,col) 都要有 (layer,row,-col)）
@@ -888,12 +920,14 @@ function computeMinSlots(tiles) {
     let filled = null;
     for (let attempt = 0; attempt < 30 && !filled; attempt++) {
       const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
-      // 不对称堆塔时层不镜像翻倍，总牌数可能为奇数（二消要偶数）→ 从顶层删牌凑偶
+      // ===== 凑偶逻辑（含吐牌机队列牌）=====
+      // 总牌数 = shape.tiles.length(普通) + editorSpitterCount(spitter 本体) + totalQueueCount(队列)
+      // spitter 本体不参与配对;shape.tiles 和 totalQueueCount 必须同奇偶,凑偶后总和为偶数
       // 必须成对删除（一张 + 它的镜像对称牌），否则破坏对称性导致校验失败
-      if (shape.tiles.length % 2 !== 0) {
+      const targetParity = totalQueueCount % 2; // shape.tiles 凑偶后应等于此奇偶
+      if (shape.tiles.length % 2 !== targetParity) {
         const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
-        const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL; });
-        // 找一对镜像对称的牌删除（row-mirror 对称：row 相反、col 相同）
+        const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL });
         let removed = false;
         for (let k = 0; k < topTiles.length && !removed; k++) {
           const a = topTiles[k];
@@ -903,7 +937,6 @@ function computeMinSlots(tiles) {
             removed = true;
           }
         }
-        // 找不到镜像对（顶层只有中轴线上的牌），则删一张中轴线牌（row=0，自身对称）
         if (!removed) {
           const axis = topTiles.find(function (t) { return t.row === 0; });
           if (axis) shape.tiles = shape.tiles.filter(function (t) { return t !== axis; });
@@ -975,8 +1008,8 @@ function computeMinSlots(tiles) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
     }
-    // 最终偶数校验（排除吐牌机本身）
-    const nonSpitterCount = filled.tiles.filter(t => t.type !== 'spitter').length;
+    // 最终偶数校验（排除吐牌机本身和队列牌——它们与普通牌一起凑偶，前置校验已保证）
+    const nonSpitterCount = filled.tiles.filter(t => t.type !== 'spitter' && t.spitterOrder == null).length;
     if (nonSpitterCount % 2 !== 0) {
       throw new Error(`总牌数 ${nonSpitterCount} 为奇数，二消需要偶数张牌`);
     }

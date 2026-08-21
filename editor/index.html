@@ -876,6 +876,15 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.24 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 按当前形状生成:填色前校验普通牌数偶数、spitter count 合理性(1~6)、队列牌数匹配 count、队列牌数偶数<br>
+          • 按堆塔生成:底座校验普通牌数偶数 + 队列牌总数偶数<br>
+          • 堆塔凑偶逻辑改为考虑队列牌奇偶性(shape.tiles 与队列牌同奇偶,凑偶后总和偶数)<br>
+          • 最终偶数校验同时排除 spitter 本体和队列牌
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.23 · 2026-08-21</div>
         <div class="gh-desc">
           • 吐牌机游戏逻辑完整实现:指向位置牌消除时释放队列牌(淡入+缩放动画),队列用尽后吐牌机消失<br>
@@ -2402,7 +2411,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'e2c1bf4'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

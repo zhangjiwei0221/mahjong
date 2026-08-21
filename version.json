@@ -1,8 +1,13 @@
 {
-  "version": "e2c1bf4",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "吐牌机游戏逻辑完整实现:队列释放 + 队列用尽消失",
+  "notes": "吐牌机生成前偶数校验:普通牌数 + spitter count + 队列牌数",
   "changelog": [
+    {
+      "version": "v4.6.24",
+      "date": "2026-08-21",
+      "notes": "按当前形状生成:填色前校验普通牌数偶数、spitter count 合理性(1~6)、队列牌数匹配 count、队列牌数偶数;按堆塔生成:底座校验 + 堆塔凑偶逻辑考虑队列牌奇偶性"
+    },
     {
       "version": "v4.6.23",
       "date": "2026-08-21",
