@@ -948,18 +948,13 @@ function computeMinSlots(tiles) {
     // ===== 底座校验（含吐牌机）=====
     const editorSpitterCount = editorTiles.filter(function (t) { return t.type === 'spitter'; }).length;
     const editorNormalCount = editorTiles.length - editorSpitterCount;
-    if (editorNormalCount % 2 !== 0) {
-      throw new Error('底座普通牌 ' + editorNormalCount + ' 张为奇数，二消要偶数张才能成对，请加一张或删一张');
-    }
-    // 队列牌（每个 spitter.count）必须是奇数（指向位置 1 张 + N 张队列 = N+1 张需偶数 → N 奇数）
+    // 堆塔路径：底座普通牌奇偶不强制(堆塔算法会从顶层成对删凑偶数)
+    // 队列牌（每个 spitter.count）奇偶不强制(堆塔会凑)
     for (const sp of editorSpitters) {
       if (!sp.count || sp.count < 1 || sp.count > 6) {
-        throw new Error('吐牌机 count=' + sp.count + ' 不合理（应为 1~5 的奇数）');
+        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~6)');
       }
-      if (sp.count % 2 === 0) {
-        // 堆塔生成路径：spitter.count 可以偶数,因为堆塔能控制 shape.tiles 凑偶使总和偶数
-        // 这里不报错(以前强制奇数是错的)
-      }
+      // spitter.count 奇偶不强制(堆塔会凑)
     }
     const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
