@@ -746,31 +746,25 @@ function computeMinSlots(tiles) {
       }
       fillIdx++;
     });
-    // 吐牌机本体也分配 typeId（用独立池避免和普通牌重复）
     const usedTypeIds = new Set(result.assigned.filter(x => x));
-    const spitterTiles = tiles.filter((t, i) => spitterIdxSet.has(i));
-    for (const t of spitterTiles) {
+    // 吐牌机本体分配 typeId（用独立池避免和普通牌重复）
+    const spitterTilesForType = tiles.filter((t, i) => spitterIdxSet.has(i));
+    for (const t of spitterTilesForType) {
       let typeId = null;
       for (let id = 1; id <= 34; id++) {
         if (!usedTypeIds.has(id)) { typeId = id; break; }
       }
       if (typeId) { t.typeId = typeId; usedTypeIds.add(typeId); }
     }
-    // 队列牌分配独立的 typeId（不复用普通牌的，避免同花色三张）
-    const usedTypeIds = new Set(result.assigned.filter(x => x));
+    // 队列牌分配独立的 typeId（不复用普通牌/吐牌机的，避免同花色三张）
     const queueTiles = [...queueIdxSet].map(i => tiles[i]);
-    // 按吐牌机方向排序队列牌（1 先出现）
     queueTiles.sort((a, b) => (a.spitterOrder || 0) - (b.spitterOrder || 0));
     queueTiles.forEach((t) => {
-      // 找一个当前关卡没用过的花色
       let typeId = null;
       for (let id = 1; id <= 34; id++) {
         if (!usedTypeIds.has(id)) { typeId = id; break; }
       }
-      if (typeId) {
-        t.typeId = typeId;
-        usedTypeIds.add(typeId);
-      }
+      if (typeId) { t.typeId = typeId; usedTypeIds.add(typeId); }
     });
 
     // 吐牌机验证
