@@ -876,6 +876,13 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.34 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 堆塔路径不再强制底座普通牌偶数(堆塔算法会从顶层成对删凑偶数)<br>
+          • 堆塔路径不再校验 spitter.count 奇偶(堆塔会凑)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.33 · 2026-08-21</div>
         <div class="gh-desc">
           • 堆塔生成时 spitter.count 不强制奇偶(堆塔可凑偶)<br>
@@ -2501,7 +2508,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '1676bad'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'c566580'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

@@ -1,12 +1,12 @@
 {
-  "version": "1676bad",
+  "version": "c566580",
   "updated": "2026-08-21",
-  "notes": "微调 spitter:堆塔 count 灵活 + 队列牌点击立即释放",
+  "notes": "堆塔路径底座普通牌不再强制偶数",
   "changelog": [
     {
-      "version": "v4.6.33",
+      "version": "v4.6.34",
       "date": "2026-08-21",
-      "notes": "堆塔生成时 spitter.count 不强制奇偶(堆塔可凑偶);demo 队列牌点击直接消除+触发释放下一张(不等配对);fillEditorShape 改为校验总可消除偶数(自动判断 count 合适性)"
+      "notes": "堆塔路径不再强制底座普通牌偶数(堆塔算法会从顶层成对删凑偶数);堆塔路径不再校验 spitter.count 奇偶(堆塔会凑)"
     },
     {
       "version": "v4.6.31",
