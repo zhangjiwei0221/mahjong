@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "e2c1bf4",
   "updated": "2026-08-21",
   "notes": "吐牌机游戏逻辑完整实现:队列释放 + 队列用尽消失",
   "changelog": [
