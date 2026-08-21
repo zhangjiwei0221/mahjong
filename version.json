@@ -1,12 +1,12 @@
 {
-  "version": "0c942af",
+  "version": "6d0c7f9",
   "updated": "2026-08-22",
-  "notes": "队列牌初始全可见+点队列牌直接消除 spitter 本体和 target",
+  "notes": "队列牌 layer 排序:spitterOrder=1 在最上层",
   "changelog": [
     {
-      "version": "v4.6.36",
+      "version": "v4.6.37",
       "date": "2026-08-22",
-      "notes": "队列牌初始全部可见(不再逐步释放);点队列牌直接消除+spitter 本体+target 牌一起消失;队列牌不受 isClickable 限制"
+      "notes": "队列牌 layer 排序改为 spitterOrder=1 在最上层(玩家先点最上面先释放)"
     },
       "notes": "修 spitter 校验:普通牌必须偶数+count 必须偶数(2/4);backwardFill 支持占位牌;堆塔路径 spitter 本体 typeId 保持 null"
     },

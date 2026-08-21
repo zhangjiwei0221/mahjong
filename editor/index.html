@@ -891,6 +891,13 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.37 · 2026-08-22</div>
+        <div class="gh-desc">
+          • 队列牌 layer 排序改为 spitterOrder=1 在最上层(玩家先点最上面先释放)<br>
+          • 之前 spitterOrder=2 layer 最高,挡住 1;改成 1 在最上面
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.36 · 2026-08-22</div>
         <div class="gh-desc">
           • 队列牌初始全部可见(堆叠在 target 上方),不再逐步释放<br>
@@ -2538,7 +2545,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '0c942af'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = '6d0c7f9'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
