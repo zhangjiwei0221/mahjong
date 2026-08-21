@@ -666,6 +666,16 @@ function clickTile(id) {
   if (!isClickable(tile, active)) { showHint(id); return; }
   // 吐牌机本体：不可点，抖动提示（队列用尽后已 exhausted 排除在 active 外，自动不响应）
   if (tile.type === 'spitter') { showHint(id); return; }
+  // 吐牌机队列牌：点击直接消除 + 触发释放下一张（不等配对，玩家体验更顺畅）
+  if (tile.spitterOrder != null) {
+    matchedTileIds.add(tile.id);
+    slotTileIds.add(tile.id);
+    triggerSpitters([tile]);
+    spitterRevealedIds.clear();
+    render();
+    setTimeout(() => checkWin(), 320);
+    return;
+  }
 
   // 已有选中的正面暗牌 A → 配对分支
   if (selectedDarkId != null) {

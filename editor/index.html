@@ -876,6 +876,14 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.33 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 堆塔生成时 spitter.count 不强制奇偶(堆塔可凑偶)<br>
+          • demo 队列牌点击直接消除+触发释放下一张(不等配对,体验更顺畅)<br>
+          • fillEditorShape 校验改为:普通牌奇数 + fillTiles 偶 + 总可消除偶(自动判断 count 是否合适)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.32 · 2026-08-21</div>
         <div class="gh-desc">
           • 重做 spitter 交互:画笔不再自动堆队列牌,生成器根据 spitter.count 自动生成队列牌(堆叠在 target 上方多层)<br>
@@ -2493,7 +2501,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '1e21330'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

@@ -734,12 +734,10 @@ function computeMinSlots(tiles) {
     }
     for (const sp of spitterTilesAll) {
       if (!sp.count || sp.count < 1 || sp.count > 6) {
-        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~5)');
-      }
-      if (sp.count % 2 !== 0) {
-        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] count=' + sp.count + ' 是奇数,二消要求偶数。请改为 2 或 4');
+        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~6)');
       }
     }
+    // spitter.count 不强制奇偶,生成器自动调整让总可消除牌偶数
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
     const editorDarkIdx = [];
     const marked = new Set();
@@ -959,7 +957,8 @@ function computeMinSlots(tiles) {
         throw new Error('吐牌机 count=' + sp.count + ' 不合理（应为 1~5 的奇数）');
       }
       if (sp.count % 2 === 0) {
-        throw new Error('吐牌机 count=' + sp.count + ' 为偶数，二消要求奇数（指向位置 1 张 + N 张队列 = N+1 张需偶数），请改为奇数');
+        // 堆塔生成路径：spitter.count 可以偶数,因为堆塔能控制 shape.tiles 凑偶使总和偶数
+        // 这里不报错(以前强制奇数是错的)
       }
     }
     const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
