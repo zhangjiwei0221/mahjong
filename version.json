@@ -1,12 +1,17 @@
 {
-  "version": "203a71c",
+  "version": "c3b9d27",
   "updated": "2026-08-22",
-  "notes": "队列牌参与 backwardFill 配对计算，保证一一对应",
+  "notes": "L0吐牌机跳过支撑校验 + 队列牌参与backwardFill",
   "changelog": [
+    {
+      "version": "v4.6.40",
+      "date": "2026-08-22",
+      "notes": "L0吐牌机跳过支撑校验：L0吐牌机的target在底层，地面就是支撑，无需校验；只有L1+吐牌机才需要检查target位置是否有下层牌托住"
+    },
     {
       "version": "v4.6.39",
       "date": "2026-08-22",
-      "notes": "队列牌参与 backwardFill 配对计算：旧逻辑从普通牌池随机选 typeId 可能导致无配对；新逻辑在 backwardFill 之前生成队列牌(typeId=null)，参与配对计算，保证每张队列牌都有对应配对牌"
+      "notes": "队列牌参与backwardFill配对计算：旧逻辑从普通牌池随机选typeId可能导致无配对；新逻辑在backwardFill之前生成队列牌(typeId=null)，参与配对计算，保证每张队列牌都有对应配对牌"
     },
     {
       "version": "v4.6.38",
