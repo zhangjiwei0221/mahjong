@@ -715,28 +715,27 @@ function computeMinSlots(tiles) {
     const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
     // ===== 填色前校验（吐牌机相关）=====
     const spitterTilesAll = editorTiles.filter(function (t) { return t.type === 'spitter'; });
-    const queueTilesAll = editorTiles.filter(function (t) { return t.spitterOrder != null; });
-    // 普通牌(不含 spitter 和队列牌) - 真正的用户画普通牌
-    const normalCount = editorTiles.length - spitterTilesAll.length - queueTilesAll.length;
+    // 队列牌由生成器自动生成（用户不画），所以 editorTiles 里没有队列牌
+    const normalCount = editorTiles.length - spitterTilesAll.length;
     // 计算 spitter 自动补的占位支撑牌数（target 位置已有牌就不补）
     let autoPlacedSupport = 0;
+    let totalQueueCount = 0;
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       const hasSupport = editorTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
       if (!hasSupport) autoPlacedSupport++;
+      totalQueueCount += sp.count || 0;
     }
-    // 校验：用户普通牌偶数 + spitter.count 偶 → 总可消除偶 ✓
-    if (normalCount % 2 !== 0) {
-      throw new Error('用户画的普通牌 ' + normalCount + ' 张为奇数,需要偶数。请加一张或减少一张');
-    }
+    // 校验：spitter count 合理性
     for (const sp of spitterTilesAll) {
       if (!sp.count || sp.count < 1 || sp.count > 6) {
-        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 2/4)');
+        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~6)');
       }
-      if (sp.count % 2 !== 0) {
-        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] count=' + sp.count + ' 是奇数,二消要求偶数。请改为 2 或 4');
-      }
+    }
+    // 关键校验：fillTiles = normalCount + autoPlacedSupport + totalQueueCount 必须偶数
+    if ((normalCount + autoPlacedSupport + totalQueueCount) % 2 !== 0) {
+      throw new Error('吐牌机配置错误：普通牌(' + normalCount + ') + 支撑牌(' + autoPlacedSupport + ') + 队列牌(' + totalQueueCount + ') = ' + (normalCount + autoPlacedSupport + totalQueueCount) + ' 为奇数，无法配对。请调整普通牌数量或吐牌机 count');
     }
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
     const editorDarkIdx = [];
@@ -749,7 +748,7 @@ function computeMinSlots(tiles) {
     });
     // ===== 自动补 target 位置支撑牌 =====
     // 如果 spitter 指向位置没有牌,自动补一张 typeId=null 的占位牌
-    // 占位牌参与 fillColor(需要 typeId 才能被消除),不算 spitter 关联(target 已有的才算关联)
+    // 占位牌参与 backwardFill（需要 typeId 才能被消除）
     const targetHasSupport = []; // 每 spitter 标记 target 是否已有牌
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
@@ -761,43 +760,38 @@ function computeMinSlots(tiles) {
       }
     }
 
-    // 吐牌机本体不参与填色。spitter 关联牌(target 已有的那张)也不参与普通 fillColor,留空给生成器赋 typeId
-    // target 空时的占位牌参与 fillColor(需要 typeId 才能被消除)
+    // ===== 在 backwardFill 之前生成队列牌（typeId = null，由 backwardFill 分配）=====
+    // 队列牌堆叠在 target 位置上方多层
+    // layer 排序：spitterOrder=1（layer 最高，最上面先点）→ spitterOrder=count（layer 最低）
+    for (const sp of spitterTilesAll) {
+      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
+      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
+      for (let i = 1; i <= sp.count; i++) {
+        tiles.push({
+          id: 0,
+          layer: sp.layer + (sp.count - i + 1),
+          row: targetRow,
+          col: targetCol,
+          typeId: null,
+          spitterOrder: i,
+        });
+      }
+    }
+
+    // 吐牌机本体不参与填色（不是麻将）
     const spitterIdxSet = new Set();
-    const spitterTargetIdxSet = new Set(); // spitter 指向位置已有的那张牌(target=已有)的索引
     tiles.forEach((t, i) => {
       if (t.type === 'spitter') spitterIdxSet.add(i);
     });
-    spitterTilesAll.forEach((sp, idx) => {
-      if (!targetHasSupport[idx]) return; // target 空,占位牌不参与 set
-      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
-      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      for (let i = 0; i < tiles.length; i++) {
-        if (spitterIdxSet.has(i)) continue;
-        if (tiles[i].row === targetRow && tiles[i].col === targetCol) {
-          spitterTargetIdxSet.add(i);
-          break;
-        }
-      }
-    });
+    // fillTiles 包含：普通牌、target 位置的牌、占位牌、队列牌
+    // 排除：吐牌机本体
     const fillTiles = tiles.filter(function (t, i) {
-      return !spitterIdxSet.has(i) && !spitterTargetIdxSet.has(i);
+      return !spitterIdxSet.has(i);
     });
 
-    // fillTiles 偶数校验(backwardFill 要求)
-    // fillTiles = 普通牌 + 占位 - spitter 关联(用户画的 target)
-    // 占位 = spitterTilesAll.length - userTargetCount
-    // fillTiles = normalCount + (spitterTilesAll.length - userTargetCount) - userTargetCount = normalCount + spitterTilesAll.length - 2*userTargetCount
-    // 所以 fillTiles = normalCount + spitterTilesAll.length(偶数,因为 spitter 本体 1 张)
-    // normalCount 偶 + spitter 1(奇)= 奇 → 占位补 1 张 → 偶 ✓
-    // 这里不直接校验,backwardFill 报错再说
-    // 校验 fillTiles 偶数(backwardFill 要求)
-    // 如果 fillTiles 奇数,补 1 张占位(从普通牌池赋 typeId)
+    // fillTiles 偶数校验（backwardFill 要求）
     if (fillTiles.length % 2 !== 0) {
-      const sp = spitterTilesAll[0];
-      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
-      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      fillTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
+      throw new Error('总可消除牌数 ' + fillTiles.length + ' 为奇数，无法配对。请调整普通牌数量或吐牌机 count（普通牌 + 队列牌 必须为偶数）');
     }
 
     let result = null;
@@ -806,37 +800,14 @@ function computeMinSlots(tiles) {
       result = backwardFill(fillTiles, makeRng(seed * 9301 + 49297), slotPressure);
     }
     if (!result) throw new Error('fill failed after 100 retries');
-    // 把填色结果写回非 spitter 非 target 的牌
+
+    // 把填色结果写回非 spitter 的牌（包括普通牌、target 牌、队列牌）
     let fillIdx = 0;
     tiles.forEach(function (t, i) {
-      if (spitterIdxSet.has(i) || spitterTargetIdxSet.has(i)) return;
+      if (spitterIdxSet.has(i)) return;
       if (result.assigned[fillIdx] !== undefined) t.typeId = result.assigned[fillIdx];
       fillIdx++;
     });
-    // 给 spitter 关联牌(target 或 target 空时的占位)赋 typeId,从普通牌池随机选
-    const normalTypeIds = result.assigned.filter(function (x) { return x != null; });
-    tiles.forEach(function (t, i) {
-      if (spitterTargetIdxSet.has(i) && t.typeId == null) {
-        if (normalTypeIds.length > 0) {
-          t.typeId = normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)];
-        }
-      }
-    });
-
-    // ===== 自动生成 spitter 队列牌 =====
-    // 队列牌 layer 排序:spitterOrder=1(layer 最高,最上面先点) → spitterOrder=count(layer 最低)
-    // 玩家先点最上层的牌(spitterOrder=1),符合"先释放先消耗"逻辑
-    for (const sp of spitterTilesAll) {
-      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
-      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      for (let i = 1; i <= sp.count; i++) {
-        tiles.push({
-          id: 0, layer: sp.layer + (sp.count - i + 1), row: targetRow, col: targetCol,
-          typeId: normalTypeIds.length > 0 ? normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)] : null,
-          spitterOrder: i,
-        });
-      }
-    }
 
     // ===== 校验 =====
     // 1. 队列牌必须有支撑(不能悬空)
@@ -954,22 +925,26 @@ function computeMinSlots(tiles) {
     // ===== 底座校验（含吐牌机）=====
     const editorSpitterCount = editorTiles.filter(function (t) { return t.type === 'spitter'; }).length;
     const editorNormalCount = editorTiles.length - editorSpitterCount;
-    // 堆塔路径：底座普通牌奇偶不强制(堆塔算法会从顶层成对删凑偶数)
-    // 队列牌（每个 spitter.count）奇偶不强制(堆塔会凑)
+    // 校验 spitter count 合理性
     for (const sp of editorSpitters) {
       if (!sp.count || sp.count < 1 || sp.count > 6) {
         throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~6)');
       }
-      // spitter.count 奇偶不强制(堆塔会凑)
     }
     const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
-    // 计算 spitter 指向位置(target)是否已有牌,用于凑偶方向
+    // 计算 spitter 指向位置(target)是否已有牌
     let autoPlacedSupport = 0;
     for (const sp of editorSpitters) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       const hasSupport = editorTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
       if (!hasSupport) autoPlacedSupport++;
+    }
+    // 关键校验：fillTiles = level.tiles + supportTiles + queueTiles 必须偶数
+    // level.tiles 总是偶数（toEditorJSON 会删一张凑偶）
+    // 所以 autoPlacedSupport + totalQueueCount 必须偶数
+    if ((autoPlacedSupport + totalQueueCount) % 2 !== 0) {
+      throw new Error('吐牌机配置错误：支撑牌数(' + autoPlacedSupport + ') + 队列牌数(' + totalQueueCount + ') = ' + (autoPlacedSupport + totalQueueCount) + ' 为奇数，无法配对。请在吐牌机指向位置补一张牌，或调整吐牌机 count 为奇数/偶数使总和为偶数');
     }
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
     // 检测底座是否左右对称（std 坐标：每个 (layer,row,col) 都要有 (layer,row,-col)）
@@ -982,48 +957,50 @@ function computeMinSlots(tiles) {
     let filled = null;
     for (let attempt = 0; attempt < 30 && !filled; attempt++) {
       const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
-      // ===== 凑偶逻辑（含吐牌机队列牌）=====
-      // 总牌数 = shape.tiles.length(普通) + spitter 本体 + totalQueueCount(队列)
-      // spitter 本体 1 张(不影响奇偶)
-      // 所以 shape.tiles.length 和 totalQueueCount 必须同奇偶 → 总牌数才能偶
-      // 删 0 或 2 张(必须成对删除保镜像对称),直到 shape.tiles.length % 2 === targetParity
-      // 配对牌总数 = shape.tiles.length(普通) + autoPlacedSupport(target 空时补的占位也是配对牌)
-      // 必须偶数(玩家可全部配对消除)
-      // 删镜像对让 shape.tiles.length 凑到 (autoPlacedSupport%2 === 0 ? 偶 : 奇)
-      const targetParity = autoPlacedSupport % 2; // 占位 0→shape 凑偶,占位 1→shape 凑奇
-      while (shape.tiles.length % 2 !== targetParity) {
-        const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
-        const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL });
-        let removed = false;
-        for (let k = 0; k < topTiles.length && !removed; k++) {
-          const a = topTiles[k];
-          // 找镜像对:左右对称(col 镜像,row 相同)
-          const b = topTiles.find(function (t, j) { return j !== k && t.row === a.row && t.col === -a.col; });
-          if (b) {
-            shape.tiles = shape.tiles.filter(function (t) { return t !== a && t !== b; });
-            removed = true;
-          }
-        }
-        if (!removed) {
-          // 删中轴线牌(col=0)
-          const axis = topTiles.find(function (t) { return t.col === 0; });
-          if (axis) shape.tiles = shape.tiles.filter(function (t) { return t !== axis; });
-        }
-        if (shape.layerCounts) shape.layerCounts[maxL] = shape.tiles.filter(function (t) { return t.layer === maxL; }).length;
-        if (!removed) break;
-      }
-      // 凑偶循环 break(找不到能删的对)→ shape 奇偶不匹配 → 跳过此 attempt
-      if (shape.tiles.length % 2 !== targetParity) continue;
       const v = validateShape(shape, { skipSymmetry: !mirror });
       if (!v.ok) continue; // 校验不过就重搭
       const level = toEditorJSON(shape, 1);
       // 把编辑器的吐牌机队列牌和吐牌机标记加到 stacked 结果中
       const editorSpitters = options.spitters || [];
-      const editorQueueTiles = options.queueTiles || [];
       // 堆塔路径:spitter 本体不参与填色(保持 typeId=null,不是麻将)
       const levelSpitterIdxSet = new Set();
       level.tiles.forEach((t, i) => { if (t.type === 'spitter') levelSpitterIdxSet.add(i); });
-      const fillTiles = level.tiles.filter((t, i) => !levelSpitterIdxSet.has(i));
+
+      // ===== 在 backwardFill 之前生成队列牌和支撑牌（typeId = null，由 backwardFill 分配）=====
+      // 队列牌堆叠在 target 位置上方多层
+      // layer 排序：spitterOrder=1（layer 最高，最上面先点）→ spitterOrder=count（layer 最低）
+      const queueTiles = [];
+      const supportTiles = [];
+      for (const sp of editorSpitters) {
+        const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
+        const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
+        // target 位置若没牌，补一张 typeId=null 的占位支撑牌（参与 backwardFill）
+        const hasSupport = level.tiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
+        if (!hasSupport) {
+          supportTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
+        }
+        // 生成 spitter.count 张队列牌
+        for (let i = 1; i <= sp.count; i++) {
+          queueTiles.push({
+            id: 0,
+            layer: sp.layer + (sp.count - i + 1),
+            row: targetRow,
+            col: targetCol,
+            typeId: null,
+            spitterOrder: i,
+          });
+        }
+      }
+
+      // fillTiles 包含：普通牌、支撑牌、队列牌（排除吐牌机本体）
+      const fillTiles = level.tiles.filter((t, i) => !levelSpitterIdxSet.has(i)).concat(supportTiles).concat(queueTiles);
+
+      // fillTiles 偶数校验（backwardFill 要求）
+      if (fillTiles.length % 2 !== 0) {
+        // 奇偶不匹配，跳过此 attempt
+        continue;
+      }
+
       // 填色
       const startSeed = Math.floor(Math.random() * 1000) + 1;
       for (let seed = startSeed; seed <= startSeed + 50 && !filled; seed++) {
@@ -1037,40 +1014,28 @@ function computeMinSlots(tiles) {
             fillIdx++;
             return newT;
           });
-          // ===== 自动生成 spitter 队列牌(共用普通牌 typeId 池) =====
-          const normalTypeIds = result.assigned.filter(function (x) { return x != null; });
-          // 先 push spitter 本体(不参与填色,typeId=null)
+          // 把填色结果写回支撑牌
+          supportTiles.forEach(function (st) {
+            st.typeId = result.assigned[fillIdx];
+            fillIdx++;
+          });
+          // 把填色结果写回队列牌
+          queueTiles.forEach(function (qt) {
+            qt.typeId = result.assigned[fillIdx];
+            fillIdx++;
+          });
+
+          // 先 push spitter 本体（不参与填色，typeId=null）
           editorSpitters.forEach(function (sp) {
             assignedTiles.push({
               id: 0, layer: sp.layer, row: sp.row, col: sp.col,
               typeId: null, type: 'spitter', dir: sp.dir, count: sp.count,
             });
           });
-          editorSpitters.forEach(function (sp) {
-            const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
-            const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-            // target 位置若没牌,补一张 typeId=null 占位牌(后面会从普通牌池赋 typeId)
-            const hasSupport = assignedTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
-            if (!hasSupport) {
-              assignedTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
-            }
-            // 生成 spitter.count 张队列牌,堆叠在 target 上方多层
-            // layer 排序:spitterOrder=1(layer 最高,最上面先点) → spitterOrder=count(layer 最低)
-            // 玩家先点最上层的牌(spitterOrder=1),符合"先释放先消耗"逻辑
-            for (let i = 1; i <= sp.count; i++) {
-              assignedTiles.push({
-                id: 0, layer: sp.layer + (sp.count - i + 1), row: targetRow, col: targetCol,
-                typeId: normalTypeIds.length > 0 ? normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)] : null,
-                spitterOrder: i,
-              });
-            }
-          });
-          // 给占位支撑牌赋 typeId(从普通牌池随机选)
-          assignedTiles.forEach(function (t) {
-            if (t.typeId == null && t.type !== 'spitter') {
-              t.typeId = normalTypeIds.length > 0 ? normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)] : null;
-            }
-          });
+          // 再 push 支撑牌和队列牌
+          supportTiles.forEach(function (st) { assignedTiles.push(st); });
+          queueTiles.forEach(function (qt) { assignedTiles.push(qt); });
+
           // 重新分配 id
           assignedTiles.forEach((t, i) => { t.id = i + 1; });
           filled = {

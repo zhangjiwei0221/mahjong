@@ -319,18 +319,29 @@ let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动
 let baseBounds = null;        // 初始布局边界（loadLevel 时固定，消除后棋盘不缩放）
 
 function getActiveTiles() {
-  // 队列牌全部可见(堆叠在 target 上方),不需要"逐步释放"
+  // 队列牌机制:仅显示 spitterOrder === 已释放数 + 1(下一张可点)
+  // 例如:released=0 时只显示 spitterOrder=1,点击消除后 released=1,显示 spitterOrder=2 ...
+  // 全部释放完后,spitter 本体进入 exhausted,所有队列牌已消除
   const spitters = tiles.filter(t => t.type === 'spitter');
   const activeSpitterIds = new Set(spitters.filter(s => !spitterExhaustedIds.has(s.id)).map(s => s.id));
+  const activeQueueIds = new Set();
+  for (const t of tiles) {
+    if (t.spitterOrder == null) continue;
+    const owner = spitters.find(s => {
+      const tgt = spitterTargetPos(s);
+      return tgt && tgt.row === t.row && tgt.col === t.col;
+    });
+    if (!owner || spitterExhaustedIds.has(owner.id)) continue;
+    const released = spitterReleasedCount.get(owner.id) ?? 0;
+    // 显示下一张可点的队列牌(spitterOrder === released + 1)
+    if (t.spitterOrder === released + 1) activeQueueIds.add(t.id);
+  }
   return tiles.filter(t =>
     !matchedTileIds.has(t.id) &&
     !slotTileIds.has(t.id) &&
     !spitterExhaustedIds.has(t.id) &&
     !(t.type === 'spitter' && !activeSpitterIds.has(t.id)) &&
-    !(t.spitterOrder != null && spitterExhaustedIds.has(spitters.find(s => {
-      const tgt = spitterTargetPos(s);
-      return tgt && tgt.row === t.row && tgt.col === t.col;
-    })?.id || -1))
+    !(t.spitterOrder != null && !activeQueueIds.has(t.id))
   );
 }
 
@@ -382,18 +393,8 @@ function triggerSpitters(matchedNow) {
     // 队列用尽 → spitter 本体消失
     if (count > 0 && nextOrder >= count) {
       spitterExhaustedIds.add(owner.id);
-      // 吐牌机耗尽时,target 位置的牌也一起消失(它是吐牌机"吐"出来的,不应该留在场上)
-      const targetTile = tiles.find(t =>
-        !matchedTileIds.has(t.id) &&
-        !slotTileIds.has(t.id) &&
-        t.row === target.row &&
-        t.col === target.col &&
-        t.type !== 'spitter' &&
-        t.spitterOrder == null
-      );
-      if (targetTile) {
-        matchedTileIds.add(targetTile.id);
-      }
+      // 本设计:target 牌是"配对源",每次点 spitterOrder 释放下一张牌(target 进卡槽配对)
+      // 队列配对由玩家点击触发,spitter 只是按一下释放下一张,不让 spitter 直接消耗队列牌
     }
   }
   return changed;
@@ -608,7 +609,15 @@ function render() {
     // 跳过未激活的队列牌的条件已移除
     const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
     const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
-    const clickable = isClickable(t, active);
+    // spitter 关联的 target 牌即使被队列牌压,也算可点(让玩家能点 target 进卡槽配对)
+    let clickable = isClickable(t, active);
+    if (!clickable && t.spitterOrder == null) {
+      const sp = tiles.find(s => s.type === 'spitter' && !spitterExhaustedIds.has(s.id));
+      if (sp) {
+        const tgt = spitterTargetPos(sp);
+        if (tgt && tgt.row === t.row && tgt.col === t.col) clickable = true;
+      }
+    }
     const isBack = t.isDark && t.id !== selectedDarkId;
     const selectedCls = t.id === selectedDarkId ? ' selected' : '';
     const flipCls = justFlipped.has(t.id) ? ' flipping' : '';
@@ -659,30 +668,19 @@ function clickTile(id) {
   if (!tile) return;
   // 吐牌机本体：不可点，抖动提示（队列用尽后已 exhausted 排除在 active 外，自动不响应）
   if (tile.type === 'spitter') { showHint(id); return; }
-  // 吐牌机队列牌：点一下直接消除(不进卡槽,不是普通配对牌)+ 触发吐牌机本体 + target 牌一起消失
-  if (tile.spitterOrder != null) {
-    matchedTileIds.add(tile.id);
-    var sp = null;
-    for (var i = 0; i < tiles.length; i++) {
-      if (tiles[i].type === 'spitter' && !spitterExhaustedIds.has(tiles[i].id)) { sp = tiles[i]; break; }
-    }
-    if (sp) {
-      var off = {up:[-2,0],down:[2,0],left:[0,-2],right:[0,2]}[sp.dir] || [0,0];
-      var tt = null;
-      for (var j = 0; j < tiles.length; j++) {
-        var t = tiles[j];
-        if (!matchedTileIds.has(t.id) && t.row === sp.row + off[0] && t.col === sp.col + off[1] && t.type !== 'spitter' && t.spitterOrder == null) { tt = t; break; }
-      }
-      if (tt) matchedTileIds.add(tt.id);
-      spitterExhaustedIds.add(sp.id);
-    }
-    spitterRevealedIds.clear();
-    render();
-    setTimeout(function(){checkWin();}, 320);
-    return;
+  // spitter 关联的 target 牌即使被队列牌压,也算可点(让玩家进卡槽配对)
+  if (!isClickable(tile, active)) {
+    if (tile.spitterOrder == null) {
+      const sp = tiles.find(s => s.type === 'spitter' && !spitterExhaustedIds.has(s.id));
+      const isTarget = sp && (function(){
+        const tgt = spitterTargetPos(sp);
+        return tgt && tgt.row === tile.row && tgt.col === tile.col;
+      })();
+      if (!isTarget) { showHint(id); return; }
+    } else { showHint(id); return; }
   }
-  if (!isClickable(tile, active)) { showHint(id); return; }
-  // 吐牌机本体：不可点，抖动提示（队列用尽后已 exhausted 排除在 active 外，自动不响应）
+  // 队列牌：走普通进卡槽+配对消除流程(checkMatch 配对后触发 release 下一张)
+  // 不进 matchedTileIds(由 checkMatch 在配对消除时处理)
   if (tile.type === 'spitter') { showHint(id); return; }
 
   // 已有选中的正面暗牌 A → 配对分支
