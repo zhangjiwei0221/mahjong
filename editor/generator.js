@@ -824,14 +824,14 @@ function computeMinSlots(tiles) {
     });
 
     // ===== 自动生成 spitter 队列牌 =====
-    // 队列牌 layer = spitter.layer + 1, +2, ..., +count(堆叠在 target 上方多层)
-    // typeId 从普通牌共享池随机选(释放后会和场上同花色配对消除,必须共用池子)
+    // 队列牌 layer 排序:spitterOrder=1(layer 最高,最上面先点) → spitterOrder=count(layer 最低)
+    // 玩家先点最上层的牌(spitterOrder=1),符合"先释放先消耗"逻辑
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       for (let i = 1; i <= sp.count; i++) {
         tiles.push({
-          id: 0, layer: sp.layer + i, row: targetRow, col: targetCol,
+          id: 0, layer: sp.layer + (sp.count - i + 1), row: targetRow, col: targetCol,
           typeId: normalTypeIds.length > 0 ? normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)] : null,
           spitterOrder: i,
         });
@@ -1055,9 +1055,11 @@ function computeMinSlots(tiles) {
               assignedTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
             }
             // 生成 spitter.count 张队列牌,堆叠在 target 上方多层
+            // layer 排序:spitterOrder=1(layer 最高,最上面先点) → spitterOrder=count(layer 最低)
+            // 玩家先点最上层的牌(spitterOrder=1),符合"先释放先消耗"逻辑
             for (let i = 1; i <= sp.count; i++) {
               assignedTiles.push({
-                id: 0, layer: sp.layer + i, row: targetRow, col: targetCol,
+                id: 0, layer: sp.layer + (sp.count - i + 1), row: targetRow, col: targetCol,
                 typeId: normalTypeIds.length > 0 ? normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)] : null,
                 spitterOrder: i,
               });

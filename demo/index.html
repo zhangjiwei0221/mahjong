@@ -604,16 +604,8 @@ function render() {
   const spitters = tiles.filter(t => t.type === 'spitter' && !spitterExhaustedIds.has(t.id));
   const spitterIds = new Set(spitters.map(s => s.id));
   for (const t of sorted) {
-    // 跳过未激活的队列牌（spitterOrder > 该 spitter 已释放数）
-    if (t.spitterOrder != null) {
-      // 找这张队列牌归属的 spitter（队列牌 row/col = 指向位置，匹配 spitter 指向位置）
-      const owningSpitter = spitters.find(s => {
-        const target = spitterTargetPos(s);
-        return target && target.row === t.row && target.col === t.col;
-      });
-      const released = owningSpitter ? (spitterReleasedCount.get(owningSpitter.id) ?? 0) : 0;
-      if ((t.spitterOrder || 0) > released) continue;
-    }
+    // 队列牌初始全部可见(堆叠在 target 上方),不需要"逐步释放"
+    // 跳过未激活的队列牌的条件已移除
     const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
     const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
     const clickable = isClickable(t, active);
