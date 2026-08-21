@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "ffc636f",
   "updated": "2026-08-21",
   "notes": "generateStackFromShape 重新分配 spitter/queue id(避免 id 冲突)",
   "changelog": [
