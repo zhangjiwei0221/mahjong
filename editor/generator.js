@@ -775,8 +775,8 @@ function computeMinSlots(tiles) {
 
     // ===== 在 backwardFill 之前生成队列牌（typeId = null，由 backwardFill 分配）=====
     // count 包含初始牌，所以队列牌数量 = count - 1
-    // 队列牌堆叠在 target 位置上方，与普通牌视觉叠放一致
-    // layer 排序：spitterOrder=1（layer 最低，紧贴 target）→ spitterOrder=count-1（layer 最高，最上面先点）
+    // 吐牌机机制：一次只显示一张，点一张吐一张
+    // 所有队列牌放在同一层（与 target 同层），demo 根据 spitterReleasedCount 决定显示哪张
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
@@ -784,7 +784,7 @@ function computeMinSlots(tiles) {
       for (let i = 1; i <= queueCount; i++) {
         tiles.push({
           id: 0,
-          layer: sp.layer + i, // sp.layer + 1, sp.layer + 2, ...（逐层向上叠放）
+          layer: sp.layer, // 与 target 同层（不叠放，一次只显示一张）
           row: targetRow,
           col: targetCol,
           typeId: null,
@@ -825,9 +825,10 @@ function computeMinSlots(tiles) {
     });
 
     // ===== 校验 =====
-    // 1. 队列牌必须有支撑(不能悬空)
+    // 1. 队列牌必须有支撑(不能悬空)——L0 除外（地面就是支撑）
     const queueTiles = tiles.filter(function (t) { return t.spitterOrder != null; });
     for (const st of queueTiles) {
+      if (st.layer === 0) continue; // L0 无需检查支撑
       if (!hasSupport(st.row, st.col, tiles.filter(function (t) { return t !== st && t.layer < st.layer; }))) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
@@ -1009,11 +1010,13 @@ function computeMinSlots(tiles) {
           supportTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
         }
         // 生成 count - 1 张队列牌（count 包含初始牌）
+        // 吐牌机机制：一次只显示一张，点一张吐一张
+        // 所有队列牌放在同一层（与 target 同层）
         const queueCount = sp.count - 1;
         for (let i = 1; i <= queueCount; i++) {
           queueTiles.push({
             id: 0,
-            layer: sp.layer + i, // sp.layer + 1, sp.layer + 2, ...（逐层向上叠放）
+            layer: sp.layer, // 与 target 同层（不叠放，一次只显示一张）
             row: targetRow,
             col: targetCol,
             typeId: null,
@@ -1078,9 +1081,10 @@ function computeMinSlots(tiles) {
     }
     if (!filled) throw new Error('堆塔后无法完成填色(底座形状可能导致无解,试试调整底座形状或减少堆层数)');
 
-    // 吐牌机验证
+    // 吐牌机验证（L0 除外，地面就是支撑）
     const spitterTiles = filled.tiles.filter(t => t.spitterOrder != null);
     for (const st of spitterTiles) {
+      if (st.layer === 0) continue; // L0 无需检查支撑
       if (!hasSupport(st.row, st.col, filled.tiles.filter(t => t !== st && t.layer < st.layer))) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
