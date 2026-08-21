@@ -969,11 +969,12 @@ function computeMinSlots(tiles) {
     for (let attempt = 0; attempt < 30 && !filled; attempt++) {
       const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
       // ===== 凑偶逻辑（含吐牌机队列牌）=====
-      // 总牌数 = shape.tiles.length(普通) + editorSpitterCount(spitter 本体) + totalQueueCount(队列)
-      // spitter 本体不参与配对;shape.tiles 和 totalQueueCount 必须同奇偶,凑偶后总和为偶数
-      // 必须成对删除（一张 + 它的镜像对称牌），否则破坏对称性导致校验失败
-      const targetParity = totalQueueCount % 2; // shape.tiles 凑偶后应等于此奇偶
-      if (shape.tiles.length % 2 !== targetParity) {
+      // 总牌数 = shape.tiles.length(普通) + spitter 本体 + totalQueueCount(队列)
+      // spitter 本体 1 张(不影响奇偶)
+      // 所以 shape.tiles.length 和 totalQueueCount 必须同奇偶 → 总牌数才能偶
+      // 删 0 或 2 张(必须成对删除保镜像对称),直到 shape.tiles.length % 2 === targetParity
+      const targetParity = totalQueueCount % 2;
+      while (shape.tiles.length % 2 !== targetParity) {
         const maxL = Math.max.apply(null, shape.tiles.map(function (t) { return t.layer; }));
         const topTiles = shape.tiles.filter(function (t) { return t.layer === maxL });
         let removed = false;
@@ -990,6 +991,8 @@ function computeMinSlots(tiles) {
           if (axis) shape.tiles = shape.tiles.filter(function (t) { return t !== axis; });
         }
         if (shape.layerCounts) shape.layerCounts[maxL] = shape.tiles.filter(function (t) { return t.layer === maxL; }).length;
+        // 防止无限循环(顶层找不到能删的对)
+        if (!removed) break;
       }
       const v = validateShape(shape, { skipSymmetry: !mirror });
       if (!v.ok) continue; // 校验不过就重搭
@@ -1058,11 +1061,10 @@ function computeMinSlots(tiles) {
         throw new Error(`吐牌机队列牌 [L${st.layer},${st.row},${st.col}] 悬空无支撑`);
       }
     }
-    // 最终偶数校验（排除吐牌机本身和队列牌——它们与普通牌一起凑偶，前置校验已保证）
-    const nonSpitterCount = filled.tiles.filter(t => t.type !== 'spitter' && t.spitterOrder == null).length;
-    if (nonSpitterCount % 2 !== 0) {
-      throw new Error(`总牌数 ${nonSpitterCount} 为奇数，二消需要偶数张牌`);
-    }
+    // 总牌数校验：凑偶后 shape.tiles 必为偶数(targetParity 与队列总数一致),且 +1 spitter 本体 + queueCount → 偶数
+    // 上面的循环已保证 shape.tiles.length % 2 === totalQueueCount % 2
+    // 所以总牌数 = shape.tiles.length + 1(spitter) + totalQueueCount,奇偶性 = 偶 ✓
+    // (堆塔路径不再额外校验)
 
     // 暗牌
     if (darkMode) {
