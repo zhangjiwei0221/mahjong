@@ -2600,6 +2600,7 @@ function generateCurrentShape() {
       } catch (e) {
         const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色' : e.message;
         lastErr = msg;
+        setGenStatus(`<span class="bad">生成失败: ${msg}</span>`);
       }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
@@ -2664,6 +2665,7 @@ function generateStackFromCurrent() {
       } catch (e) {
         const msg = e.message && e.message.includes('fill failed') ? '当前底座无法完成填色' : e.message;
         lastErr = msg;
+        setGenStatus(`<span class="bad">生成失败: ${msg}</span>`);
       }
     }, 30);
   } catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); }
