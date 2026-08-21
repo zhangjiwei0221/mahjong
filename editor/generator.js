@@ -746,6 +746,17 @@ function computeMinSlots(tiles) {
         if (i >= 0 && !marked.has(i)) { editorDarkIdx.push(i); marked.add(i); }
       }
     });
+    // ===== 校验 target 位置支撑 =====
+    // 吐牌机指向的位置必须有支撑（下方有下层牌托住），否则生成报错
+    for (const sp of spitterTilesAll) {
+      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
+      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
+      // 检查 target 位置在 sp.layer 层是否有支撑（象限规则：下方要有下层牌）
+      const lowerTiles = editorTiles.filter(t => t.layer < sp.layer);
+      if (!hasSupport(targetRow, targetCol, lowerTiles)) {
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 指向位置 (' + targetRow + ',' + targetCol + ') 无支撑：下方缺少下层牌托住。请在指向位置下方加牌，或调整吐牌机方向/位置');
+      }
+    }
     // ===== 自动补 target 位置支撑牌 =====
     // 如果 spitter 指向位置没有牌,自动补一张 typeId=null 的占位牌
     // 占位牌参与 backwardFill（需要 typeId 才能被消除）
@@ -753,9 +764,9 @@ function computeMinSlots(tiles) {
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      const hasSupport = tiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
-      targetHasSupport.push(hasSupport);
-      if (!hasSupport) {
+      const hasTile = tiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
+      targetHasSupport.push(hasTile);
+      if (!hasTile) {
         tiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
       }
     }
@@ -932,13 +943,23 @@ function computeMinSlots(tiles) {
       }
     }
     const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
+    // ===== 校验 target 位置支撑 =====
+    // 吐牌机指向的位置必须有支撑（下方有下层牌托住），否则生成报错
+    for (const sp of editorSpitters) {
+      const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
+      const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
+      const lowerTiles = editorTiles.filter(t => t.layer < sp.layer);
+      if (!hasSupport(targetRow, targetCol, lowerTiles)) {
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 指向位置 (' + targetRow + ',' + targetCol + ') 无支撑：下方缺少下层牌托住。请在指向位置下方加牌，或调整吐牌机方向/位置');
+      }
+    }
     // 计算 spitter 指向位置(target)是否已有牌
     let autoPlacedSupport = 0;
     for (const sp of editorSpitters) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      const hasSupport = editorTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
-      if (!hasSupport) autoPlacedSupport++;
+      const hasTile = editorTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
+      if (!hasTile) autoPlacedSupport++;
     }
     // 关键校验：fillTiles = level.tiles + supportTiles + queueTiles 必须偶数
     // level.tiles 总是偶数（toEditorJSON 会删一张凑偶）
