@@ -2560,7 +2560,7 @@ function generateCurrentShape() {
   try {
     const { tiles, specialTiles } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
-    if (tiles.length % 2 !== 0) { setGenStatus('<span class="bad">牌数必须为偶数（当前 ' + tiles.length + '）</span>'); return; }
+    // 总牌数偶数校验已移到 fillEditorShape 内部（含 spitter/队列牌的细粒度校验更准确）
     const target = getStructTarget();
     // 根据当前 tab 决定参数来源
     let scoreLo, scoreHi;
