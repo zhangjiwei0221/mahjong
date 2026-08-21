@@ -111,6 +111,14 @@ body {
   border: 2px solid #8a4a12;
   box-shadow: 0 0 8px rgba(176,106,42,0.6);
 }
+/* 吐牌机队列牌首次释放：淡入 + 轻微缩放 */
+.tile.spitter-reveal {
+  animation: spitterReveal 0.3s ease-out;
+}
+@keyframes spitterReveal {
+  0%   { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
 /* 点到不可操作的牌：轻微横向抖动提示 */
 .tile.shake {
   animation: shake 0.2s ease;
@@ -275,7 +283,82 @@ let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动
 let baseBounds = null;        // 初始布局边界（loadLevel 时固定，消除后棋盘不缩放）
 
 function getActiveTiles() {
-  return tiles.filter(t => !matchedTileIds.has(t.id) && !slotTileIds.has(t.id));
+  // 未耗尽的 spitter 本体 + 未释放的队列牌(spitterOrder > 已释放数) 不算入 active
+  // 这样它们不参与 isClickable 的"压住"判定（队列牌在棋盘上是"隐藏"的）
+  // 注：spitter 耗尽后,所有属于它的队列牌应视为已释放可见（耗尽即"全释放"）
+  const spitters = tiles.filter(t => t.type === 'spitter');
+  const activeSpitterIds = new Set(spitters.filter(s => !spitterExhaustedIds.has(s.id)).map(s => s.id));
+  const activeQueueIds = new Set();
+  for (const t of tiles) {
+    if (t.spitterOrder == null) continue;
+    const owner = spitters.find(s => {
+      const target = spitterTargetPos(s);
+      return target && target.row === t.row && target.col === t.col;
+    });
+    if (!owner) continue;
+    const released = spitterReleasedCount.get(owner.id) ?? 0;
+    if (t.spitterOrder <= released) activeQueueIds.add(t.id);
+  }
+  return tiles.filter(t =>
+    !matchedTileIds.has(t.id) &&
+    !slotTileIds.has(t.id) &&
+    !spitterExhaustedIds.has(t.id) &&
+    !(t.type === 'spitter' && !activeSpitterIds.has(t.id)) &&
+    !(t.spitterOrder != null && !activeQueueIds.has(t.id))
+  );
+}
+
+// ========== 吐牌机触发 ==========
+// 计算 spitter 指向位置的 (row, col)。layer 同 spitter 自身
+function spitterTargetPos(sp) {
+  switch (sp.dir) {
+    case 'up':    return { row: sp.row - 2, col: sp.col };
+    case 'down':  return { row: sp.row + 2, col: sp.col };
+    case 'left':  return { row: sp.row,     col: sp.col - 2 };
+    case 'right': return { row: sp.row,     col: sp.col + 2 };
+    default:      return null;
+  }
+}
+
+// 检查 matchedNow 中是否有一张是某 spitter 的指向位置；是则释放下一张队列牌
+// 返回 true 表示有触发（需要重新 render）
+function triggerSpitters(matchedNow) {
+  if (!matchedNow || matchedNow.length === 0) return false;
+  let changed = false;
+  const allSpitters = tiles.filter(t => t.type === 'spitter' && !spitterExhaustedIds.has(t.id));
+  if (allSpitters.length === 0) return false;
+
+  for (const matched of matchedNow) {
+    // 找到指向该位置的 spitter
+    const owner = allSpitters.find(sp => {
+      const target = spitterTargetPos(sp);
+      return target && target.row === matched.row && target.col === matched.col;
+    });
+    if (!owner) continue;
+
+    const target = spitterTargetPos(owner);
+    const released = spitterReleasedCount.get(owner.id) ?? 0;
+    const nextOrder = released + 1;
+    const count = owner.count || 0;
+
+    // 找下一张队列牌：同 row/col(指向位置)、spitterOrder === nextOrder
+    const queueTile = tiles.find(t =>
+      t.spitterOrder === nextOrder &&
+      t.row === target.row &&
+      t.col === target.col
+    );
+    if (queueTile) {
+      spitterReleasedCount.set(owner.id, nextOrder);
+      spitterRevealedIds.add(queueTile.id);
+      changed = true;
+    }
+
+    // 队列用尽 → spitter 本体消失
+    if (count > 0 && nextOrder >= count) {
+      spitterExhaustedIds.add(owner.id);
+    }
+  }
+  return changed;
 }
 
 // ========== 花色池 ==========
@@ -467,16 +550,29 @@ function render() {
   let html = '';
   // 从低层到高层画
   const sorted = [...active].sort((a, b) => a.layer - b.layer || a.id - b.id);
-  const spitterIds = new Set((currentSpecialTiles || []).filter(s => s.type === 'spitter').map(s => s.id));
+  // 吐牌机本体 id 集合（未耗尽）
+  const spitters = tiles.filter(t => t.type === 'spitter' && !spitterExhaustedIds.has(t.id));
+  const spitterIds = new Set(spitters.map(s => s.id));
   for (const t of sorted) {
-    if (t.spitterOrder) continue; // 队列牌不直接渲染
+    // 跳过未激活的队列牌（spitterOrder > 该 spitter 已释放数）
+    if (t.spitterOrder != null) {
+      // 找这张队列牌归属的 spitter（队列牌 row/col = 指向位置，匹配 spitter 指向位置）
+      const owningSpitter = spitters.find(s => {
+        const target = spitterTargetPos(s);
+        return target && target.row === t.row && target.col === t.col;
+      });
+      const released = owningSpitter ? (spitterReleasedCount.get(owningSpitter.id) ?? 0) : 0;
+      if ((t.spitterOrder || 0) > released) continue;
+    }
     const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
     const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
     const clickable = isClickable(t, active);
     const isBack = t.isDark && t.id !== selectedDarkId;
     const selectedCls = t.id === selectedDarkId ? ' selected' : '';
     const flipCls = justFlipped.has(t.id) ? ' flipping' : '';
-    const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}`;
+    const spitterCls = spitterIds.has(t.id) ? ' spitter' : '';
+    const revealCls = spitterRevealedIds.has(t.id) ? ' spitter-reveal' : '';
+    const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}${spitterCls}${revealCls}`;
     const src = isBack ? TILE_BACK_IMAGE : tileImgSrc(t.typeId);
 
     html += `<div class="${cssClass}" data-id="${t.id}" data-type="${t.typeId}" data-dark="${isBack ? 1 : 0}"
@@ -514,6 +610,8 @@ function clickTile(id) {
   const tile = active.find(t => t.id === id);
   if (!tile) return;
   if (!isClickable(tile, active)) { showHint(id); return; }
+  // 吐牌机本体：不可点，抖动提示（队列用尽后已 exhausted 排除在 active 外，自动不响应）
+  if (tile.type === 'spitter') { showHint(id); return; }
 
   // 已有选中的正面暗牌 A → 配对分支
   if (selectedDarkId != null) {
@@ -756,11 +854,13 @@ function checkMatch() {
 
   if (matched) {
     // 立即清空卡槽,让下一个麻将能立刻进来(动画只是视觉效果)
+    const matchedNow = []; // 本轮被消除的牌（含场上进入卡槽 + 卡槽里配对消除的）
     for (const idx of matchIndices) {
       const t = slots[idx];
       matchedTileIds.add(t.id);
       slotTileIds.delete(t.id);
       slots[idx] = null;
+      matchedNow.push(t);
     }
     // 给要消除的卡槽牌加消失动画
     renderSlots();
@@ -768,9 +868,14 @@ function checkMatch() {
       const el = document.querySelector(`#slot-${idx} .slot-tile`);
       if (el) el.classList.add('matching');
     }
-    // 动画结束后只需 render(checkWin 需要看棋盘状态)
+    // 动画结束后：先 render（消除反馈），再触发吐牌机释放队列牌，再 render（队列淡入），最后 checkWin
     setTimeout(() => {
       render();
+      if (triggerSpitters(matchedNow)) {
+        render(); // 队列牌淡入
+      }
+      // 清空 revealed 标记，下一帧不再重复播放
+      spitterRevealedIds.clear();
       checkWin();
     }, 320);
     return;
@@ -808,9 +913,17 @@ function hideMessage() {
 
 // ========== 关卡加载 ==========
 let currentSpecialTiles = [];
+// 吐牌机游戏状态（每关重置）
+const spitterReleasedCount = new Map(); // spitterId → 已释放队列牌数
+const spitterRevealedIds = new Set();    // 本次新释放的队列牌 id（用于加 reveal 动画 class）
+const spitterExhaustedIds = new Set();   // 已用尽的吐牌机本体 id（不再渲染、不计入棋盘）
 function loadLevel(json) {
   levelData = json;
   currentSpecialTiles = json.specialTiles || [];
+  // 重置吐牌机状态
+  spitterReleasedCount.clear();
+  spitterRevealedIds.clear();
+  spitterExhaustedIds.clear();
   const numPairs = Math.floor(json.tiles.length / 2);
   const typePool = buildTypePool(numPairs);
   tiles = json.tiles.map(t => {

@@ -1,8 +1,13 @@
 {
-  "version": "9b9cc9c",
-  "updated": "2026-08-18",
-  "notes": "删除试玩Demo卡片,修复version.json嵌套引号导致changelog加载失败,JSON有效",
+  "version": "PENDING",
+  "updated": "2026-08-21",
+  "notes": "吐牌机游戏逻辑完整实现:队列释放 + 队列用尽消失",
   "changelog": [
+    {
+      "version": "v4.6.23",
+      "date": "2026-08-21",
+      "notes": "吐牌机游戏逻辑完整实现:指向位置牌消除时释放队列牌(淡入+缩放动画),队列用尽后吐牌机消失"
+    },
     {
       "version": "v4.6.6",
       "date": "2026-08-18",

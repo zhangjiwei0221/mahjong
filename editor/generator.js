@@ -746,25 +746,15 @@ function computeMinSlots(tiles) {
       }
       fillIdx++;
     });
-    const usedTypeIds = new Set(result.assigned.filter(x => x));
-    // 吐牌机本体分配 typeId（用独立池避免和普通牌重复）
-    const spitterTilesForType = tiles.filter((t, i) => spitterIdxSet.has(i));
-    for (const t of spitterTilesForType) {
-      let typeId = null;
-      for (let id = 1; id <= 34; id++) {
-        if (!usedTypeIds.has(id)) { typeId = id; break; }
-      }
-      if (typeId) { t.typeId = typeId; usedTypeIds.add(typeId); }
-    }
-    // 队列牌分配独立的 typeId（不复用普通牌/吐牌机的，避免同花色三张）
+    // 吐牌机本体：不分配 typeId（不是麻将，队列用完后从棋盘消失）
+    // 队列牌 typeId 改为共享池：从已分配的普通牌中随机选（可重复），
+    // 释放后会和场上/卡槽里的同花色配对消除，必须共用池子
+    const normalTypeIds = result.assigned.filter(x => x != null);
     const queueTiles = [...queueIdxSet].map(i => tiles[i]);
     queueTiles.sort((a, b) => (a.spitterOrder || 0) - (b.spitterOrder || 0));
     queueTiles.forEach((t) => {
-      let typeId = null;
-      for (let id = 1; id <= 34; id++) {
-        if (!usedTypeIds.has(id)) { typeId = id; break; }
-      }
-      if (typeId) { t.typeId = typeId; usedTypeIds.add(typeId); }
+      if (normalTypeIds.length === 0) return;
+      t.typeId = normalTypeIds[Math.floor(Math.random() * normalTypeIds.length)];
     });
 
     // 吐牌机验证
@@ -965,6 +955,7 @@ function computeMinSlots(tiles) {
             assignedTiles.push({
               id: 0, layer: sp.layer, row: sp.row, col: sp.col,
               typeId: null, type: 'spitter',
+              dir: sp.dir, count: sp.count,
             });
           });
           filled = {

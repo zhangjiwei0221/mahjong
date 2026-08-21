@@ -876,6 +876,15 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.23 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 吐牌机游戏逻辑完整实现:指向位置牌消除时释放队列牌(淡入+缩放动画),队列用尽后吐牌机消失<br>
+          • 吐牌机本体不再分配 typeId(不是麻将,不可参与配对)<br>
+          • 队列牌 typeId 改为共享池(与普通牌共用,可重复,确保释放后可正常配对消除)<br>
+          • 编辑器 buildEditorShape 写出 spitter 时保留 dir/count 字段
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.4.0 · 2026-08-18</div>
         <div class="gh-desc">
           • 钩子定义扩展:任意埋牌(上压/左右夹)都算钩子,不仅层差≥2<br>
@@ -2369,7 +2378,7 @@ function buildEditorShape() {
         const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[dir] || [-2, 0];
         spitters.push({
           layer: layerIdx, row: r + offset[0], col: c + offset[1],
-          count: tile.count || 3,
+          count: tile.count || 3, dir: dir,
         });
       }
       if (tile.type !== 'normal') {
@@ -2393,7 +2402,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '9b9cc9c'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
