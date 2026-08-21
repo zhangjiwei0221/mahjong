@@ -891,6 +891,14 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.36 · 2026-08-22</div>
+        <div class="gh-desc">
+          • 队列牌初始全部可见(堆叠在 target 上方),不再逐步释放<br>
+          • 点队列牌:这张牌 + 吐牌机本体 + target 牌 一起消失(不等配对)<br>
+          • 队列牌不受 isClickable 限制(即使被压住也能点)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.35 · 2026-08-21</div>
         <div class="gh-desc">
           • 堆塔凑偶循环改为 while(原来只删 1 对,实际可能需要删 2/4 张才能凑齐奇偶性)<br>
@@ -2530,7 +2538,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '8e9e8d4'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = '0c942af'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

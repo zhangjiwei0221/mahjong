@@ -1,11 +1,13 @@
 {
-  "version": "8e9e8d4",
-  "updated": "2026-08-21",
-  "notes": "修 spitter 校验 + backwardFill 支持占位 + 堆塔 spitter 不填花色",
+  "version": "0c942af",
+  "updated": "2026-08-22",
+  "notes": "队列牌初始全可见+点队列牌直接消除 spitter 本体和 target",
   "changelog": [
     {
       "version": "v4.6.36",
-      "date": "2026-08-21",
+      "date": "2026-08-22",
+      "notes": "队列牌初始全部可见(不再逐步释放);点队列牌直接消除+spitter 本体+target 牌一起消失;队列牌不受 isClickable 限制"
+    },
       "notes": "修 spitter 校验:普通牌必须偶数+count 必须偶数(2/4);backwardFill 支持占位牌;堆塔路径 spitter 本体 typeId 保持 null"
     },
       "notes": "修堆塔路径 spitter 本体丢失(generateStackFromShape 漏 push);修校验信息显示(减 spitterOrder 牌)"
