@@ -1,12 +1,17 @@
 {
-  "version": "648d376",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "erase spitter 本体时清 stack + 友好提示",
+  "notes": "重做 spitter 交互:生成器自动生队列牌",
   "changelog": [
+    {
+      "version": "v4.6.32",
+      "date": "2026-08-21",
+      "notes": "重做 spitter 交互:画笔不自动堆队列牌,生成器根据 spitter.count 自动生成;校验:普通牌必须奇数(target 包含)、spitter.count 偶数(2/4)、fillTiles 偶数;target 空时生成器自动补占位"
+    },
     {
       "version": "v4.6.31",
       "date": "2026-08-21",
-      "notes": "erase spitter 本体时清掉对应 stack(避免残留导致'队列牌 0 张') + 友好提示孤儿队列牌"
+      "notes": "修复偶数校验冲突:移除冗余总牌数校验,由 fillEditorShape 内部细粒度校验接管"
     },
     {
       "version": "v4.6.30",

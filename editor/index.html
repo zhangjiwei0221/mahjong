@@ -580,7 +580,7 @@
           </div>
           <div class="field-row" style="justify-content:center; margin-top:8px;">
             <span>吐牌次数</span>
-            <input type="number" id="spitterCount" value="3" min="1" max="99">
+            <input type="number" id="spitterCount" value="2" min="1" max="99">
           </div>
         </div>
       </div>
@@ -876,6 +876,17 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.32 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 重做 spitter 交互:画笔不再自动堆队列牌,生成器根据 spitter.count 自动生成队列牌(堆叠在 target 上方多层)<br>
+          • 用户操作简化:画 1 个 spitter + 若干普通牌(target 摆或让生成器补)→ 一键生成<br>
+          • 校验:普通牌必须奇数(target 包含在内),spitter.count 必须偶数(2/4),fillTiles 必须偶数<br>
+          • 生成器自动在 target 空时补占位牌(也参与填色,确保关卡可解)<br>
+          • spitter 本体不动 target 位置已有牌(target 由生成器从普通牌池赋 typeId)<br>
+          • spitter 关联牌(target)不参与 backwardFill 填色,单独赋 typeId
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.31 · 2026-08-21</div>
         <div class="gh-desc">
           • erase spitter 本体时清掉对应 stack(之前只删 layer.tiles 不清 stacks,导致 stack 残留但无 spitter tile,报"队列牌 0 张")<br>
@@ -1145,7 +1156,7 @@ let state = {
   currentLayer: 0,
   brush: 'normal',
   spitterDir: 'up',
-  spitterCount: 3,
+  spitterCount: 2,
   symmetric: true,
   showAll: true,
   snapToSupport: true,
@@ -1937,26 +1948,17 @@ function paintAt(col, row) {
         }
         // 如果只需要保证吐牌机可点,需要升起上层牌 — 这里简化为:吐牌机本身不能被覆盖
       }
-      // 检查目标位置是否被覆盖
+      // 检查目标位置（spitter 指向的位置）上方是否被其他牌挡住——挡着的话，新吐出来的牌没地方放
       const tKey = `${targetPos.row},${targetPos.col}`;
-      let targetCovered = false;
       for (let li = state.currentLayer + 1; li < state.layers.length; li++) {
-        if (state.layers[li].tiles[tKey]) { targetCovered = true; break; }
+        if (state.layers[li].tiles[tKey]) {
+          toast('吐牌机指向的位置上面已经有牌挡着,换个方向或换个位置试试', 'err');
+          return;
+        }
       }
-      if (targetCovered) {
-        toast('吐牌机目标位置被其他牌覆盖，无法放置', 'err');
-        return;
-      }
-      // 吐牌机队列牌：在 target L0 留一张普通牌作支撑，队列牌堆在 target 上方多层 (layer+1, layer+2...)
-      // 之前 delete target 普通牌 + stacks 堆在同一层，导致队列牌没支撑、悬空校验失败
-      // target 位置没牌 → 自动摆一张普通牌作支撑（队列牌才能堆在上面）
-      if (!layer.tiles[tKey]) layer.tiles[tKey] = {};
-      // 队列牌存在 layer.stacks（每张有 order），buildEditorShape 展开时 layer = currentLayer + order
-      if (layer.stacks[tKey]) delete layer.stacks[tKey];
-      layer.stacks[tKey] = [];
-      for (let i = 0; i < tileData.count; i++) {
-        layer.stacks[tKey].push({ type: 'spitterQueue', order: i + 1 });
-      }
+      // 吐牌机本体不需要用户手动堆队列牌——队列牌由生成器在填色时自动生成 count 张
+      // 但 target 位置必须有支撑牌(L0 任意类型)才能让队列牌有底
+      // 如果 target 是空的,生成器自动在 target L0 补一张普通牌作为支撑
     }
 
     if (state.symmetric && mcol !== col) {
@@ -2476,14 +2478,11 @@ function buildEditorShape() {
         specialTiles.push({ id: 0, type: tile.type, layer: layerIdx, row: r, col: c, direction: tile.dir, count: tile.count });
       }
     });
-    // 吐牌机队列：堆叠的牌展开为独立 tile，带 spitterOrder
-    // 队列牌 layer = spitter 自身 layer + order（堆叠在 target 上方多层，与画笔逻辑一致）
+    // 吐牌机队列牌：生成器在填色时根据 spitter.count 自动生成（用户不画）
+    // 保留 layer.stacks 字段兼容旧代码,但不再展开为独立 tile
     Object.keys(layer.stacks || {}).forEach(key => {
-      const stack = layer.stacks[key];
-      const [r, c] = key.split(',').map(Number);
-      stack.forEach((st, i) => {
-        tiles.push({ id: 0, layer: layerIdx + (st.order || (i + 1)), row: r, col: c, typeId: null, spitterOrder: st.order || (i + 1) });
-      });
+      // 清空——队列牌现在由生成器自动生成
+      delete layer.stacks[key];
     });
   });
   tiles.sort((a, b) => a.layer - b.layer || a.row - b.row || a.col - b.col);
@@ -2494,7 +2493,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '648d376'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
