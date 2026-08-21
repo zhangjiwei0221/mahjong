@@ -1,12 +1,12 @@
 {
-  "version": "30f3f49",
+  "version": "df0ea1d",
   "updated": "2026-08-21",
-  "notes": "修复偶数校验冲突:移除冗余总牌数校验,由 fillEditorShape 内部细粒度校验接管",
+  "notes": "修复吐牌机本体显示成普通麻将:加 overlay 标识(⤴+方向+剩余数)",
   "changelog": [
     {
-      "version": "v4.6.25",
+      "version": "v4.6.26",
       "date": "2026-08-21",
-      "notes": "修复 generateCurrentShape 中旧的总牌数偶数校验与 fillEditorShape 内部细粒度校验冲突;7 普通 + 1 spitter + 2 队列时只报'普通牌 7 张为奇数',不再误报'牌数必须为偶数(当前 11)'"
+      "notes": "修复吐牌机本体被显示成普通麻将图:加 .spitter-overlay 叠加层,用 ⤴+方向+×剩余数 标识"
     },
     {
       "version": "v4.6.23",
