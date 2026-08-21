@@ -733,8 +733,9 @@ function computeMinSlots(tiles) {
       if (queueCount !== sp.count) {
         throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 配置 count=' + sp.count + ' 但实际队列牌有 ' + queueCount + ' 张（画笔摆 spitter 时会自动堆队列牌，或手动调整 count 与队列牌数量一致）');
       }
-      if (queueCount % 2 !== 0) {
-        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 队列牌 ' + queueCount + ' 张为奇数，二消要偶数张，请调整 count 为偶数');
+      // 队列牌数 = spitter.count 必须为奇数（指向位置的牌 1 张 + N 张队列 = N+1 张可消除，需偶数 → N 必为奇数）
+      if (queueCount % 2 === 0) {
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 队列牌 ' + queueCount + ' 张为偶数，二消要求奇数（指向位置 1 张 + N 张队列 = N+1 张需偶数，请调整 count 为奇数）');
       }
     }
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
@@ -904,11 +905,16 @@ function computeMinSlots(tiles) {
     if (editorNormalCount % 2 !== 0) {
       throw new Error('底座普通牌 ' + editorNormalCount + ' 张为奇数，二消要偶数张才能成对，请加一张或删一张');
     }
-    // 队列牌总数（spitter.count 总和）也必须是偶数
-    const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
-    if (totalQueueCount % 2 !== 0) {
-      throw new Error('吐牌机队列牌总数 ' + totalQueueCount + ' 张为奇数，二消要偶数张。请调整每个吐牌机的 count 为偶数');
+    // 队列牌（每个 spitter.count）必须是奇数（指向位置 1 张 + N 张队列 = N+1 张需偶数 → N 奇数）
+    for (const sp of editorSpitters) {
+      if (!sp.count || sp.count < 1 || sp.count > 6) {
+        throw new Error('吐牌机 count=' + sp.count + ' 不合理（应为 1~5 的奇数）');
+      }
+      if (sp.count % 2 === 0) {
+        throw new Error('吐牌机 count=' + sp.count + ' 为偶数，二消要求奇数（指向位置 1 张 + N 张队列 = N+1 张需偶数），请改为奇数');
+      }
     }
+    const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
     // 检测底座是否左右对称（std 坐标：每个 (layer,row,col) 都要有 (layer,row,-col)）
     // 对称底座 → 正常镜像堆塔；不对称底座 → 关掉镜像展开、跳过对称校验，按实际形状堆

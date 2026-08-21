@@ -1,8 +1,13 @@
 {
-  "version": "ffc636f",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "generateStackFromShape 重新分配 spitter/queue id(避免 id 冲突)",
+  "notes": "画笔自动补支撑牌 + stacks 展开 layer+order + 队列牌数校验改为奇数",
   "changelog": [
+    {
+      "version": "v4.6.29",
+      "date": "2026-08-21",
+      "notes": "画笔自动补支撑牌 + buildEditorShape 展开 stacks 时 layer=layerIdx+order + 队列牌数校验改为奇数(指向位置1张+N张=N+1需偶)"
+    },
     {
       "version": "v4.6.28",
       "date": "2026-08-21",
