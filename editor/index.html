@@ -876,6 +876,13 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.25 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 修复偶数校验冲突:移除 generateCurrentShape 中旧的总牌数偶数校验(line 2563),由 fillEditorShape 内部细粒度校验接管<br>
+          • 7 普通 + 1 spitter + 2 队列时只报"普通牌 7 张为奇数",不再误报"牌数必须为偶数"
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.24 · 2026-08-21</div>
         <div class="gh-desc">
           • 按当前形状生成:填色前校验普通牌数偶数、spitter count 合理性(1~6)、队列牌数匹配 count、队列牌数偶数<br>
@@ -2411,7 +2418,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '147f458'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = '30f3f49'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

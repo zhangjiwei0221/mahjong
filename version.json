@@ -1,12 +1,12 @@
 {
-  "version": "147f458",
+  "version": "30f3f49",
   "updated": "2026-08-21",
-  "notes": "吐牌机生成前偶数校验:普通牌数 + spitter count + 队列牌数",
+  "notes": "修复偶数校验冲突:移除冗余总牌数校验,由 fillEditorShape 内部细粒度校验接管",
   "changelog": [
     {
-      "version": "v4.6.24",
+      "version": "v4.6.25",
       "date": "2026-08-21",
-      "notes": "按当前形状生成:填色前校验普通牌数偶数、spitter count 合理性(1~6)、队列牌数匹配 count、队列牌数偶数;按堆塔生成:底座校验 + 堆塔凑偶逻辑考虑队列牌奇偶性"
+      "notes": "修复 generateCurrentShape 中旧的总牌数偶数校验与 fillEditorShape 内部细粒度校验冲突;7 普通 + 1 spitter + 2 队列时只报'普通牌 7 张为奇数',不再误报'牌数必须为偶数(当前 11)'"
     },
     {
       "version": "v4.6.23",
