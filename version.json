@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "1676bad",
   "updated": "2026-08-21",
   "notes": "微调 spitter:堆塔 count 灵活 + 队列牌点击立即释放",
   "changelog": [
