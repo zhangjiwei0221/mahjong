@@ -876,6 +876,12 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.30 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 修复编辑器画笔逻辑重复声明 tKey 导致 SyntaxError,整个编辑器不渲染(画笔逻辑未生效)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.29 · 2026-08-21</div>
         <div class="gh-desc">
           • 画笔自动补支撑牌:摆 spitter 时在 target L0 自动放普通牌(作为队列牌支撑),不删除原牌<br>
@@ -1935,7 +1941,6 @@ function paintAt(col, row) {
       }
       // 吐牌机队列牌：在 target L0 留一张普通牌作支撑，队列牌堆在 target 上方多层 (layer+1, layer+2...)
       // 之前 delete target 普通牌 + stacks 堆在同一层，导致队列牌没支撑、悬空校验失败
-      const tKey = `${targetPos.row},${targetPos.col}`;
       // target 位置没牌 → 自动摆一张普通牌作支撑（队列牌才能堆在上面）
       if (!layer.tiles[tKey]) layer.tiles[tKey] = {};
       // 队列牌存在 layer.stacks（每张有 order），buildEditorShape 展开时 layer = currentLayer + order
@@ -2459,7 +2464,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'c4e620c'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

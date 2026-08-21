@@ -1,8 +1,13 @@
 {
-  "version": "c4e620c",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "画笔自动补支撑牌 + stacks 展开 layer+order + 队列牌数校验改为奇数",
+  "notes": "修画笔 SyntaxError tKey 重复声明",
   "changelog": [
+    {
+      "version": "v4.6.30",
+      "date": "2026-08-21",
+      "notes": "修复编辑器画笔逻辑重复声明 tKey 导致的 SyntaxError(整个编辑器不渲染、按钮无响应)"
+    },
     {
       "version": "v4.6.29",
       "date": "2026-08-21",
