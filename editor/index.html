@@ -1828,9 +1828,8 @@ canvas.addEventListener('mousedown', e => {
     state.paintMode = 'remove'; // 右键一律擦除
   } else {
     const existing = layer.tiles[key];
-    if (existing && existing.type === state.brush &&
-        (state.brush !== 'spitter' ||
-         (existing.dir === state.spitterDir && existing.count == state.spitterCount))) {
+    // 重复点击同一位置：吐牌机总是可删除；其他画笔需类型匹配才删除
+    if (existing && (state.brush === 'spitter' ? existing.type === 'spitter' : existing.type === state.brush)) {
       state.paintMode = 'remove';
     } else {
       state.paintMode = 'add';

@@ -392,10 +392,10 @@ function triggerSpitters(matchedNow) {
     }
 
     // 队列用尽 → spitter 本体消失
-    if (count > 0 && nextOrder >= count) {
+    // count 包含初始牌，队列牌数量 = count - 1
+    const queueCount = (owner.count || 0) - 1;
+    if (queueCount > 0 && nextOrder >= queueCount) {
       spitterExhaustedIds.add(owner.id);
-      // 本设计:target 牌是"配对源",每次点 spitterOrder 释放下一张牌(target 进卡槽配对)
-      // 队列配对由玩家点击触发,spitter 只是按一下释放下一张,不让 spitter 直接消耗队列牌
     }
   }
   return changed;
