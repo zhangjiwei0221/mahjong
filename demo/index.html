@@ -147,12 +147,13 @@ body {
   line-height: 1;
   margin-top: 1px;
 }
-/* 吐牌机队列牌首次释放：淡入 + 轻微缩放 */
+/* 吐牌机队列牌首次释放：弹出 + 淡入效果 */
 .tile.spitter-reveal {
-  animation: spitterReveal 0.3s ease-out;
+  animation: spitterReveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 @keyframes spitterReveal {
-  0%   { transform: scale(0.7); opacity: 0; }
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.1); opacity: 1; }
   100% { transform: scale(1);   opacity: 1; }
 }
 /* 点到不可操作的牌：轻微横向抖动提示 */
