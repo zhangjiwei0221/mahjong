@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "147f458",
   "updated": "2026-08-21",
   "notes": "吐牌机生成前偶数校验:普通牌数 + spitter count + 队列牌数",
   "changelog": [
