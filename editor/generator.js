@@ -719,23 +719,23 @@ function computeMinSlots(tiles) {
     const normalCount = editorTiles.length - spitterTilesAll.length;
     // 计算 spitter 自动补的占位支撑牌数（target 位置已有牌就不补）
     let autoPlacedSupport = 0;
-    let totalQueueCount = 0;
+    let totalQueueTiles = 0; // 队列牌总数 = sum(count - 1)，因为 count 包含初始牌
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       const hasSupport = editorTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
       if (!hasSupport) autoPlacedSupport++;
-      totalQueueCount += sp.count || 0;
+      totalQueueTiles += (sp.count || 0) - 1; // count 包含初始牌，所以队列牌 = count - 1
     }
-    // 校验：spitter count 合理性
+    // 校验：spitter count 合理性（至少 1，即只有初始牌）
     for (const sp of spitterTilesAll) {
-      if (!sp.count || sp.count < 1 || sp.count > 6) {
-        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~6)');
+      if (!sp.count || sp.count < 1 || sp.count > 8) {
+        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~8)');
       }
     }
-    // 关键校验：fillTiles = normalCount + autoPlacedSupport + totalQueueCount 必须偶数
-    if ((normalCount + autoPlacedSupport + totalQueueCount) % 2 !== 0) {
-      throw new Error('吐牌机配置错误：普通牌(' + normalCount + ') + 支撑牌(' + autoPlacedSupport + ') + 队列牌(' + totalQueueCount + ') = ' + (normalCount + autoPlacedSupport + totalQueueCount) + ' 为奇数，无法配对。请调整普通牌数量或吐牌机 count');
+    // 关键校验：fillTiles = normalCount + autoPlacedSupport + totalQueueTiles 必须偶数
+    if ((normalCount + autoPlacedSupport + totalQueueTiles) % 2 !== 0) {
+      throw new Error('吐牌机配置错误：普通牌(' + normalCount + ') + 支撑牌(' + autoPlacedSupport + ') + 队列牌(' + totalQueueTiles + ') = ' + (normalCount + autoPlacedSupport + totalQueueTiles) + ' 为奇数，无法配对。请调整普通牌数量或吐牌机 count');
     }
     const tiles = editorTiles.map(function (t, i) { return Object.assign({}, t, { _idx: i }); });
     const editorDarkIdx = [];
@@ -774,15 +774,17 @@ function computeMinSlots(tiles) {
     }
 
     // ===== 在 backwardFill 之前生成队列牌（typeId = null，由 backwardFill 分配）=====
-    // 队列牌堆叠在 target 位置上方多层
-    // layer 排序：spitterOrder=1（layer 最高，最上面先点）→ spitterOrder=count（layer 最低）
+    // count 包含初始牌，所以队列牌数量 = count - 1
+    // 队列牌堆叠在 target 位置上方，与普通牌视觉叠放一致
+    // layer 排序：spitterOrder=1（layer 最低，紧贴 target）→ spitterOrder=count-1（layer 最高，最上面先点）
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      for (let i = 1; i <= sp.count; i++) {
+      const queueCount = sp.count - 1; // count 包含初始牌
+      for (let i = 1; i <= queueCount; i++) {
         tiles.push({
           id: 0,
-          layer: sp.layer + (sp.count - i + 1),
+          layer: sp.layer + i, // sp.layer + 1, sp.layer + 2, ...（逐层向上叠放）
           row: targetRow,
           col: targetCol,
           typeId: null,
@@ -940,11 +942,12 @@ function computeMinSlots(tiles) {
     const editorNormalCount = editorTiles.length - editorSpitterCount;
     // 校验 spitter count 合理性
     for (const sp of editorSpitters) {
-      if (!sp.count || sp.count < 1 || sp.count > 6) {
-        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~6)');
+      if (!sp.count || sp.count < 1 || sp.count > 8) {
+        throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~8)');
       }
     }
-    const totalQueueCount = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
+    // count 包含初始牌，队列牌总数 = sum(count - 1)
+    const totalQueueTiles = editorSpitters.reduce(function (s, sp) { return s + ((sp.count || 0) - 1); }, 0);
     // ===== 校验 target 位置支撑 =====
     // L1+ 的吐牌机：指向的位置必须有支撑（下方有下层牌托住），否则生成报错
     // L0 的吐牌机：target 在底层，地面就是支撑，无需校验
@@ -967,9 +970,9 @@ function computeMinSlots(tiles) {
     }
     // 关键校验：fillTiles = level.tiles + supportTiles + queueTiles 必须偶数
     // level.tiles 总是偶数（toEditorJSON 会删一张凑偶）
-    // 所以 autoPlacedSupport + totalQueueCount 必须偶数
-    if ((autoPlacedSupport + totalQueueCount) % 2 !== 0) {
-      throw new Error('吐牌机配置错误：支撑牌数(' + autoPlacedSupport + ') + 队列牌数(' + totalQueueCount + ') = ' + (autoPlacedSupport + totalQueueCount) + ' 为奇数，无法配对。请在吐牌机指向位置补一张牌，或调整吐牌机 count 为奇数/偶数使总和为偶数');
+    // 所以 autoPlacedSupport + totalQueueTiles 必须偶数
+    if ((autoPlacedSupport + totalQueueTiles) % 2 !== 0) {
+      throw new Error('吐牌机配置错误：支撑牌数(' + autoPlacedSupport + ') + 队列牌数(' + totalQueueTiles + ') = ' + (autoPlacedSupport + totalQueueTiles) + ' 为奇数，无法配对。请在吐牌机指向位置补一张牌，或调整吐牌机 count 为奇数/偶数使总和为偶数');
     }
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
     // 检测底座是否左右对称（std 坐标：每个 (layer,row,col) 都要有 (layer,row,-col)）
@@ -992,8 +995,9 @@ function computeMinSlots(tiles) {
       level.tiles.forEach((t, i) => { if (t.type === 'spitter') levelSpitterIdxSet.add(i); });
 
       // ===== 在 backwardFill 之前生成队列牌和支撑牌（typeId = null，由 backwardFill 分配）=====
-      // 队列牌堆叠在 target 位置上方多层
-      // layer 排序：spitterOrder=1（layer 最高，最上面先点）→ spitterOrder=count（layer 最低）
+      // count 包含初始牌，队列牌数量 = count - 1
+      // 队列牌堆叠在 target 位置上方，与普通牌视觉叠放一致
+      // layer 排序：spitterOrder=1（layer 最低，紧贴 target）→ spitterOrder=count-1（layer 最高，最上面先点）
       const queueTiles = [];
       const supportTiles = [];
       for (const sp of editorSpitters) {
@@ -1004,11 +1008,12 @@ function computeMinSlots(tiles) {
         if (!hasSupport) {
           supportTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
         }
-        // 生成 spitter.count 张队列牌
-        for (let i = 1; i <= sp.count; i++) {
+        // 生成 count - 1 张队列牌（count 包含初始牌）
+        const queueCount = sp.count - 1;
+        for (let i = 1; i <= queueCount; i++) {
           queueTiles.push({
             id: 0,
-            layer: sp.layer + (sp.count - i + 1),
+            layer: sp.layer + i, // sp.layer + 1, sp.layer + 2, ...（逐层向上叠放）
             row: targetRow,
             col: targetCol,
             typeId: null,
