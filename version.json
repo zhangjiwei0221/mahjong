@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "a474914",
   "updated": "2026-08-21",
   "notes": "修复 buildEditorShape 丢失 spitter dir/count + spitters 数组错存位置",
   "changelog": [
