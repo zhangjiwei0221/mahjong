@@ -1,11 +1,13 @@
 {
-  "version": "4668a3a",
+  "version": "8e9e8d4",
   "updated": "2026-08-21",
-  "notes": "修堆塔 spitter 本体丢失 + 校验信息显示",
+  "notes": "修 spitter 校验 + backwardFill 支持占位 + 堆塔 spitter 不填花色",
   "changelog": [
     {
       "version": "v4.6.36",
       "date": "2026-08-21",
+      "notes": "修 spitter 校验:普通牌必须偶数+count 必须偶数(2/4);backwardFill 支持占位牌;堆塔路径 spitter 本体 typeId 保持 null"
+    },
       "notes": "修堆塔路径 spitter 本体丢失(generateStackFromShape 漏 push);修校验信息显示(减 spitterOrder 牌)"
     },
     {
