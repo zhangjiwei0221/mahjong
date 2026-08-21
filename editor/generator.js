@@ -731,7 +731,7 @@ function computeMinSlots(tiles) {
         throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 的 count=' + sp.count + ' 不合理（应为 1~6）');
       }
       if (queueCount !== sp.count) {
-        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 配置 count=' + sp.count + ' 但实际队列牌有 ' + queueCount + ' 张');
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 配置 count=' + sp.count + ' 但实际队列牌有 ' + queueCount + ' 张（画笔摆 spitter 时会自动堆队列牌，或手动调整 count 与队列牌数量一致）');
       }
       if (queueCount % 2 !== 0) {
         throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 队列牌 ' + queueCount + ' 张为奇数，二消要偶数张，请调整 count 为偶数');
@@ -991,6 +991,8 @@ function computeMinSlots(tiles) {
               dir: sp.dir, count: sp.count,
             });
           });
+          // 重新分配 id（之前 spitter/queue id 全是 0，会让 demo 渲染时多 tile 共享同一 id）
+          assignedTiles.forEach((t, i) => { t.id = i + 1; });
           filled = {
             levelId: level.levelId, totalPairs: level.totalPairs,
             tiles: assignedTiles,

@@ -876,6 +876,13 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.28 · 2026-08-21</div>
+        <div class="gh-desc">
+          • generateStackFromShape 给 spitter/queue tile 重新分配 id(避免多 tile 共享 id=0,导致 demo 渲染混乱)<br>
+          • count 与队列数不匹配的错误信息加修复提示
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.27 · 2026-08-21</div>
         <div class="gh-desc">
           • 修复 buildEditorShape 写 spitter tile 时丢失 dir/count 字段(导致生成报 count=undefined)<br>
@@ -2439,7 +2446,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'a474914'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

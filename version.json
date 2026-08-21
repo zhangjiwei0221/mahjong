@@ -1,8 +1,13 @@
 {
-  "version": "a474914",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "修复 buildEditorShape 丢失 spitter dir/count + spitters 数组错存位置",
+  "notes": "generateStackFromShape 重新分配 spitter/queue id(避免 id 冲突)",
   "changelog": [
+    {
+      "version": "v4.6.28",
+      "date": "2026-08-21",
+      "notes": "generateStackFromShape 给 spitter/queue tile 重新分配 id;count 与队列数不匹配的错误信息加修复提示"
+    },
     {
       "version": "v4.6.27",
       "date": "2026-08-21",
