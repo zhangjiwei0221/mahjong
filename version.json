@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "c4e620c",
   "updated": "2026-08-21",
   "notes": "画笔自动补支撑牌 + stacks 展开 layer+order + 队列牌数校验改为奇数",
   "changelog": [
