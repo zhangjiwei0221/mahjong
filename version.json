@@ -1,16 +1,22 @@
 {
-  "version": "ad8fbf8",
+  "version": "203a71c",
   "updated": "2026-08-22",
-  "notes": "队列牌点直接消除(不进卡槽)+spitter 和 target 一起消失",
+  "notes": "队列牌参与 backwardFill 配对计算，保证一一对应",
   "changelog": [
+    {
+      "version": "v4.6.39",
+      "date": "2026-08-22",
+      "notes": "队列牌参与 backwardFill 配对计算：旧逻辑从普通牌池随机选 typeId 可能导致无配对；新逻辑在 backwardFill 之前生成队列牌(typeId=null)，参与配对计算，保证每张队列牌都有对应配对牌"
+    },
     {
       "version": "v4.6.38",
       "date": "2026-08-22",
       "notes": "队列牌点直接消除(不进卡槽):消除队列牌 + spitter 本体 + target 牌一起消失,卡槽保持干净"
     },
-      "notes": "修 spitter 校验:普通牌必须偶数+count 必须偶数(2/4);backwardFill 支持占位牌;堆塔路径 spitter 本体 typeId 保持 null"
-    },
-      "notes": "修堆塔路径 spitter 本体丢失(generateStackFromShape 漏 push);修校验信息显示(减 spitterOrder 牌)"
+    {
+      "version": "v4.6.37",
+      "date": "2026-08-22",
+      "notes": "队列牌 layer 排序改为 spitterOrder=1 在最上层(玩家先点最上面先释放)"
     },
     {
       "version": "v4.6.31",
