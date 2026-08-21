@@ -726,11 +726,13 @@ function computeMinSlots(tiles) {
       if (!hasSupport) autoPlacedSupport++;
     }
     // 关键理解：spitter 关联牌(target + 队列)不参与普通 fillColor,单独由生成器从普通牌池赋 typeId
-    // 用户画的普通牌(target 包含在内)必须是偶数
-    // spitter.count 必须是偶数(2/4)
+    // 用户画的普通牌(target 包含在内)必须是奇数
+    // spitter.count 不强制奇偶(可任意 1/2/3/4/5)
     // fillTiles(普通牌 - spitter 关联 + 占位)必须是偶数(backwardFill 要求)
     if (normalCount % 2 === 0) {
-      throw new Error('用户画的普通牌 ' + normalCount + ' 张为偶数,spitter 系统需要奇数(target 包含在内)。请加一张或减少一张普通牌');
+      // 真实"用户画的普通牌数" = normalCount - queueTilesAll.length(减掉 spitterOrder 的牌)
+      const userNormalCount = normalCount - queueTilesAll.length;
+      throw new Error('用户画的普通牌 ' + userNormalCount + ' 张为偶数,spitter 系统需要奇数(target 包含在内)。请加一张或减少一张普通牌');
     }
     for (const sp of spitterTilesAll) {
       if (!sp.count || sp.count < 1 || sp.count > 6) {
@@ -1019,6 +1021,13 @@ function computeMinSlots(tiles) {
           });
           // ===== 自动生成 spitter 队列牌(共用普通牌 typeId 池) =====
           const normalTypeIds = result.assigned.filter(function (x) { return x != null; });
+          // 先 push spitter 本体(不参与填色,typeId=null)
+          editorSpitters.forEach(function (sp) {
+            assignedTiles.push({
+              id: 0, layer: sp.layer, row: sp.row, col: sp.col,
+              typeId: null, type: 'spitter', dir: sp.dir, count: sp.count,
+            });
+          });
           editorSpitters.forEach(function (sp) {
             const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
             const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);

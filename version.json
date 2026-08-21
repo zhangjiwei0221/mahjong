@@ -1,12 +1,12 @@
 {
-  "version": "b7dc0ec",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "堆塔凑偶循环 + 移除冗余校验",
+  "notes": "修堆塔 spitter 本体丢失 + 校验信息显示",
   "changelog": [
     {
-      "version": "v4.6.35",
+      "version": "v4.6.36",
       "date": "2026-08-21",
-      "notes": "堆塔凑偶循环改为 while(原来只删 1 对,实际可能需要删 2/4 张);移除堆塔路径冗余最终偶数校验"
+      "notes": "修堆塔路径 spitter 本体丢失(generateStackFromShape 漏 push);修校验信息显示(减 spitterOrder 牌)"
     },
     {
       "version": "v4.6.31",
