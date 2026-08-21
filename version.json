@@ -1,5 +1,5 @@
 {
-  "version": "PENDING",
+  "version": "d2c16d5",
   "updated": "2026-08-21",
   "notes": "修画笔 SyntaxError tKey 重复声明",
   "changelog": [
