@@ -1,8 +1,13 @@
 {
-  "version": "d2c16d5",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "修画笔 SyntaxError tKey 重复声明",
+  "notes": "erase spitter 本体时清 stack + 友好提示",
   "changelog": [
+    {
+      "version": "v4.6.31",
+      "date": "2026-08-21",
+      "notes": "erase spitter 本体时清掉对应 stack(避免残留导致'队列牌 0 张') + 友好提示孤儿队列牌"
+    },
     {
       "version": "v4.6.30",
       "date": "2026-08-21",

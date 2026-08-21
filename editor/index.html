@@ -876,6 +876,14 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.31 · 2026-08-21</div>
+        <div class="gh-desc">
+          • erase spitter 本体时清掉对应 stack(之前只删 layer.tiles 不清 stacks,导致 stack 残留但无 spitter tile,报"队列牌 0 张")<br>
+          • 键盘 Delete/Backspace 删除 spitter 本体时同样清 stack<br>
+          • fillEditorShape 报错时检测孤儿队列牌(其他位置),给出"撤销重画"提示
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.30 · 2026-08-21</div>
         <div class="gh-desc">
           • 修复编辑器画笔逻辑重复声明 tKey 导致 SyntaxError,整个编辑器不渲染(画笔逻辑未生效)
@@ -2486,7 +2494,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'd2c16d5'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
