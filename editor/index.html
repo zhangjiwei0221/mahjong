@@ -1960,8 +1960,23 @@ function paintAt(col, row) {
       layer.tiles[mkey] = mTile;
     }
   } else {
+    // erase 模式：如果删的是 spitter 本体，清理对应 target 的 stacks（否则 stack 残留但无 spitter tile,生成会报"队列牌 0 张"）
+    if (layer.tiles[key] && layer.tiles[key].type === 'spitter') {
+      const sp = layer.tiles[key];
+      const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
+      const tKey = `${row + offset[0]},${col + offset[1]}`;
+      if (layer.stacks[tKey]) delete layer.stacks[tKey];
+    }
     delete layer.tiles[key];
-    if (state.symmetric && mcol !== col) delete layer.tiles[mkey];
+    if (state.symmetric && mcol !== col) {
+      if (layer.tiles[mkey] && layer.tiles[mkey].type === 'spitter') {
+        const sp = layer.tiles[mkey];
+        const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
+        const tKey = `${row + offset[0]},${mcol + offset[1]}`;
+        if (layer.stacks[tKey]) delete layer.stacks[tKey];
+      }
+      delete layer.tiles[mkey];
+    }
   }
 
   draw();
@@ -2010,6 +2025,13 @@ window.addEventListener('keydown', e => {
     if (state.hoverCell) {
       const key = `${state.hoverCell.row},${state.hoverCell.col}`;
       const mkey = `${state.hoverCell.row},${mirrorCol(state.hoverCell.col, state.currentLayer)}`;
+      // 删除 spitter 本体时，清理对应 target 的 stacks
+      if (layer.tiles[key] && layer.tiles[key].type === 'spitter') {
+        const sp = layer.tiles[key];
+        const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
+        const tKey = `${state.hoverCell.row + offset[0]},${state.hoverCell.col + offset[1]}`;
+        if (layer.stacks[tKey]) delete layer.stacks[tKey];
+      }
       delete layer.tiles[key];
       if (state.symmetric && mkey !== key) delete layer.tiles[mkey];
       if (before !== serializeLayers()) {

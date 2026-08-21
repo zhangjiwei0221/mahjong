@@ -731,7 +731,17 @@ function computeMinSlots(tiles) {
         throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 的 count=' + sp.count + ' 不合理（应为 1~6）');
       }
       if (queueCount !== sp.count) {
-        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 配置 count=' + sp.count + ' 但实际队列牌有 ' + queueCount + ' 张（画笔摆 spitter 时会自动堆队列牌，或手动调整 count 与队列牌数量一致）');
+        // 检测孤儿队列牌(其他位置有 spitterOrder 但不在 target 上)→ 提示重画
+        const orphanQueues = queueTilesAll.filter(function (t) {
+          return t.spitterOrder != null && !(t.row === targetRow && t.col === targetCol);
+        });
+        let hint = '';
+        if (orphanQueues.length > 0) {
+          hint = '（检测到 ' + orphanQueues.length + ' 张孤儿队列牌,通常是画了 spitter 后又删掉本体导致 stack 残留,请点"清空"或撤销后重画 spitter）';
+        } else {
+          hint = '（画笔摆 spitter 时会自动堆队列牌,或手动调整 count 与队列牌数量一致）';
+        }
+        throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 配置 count=' + sp.count + ' 但实际队列牌有 ' + queueCount + ' 张' + hint);
       }
       // 队列牌数 = spitter.count 必须为奇数（指向位置的牌 1 张 + N 张队列 = N+1 张可消除，需偶数 → N 必为奇数）
       if (queueCount % 2 === 0) {
