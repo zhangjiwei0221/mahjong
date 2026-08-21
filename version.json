@@ -1,8 +1,13 @@
 {
-  "version": "df0ea1d",
+  "version": "PENDING",
   "updated": "2026-08-21",
-  "notes": "修复吐牌机本体显示成普通麻将:加 overlay 标识(⤴+方向+剩余数)",
+  "notes": "修复 buildEditorShape 丢失 spitter dir/count + spitters 数组错存位置",
   "changelog": [
+    {
+      "version": "v4.6.27",
+      "date": "2026-08-21",
+      "notes": "修复 buildEditorShape:写 spitter tile 时保留 dir/count;spitters 数组改存 spitter 本体位置(原错存 target,导致堆塔路径方向反)"
+    },
     {
       "version": "v4.6.26",
       "date": "2026-08-21",

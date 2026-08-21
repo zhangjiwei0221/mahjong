@@ -876,6 +876,14 @@
         </div>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.6.27 · 2026-08-21</div>
+        <div class="gh-desc">
+          • 修复 buildEditorShape 写 spitter tile 时丢失 dir/count 字段(导致生成报 count=undefined)<br>
+          • 修复 buildEditorShape 的 spitters 数组错存 target 位置(导致 generateStackFromShape 写出的 spitter tile 跑到 target 位置,视觉上"方向反了")<br>
+          • spitters 数组改为存 spitter 本体位置 + dir/count,语义清晰
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.26 · 2026-08-21</div>
         <div class="gh-desc">
           • 修复吐牌机本体被显示成普通麻将图:加 .spitter-overlay 叠加层,用 ⤴ 箭头 + 方向 + ×剩余数 标识<br>
@@ -2393,15 +2401,20 @@ function buildEditorShape() {
     Object.keys(layer.tiles).forEach(key => {
       const tile = layer.tiles[key];
       const [r, c] = key.split(',').map(Number);
-      // 保留 type 字段（spitter/dark 需要）
+      // 保留 type 字段（spitter/dark 需要）和 dir/count（spitter 需要）
       const tileEntry = { id: 0, layer: layerIdx, row: r, col: c, typeId: null };
       if (tile.type && tile.type !== 'normal') tileEntry.type = tile.type;
+      if (tile.type === 'spitter') {
+        tileEntry.dir = tile.dir || 'up';
+        tileEntry.count = tile.count || 3;
+      }
       tiles.push(tileEntry);
       if (tile.type === 'spitter') {
         const dir = tile.dir || 'up';
-        const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[dir] || [-2, 0];
+        // 注意：spitters 数组存 spitter 本体位置 (r, c)，不是 target 位置
+        // 之前错存 target 导致 generateStackFromShape 写出的 spitter tile 跑偏
         spitters.push({
-          layer: layerIdx, row: r + offset[0], col: c + offset[1],
+          layer: layerIdx, row: r, col: c,
           count: tile.count || 3, dir: dir,
         });
       }
@@ -2426,7 +2439,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'df0ea1d'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'PENDING'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
