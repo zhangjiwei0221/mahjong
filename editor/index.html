@@ -1681,9 +1681,8 @@ function drawRotationOverlay() {
 
   const color = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
 
+  // canvas 已由 draw() 设置过 scale/translate（视图缩放），这里直接用世界坐标绘制
   ctx.save();
-  ctx.translate(view.ox, view.oy);
-  ctx.scale(view.scale, view.scale);
 
   // 给每个会旋转的牌画虚线方框（多个方框围成一个圈）
   state.layers.forEach((layer, li) => {
@@ -1701,8 +1700,8 @@ function drawRotationOverlay() {
         ctx.fillRect(tx - w/2, ty - h/2, w, h);
         // 虚线方框
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5 / view.scale;
-        ctx.setLineDash([5 / view.scale, 4 / view.scale]);
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
         ctx.strokeRect(tx - w/2, ty - h/2, w, h);
         ctx.setLineDash([]);
       }
@@ -1715,7 +1714,7 @@ function drawRotationOverlay() {
 
   // 十字准星（精确指示中心格）
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2 / view.scale;
+  ctx.lineWidth = 2.5;
   const ext = 14 / view.scale;
   ctx.beginPath();
   ctx.moveTo(centerX - ext, centerY); ctx.lineTo(centerX + ext, centerY);
@@ -1725,16 +1724,16 @@ function drawRotationOverlay() {
   // 中心实心圆点
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(centerX, centerY, 4 / view.scale, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
   ctx.fill();
 
   // 中心上方标方向符号
   ctx.fillStyle = color;
-  ctx.font = `bold ${16 / view.scale}px sans-serif`;
+  ctx.font = `bold 18px sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const dirText = direction === 'clockwise' ? '↻' : '↺';
-  ctx.fillText(dirText, centerX, centerY - 24 / view.scale);
+  ctx.fillText(dirText, centerX, centerY - 28);
 
   ctx.restore();
 }
