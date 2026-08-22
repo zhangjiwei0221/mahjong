@@ -1720,6 +1720,11 @@ function drawRotationOverlay() {
   const innerY = outerY + inset;
   const innerW = outerW - 2 * inset;
   const innerH = outerH - 2 * inset;
+  // 夹着的环形区域：轻微透明红色（顺时针）或蓝色（逆时针）填充
+  ctx.fillStyle = direction === 'clockwise' ? 'rgba(232,93,109,0.18)' : 'rgba(91,143,232,0.18)';
+  ctx.fillRect(outerX, outerY, outerW, outerH);
+  ctx.fillStyle = 'rgba(253,250,243,0.6)';
+  ctx.fillRect(innerX, innerY, innerW, innerH);
   // 画两条虚线方框
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
