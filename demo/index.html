@@ -654,6 +654,7 @@ function showHint(id) {
 
 // 统一点击入口（符合 PROG-0224 暗牌选取：点暗牌=翻面选中；同花色直接配对；异色暗牌转移选中）
 function clickTile(id) {
+  console.log('[clickTile] id:', id, 'gameOver:', gameOver);
   if (gameOver) return;
   // 首次有效点击 → 通知父窗口"游戏开始"，开始计时
   if (!gameStarted) {
@@ -661,7 +662,9 @@ function clickTile(id) {
     try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'gameStarted' }, '*'); } catch (_) {}
   }
   const active = getActiveTiles();
+  console.log('[clickTile] active tiles:', active.map(t => `${t.id}:${t.typeId}@(${t.row},${t.col})`));
   const tile = active.find(t => t.id === id);
+  console.log('[clickTile] found tile:', tile ? `${tile.id}:${tile.typeId}@(${tile.row},${tile.col})` : 'NOT FOUND');
   if (!tile) return;
   // 吐牌机本体：不可点，抖动提示（队列用尽后已 exhausted 排除在 active 外，自动不响应）
   if (tile.type === 'spitter') { showHint(id); return; }
