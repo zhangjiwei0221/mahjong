@@ -147,14 +147,42 @@ body {
   line-height: 1;
   margin-top: 1px;
 }
-/* 吐牌机队列牌首次释放：弹出 + 淡入效果 */
-.tile.spitter-reveal {
-  animation: spitterReveal 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+/* 吐牌机队列牌首次释放：从吐牌机方向弹出（方向性动画） */
+.tile.spitter-reveal-up {
+  animation: spitterRevealUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-@keyframes spitterReveal {
-  0%   { transform: scale(0.3); opacity: 0; }
-  60%  { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(1);   opacity: 1; }
+.tile.spitter-reveal-down {
+  animation: spitterRevealDown 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tile.spitter-reveal-left {
+  animation: spitterRevealLeft 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.tile.spitter-reveal-right {
+  animation: spitterRevealRight 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 从下方（spitter 在 target 下方，direction=up）：从下往上弹出 */
+@keyframes spitterRevealUp {
+  0%   { transform: scale(0.2) translateY(20px); opacity: 0; }
+  60%  { transform: scale(1.1) translateY(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+/* 从上方（spitter 在 target 上方，direction=down）：从上往下弹出 */
+@keyframes spitterRevealDown {
+  0%   { transform: scale(0.2) translateY(-20px); opacity: 0; }
+  60%  { transform: scale(1.1) translateY(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+/* 从右侧（spitter 在 target 右侧，direction=left）：从右往左弹出 */
+@keyframes spitterRevealLeft {
+  0%   { transform: scale(0.2) translateX(20px); opacity: 0; }
+  60%  { transform: scale(1.1) translateX(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+/* 从左侧（spitter 在 target 左侧，direction=right）：从左往右弹出 */
+@keyframes spitterRevealRight {
+  0%   { transform: scale(0.2) translateX(-20px); opacity: 0; }
+  60%  { transform: scale(1.1) translateX(0); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
 }
 /* 点到不可操作的牌：轻微横向抖动提示 */
 .tile.shake {
@@ -388,6 +416,7 @@ function triggerSpitters(matchedNow) {
     if (queueTile) {
       spitterReleasedCount.set(owner.id, nextOrder);
       spitterRevealedIds.add(queueTile.id);
+      spitterRevealedDirs.set(queueTile.id, owner.dir); // 记录方向用于方向性动画
       changed = true;
     }
 
@@ -624,7 +653,8 @@ function render() {
     const flipCls = justFlipped.has(t.id) ? ' flipping' : '';
     const isSpitterBody = spitterIds.has(t.id);
     const spitterCls = isSpitterBody ? ' spitter' : '';
-    const revealCls = spitterRevealedIds.has(t.id) ? ' spitter-reveal' : '';
+    const revealDir = spitterRevealedDirs.get(t.id);
+    const revealCls = revealDir ? ` spitter-reveal-${revealDir}` : '';
     const cssClass = `tile ${clickable ? 'clickable' : 'blocked'}${isBack ? ' dark' : ''}${flipCls}${selectedCls}${spitterCls}${revealCls}`;
     // 吐牌机本体：不用普通麻将图，用空白底 + CSS 画 ♻ + 方向箭头 + 剩余 count
     const src = isSpitterBody ? SPITTER_BODY_IMAGE : (isBack ? TILE_BACK_IMAGE : tileImgSrc(t.typeId));
@@ -947,6 +977,7 @@ function checkMatch() {
       }
       // 清空 revealed 标记，下一帧不再重复播放
       spitterRevealedIds.clear();
+      spitterRevealedDirs.clear();
       checkWin();
     }, 320);
     return;
@@ -986,6 +1017,7 @@ function hideMessage() {
 let currentSpecialTiles = [];
 // 吐牌机游戏状态（每关重置）
 const spitterReleasedCount = new Map(); // spitterId → 已释放队列牌数
+const spitterRevealedDirs = new Map();   // 队列牌 id → 吐牌机方向（用于方向性弹出动画）
 const spitterRevealedIds = new Set();    // 本次新释放的队列牌 id（用于加 reveal 动画 class）
 const spitterExhaustedIds = new Set();   // 已用尽的吐牌机本体 id（不再渲染、不计入棋盘）
 function loadLevel(json) {
@@ -993,6 +1025,7 @@ function loadLevel(json) {
   currentSpecialTiles = json.specialTiles || [];
   // 重置吐牌机状态
   spitterReleasedCount.clear();
+  spitterRevealedDirs.clear();
   spitterRevealedIds.clear();
   spitterExhaustedIds.clear();
   const numPairs = Math.floor(json.tiles.length / 2);
