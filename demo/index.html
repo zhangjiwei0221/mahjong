@@ -345,7 +345,12 @@ let levelData = null;
 let levelBestMs = null;       // 当前关卡的历史最佳耗时（毫秒），从 localStorage 读
 let selectedDarkId = null;   // 当前被选中的正面暗牌 id（点暗牌翻面并选中；点同花色一起消除；点异色暗牌转移选中）
 let justFlipped = new Set(); // 本次渲染刚翻开的（用于播放翻牌动画）
-let baseBounds = null;        // 初始布局边界（loadLevel 时固定，消除后棋盘不缩放）
+let baseBounds = null;        // 初始布局边界（loadLevel 时固定，消除/旋转都不重算）
+
+// 锁定初始 bounds（防止旋转/消除后镜头缩放）
+function lockBaseBounds() {
+  if (!baseBounds) baseBounds = computeBounds(tiles);
+}
 
 function getActiveTiles() {
   // 队列牌机制:仅显示 spitterOrder === 已释放数 + 1(下一张可点)
@@ -835,12 +840,12 @@ function placeInSlot(tile, onDone) {
   });
 }
 
-// 旋转外圈：所有半径内的牌按 direction 旋转 90°
-// 用 Chebyshev 距离（max(|dr|, |dc|)）形成干净的方框旋转区域
+// 旋转外圈：所有半径内的牌按 direction 各自向前推进一格（conveyor）
+// 顺时针：顶行右移、右列下移、底行左移、左列上移
+// 逆时针：反方向
 function rotateTiles() {
   if (!rotationConfig) return;
   const { centerRow, centerCol, radius, direction } = rotationConfig;
-  const sign = direction === 'clockwise' ? 1 : -1;
   const rotating = tiles.filter(t => {
     if (t.row == null || t.col == null) return false;
     if (t.type === 'spitter') return false;
@@ -849,13 +854,41 @@ function rotateTiles() {
     const chebyshev = Math.max(Math.abs(dr), Math.abs(dc));
     return chebyshev > 0 && chebyshev <= radius;
   });
+  // 找出会旋转的牌的边界（用 Chebyshev 距离形成的方框）
+  let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
   rotating.forEach(t => {
-    const dr = t.row - centerRow;
-    const dc = t.col - centerCol;
-    const newDr = sign * dc;
-    const newDc = -sign * dr;
-    t.row = centerRow + newDr;
-    t.col = centerCol + newDc;
+    if (t.row < minR) minR = t.row;
+    if (t.row > maxR) maxR = t.row;
+    if (t.col < minC) minC = t.col;
+    if (t.col > maxC) maxC = t.col;
+  });
+  if (rotating.length === 0) return;
+  // 顺时针：顶行→右，右列→下，底行→左，左列→上
+  // 逆时针：反方向
+  rotating.forEach(t => {
+    const isTop = t.row === minR;
+    const isBottom = t.row === maxR;
+    const isLeft = t.col === minC;
+    const isRight = t.col === maxC;
+    if (direction === 'clockwise') {
+      if (isTop && !isRight) t.col += 1;
+      else if (isRight && !isBottom) t.row += 1;
+      else if (isBottom && !isLeft) t.col -= 1;
+      else if (isLeft && !isTop) t.row -= 1;
+      else if (isTop && isRight) t.col += 1;
+      else if (isRight && isBottom) t.row += 1;
+      else if (isBottom && isLeft) t.col -= 1;
+      else if (isLeft && isTop) t.row -= 1;
+    } else {
+      if (isTop && !isLeft) t.col -= 1;
+      else if (isLeft && !isBottom) t.row += 1;
+      else if (isBottom && !isRight) t.col += 1;
+      else if (isRight && !isTop) t.row -= 1;
+      else if (isTop && isLeft) t.col -= 1;
+      else if (isLeft && isBottom) t.row += 1;
+      else if (isBottom && isRight) t.col += 1;
+      else if (isRight && isTop) t.row -= 1;
+    }
   });
   rotationState++;
 }
