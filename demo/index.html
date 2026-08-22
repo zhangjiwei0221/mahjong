@@ -819,7 +819,10 @@ function placeInSlot(tile, onDone) {
   // 立即从棋盘移除(不再可点),飞入动画只是视觉反馈
   slotTileIds.add(tile.id);
   slots[emptyIdx] = tile;  // 立即入槽,避免点击过快时两个麻将瞄准同一个空槽
-  render();
+  render(); // 首次 render：新队列牌会带 reveal 动画 class
+  // 立即清除 reveal 标记，下次 render 不再重复触发动画
+  spitterRevealedIds.clear();
+  spitterRevealedDirs.clear();
   renderSlots();
   updateProgress();
   // 飞入动画 → 结束后更新显示
