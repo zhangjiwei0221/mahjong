@@ -3010,8 +3010,8 @@ function saveCurrentLevelToWorkbench(btn) {
 
 // ========== 探测分数范围 ==========
 function probeScoreRange() {
-  let tiles;
-  try { ({ tiles } = buildEditorShape()); }
+  let tiles, spitters;
+  try { ({ tiles, spitters } = buildEditorShape()); }
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
   const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
