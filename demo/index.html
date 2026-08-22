@@ -403,9 +403,17 @@ function triggerSpitters(matchedNow) {
     if (!owner) continue;
 
     const target = spitterTargetPos(owner);
+    const queueCount = (owner.count || 0) - 1;
+
+    // 如果被消除的就是该 spitter 的最后一张队列牌，spitter 本体消失
+    if (matched.spitterOrder != null && matched.spitterOrder === queueCount) {
+      spitterExhaustedIds.add(owner.id);
+      // 最后一张牌点完就消失，不再释放新的（也没新牌可释放了）
+      continue;
+    }
+
     const released = spitterReleasedCount.get(owner.id) ?? 0;
     const nextOrder = released + 1;
-    const count = owner.count || 0;
 
     // 找下一张队列牌：同 row/col(指向位置)、spitterOrder === nextOrder
     const queueTile = tiles.find(t =>
@@ -418,13 +426,6 @@ function triggerSpitters(matchedNow) {
       spitterRevealedIds.add(queueTile.id);
       spitterRevealedDirs.set(queueTile.id, owner.dir); // 记录方向用于方向性动画
       changed = true;
-    }
-
-    // 队列用尽 → spitter 本体消失
-    // count 包含初始牌，队列牌数量 = count - 1
-    const queueCount = (owner.count || 0) - 1;
-    if (queueCount > 0 && nextOrder >= queueCount) {
-      spitterExhaustedIds.add(owner.id);
     }
   }
   return changed;
