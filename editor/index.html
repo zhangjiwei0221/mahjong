@@ -1713,8 +1713,8 @@ function drawRotationOverlay() {
   const outerY = BOARD_PAD + worldTopPad() + (minR + DISPLAY_OFFSET_ROW) * CELL - pad;
   const outerW = (maxC - minC + 2) * CELL + pad * 2;
   const outerH = (maxR - minR + 2) * CELL + pad * 2;
-  // 内框：比外框小一圈，形成双线边框效果
-  const inset = 4;
+  // 内框：比外框缩小一圈，形成清晰的双线边框效果
+  const inset = 8;
   const innerX = outerX + inset;
   const innerY = outerY + inset;
   const innerW = outerW - 2 * inset;
