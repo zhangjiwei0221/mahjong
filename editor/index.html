@@ -1713,8 +1713,9 @@ function drawRotationOverlay() {
   const outerY = BOARD_PAD + worldTopPad() + (minR + DISPLAY_OFFSET_ROW) * CELL - pad;
   const outerW = (maxC - minC + 2) * CELL + pad * 2;
   const outerH = (maxR - minR + 2) * CELL + pad * 2;
-  // 内框：比外框缩小一圈，形成清晰的双线边框效果
-  const inset = 8;
+  // 内框：比外框缩小一整块麻将的距离（2×CELL = 80px），
+  // 中间夹的环形区域 = 一整块麻将大小 = "夹在范围内的麻将会旋转"的视觉表达
+  const inset = 2 * CELL;
   const innerX = outerX + inset;
   const innerY = outerY + inset;
   const innerW = outerW - 2 * inset;
