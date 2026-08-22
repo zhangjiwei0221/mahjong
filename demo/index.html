@@ -842,6 +842,7 @@ function placeInSlot(tile, onDone) {
   slots[emptyIdx] = tile;  // 立即入槽,避免点击过快时两个麻将瞄准同一个空槽
   render(); // 首次 render：新队列牌会带 reveal 动画 class
   // FLIP 动画：旋转牌从旧位置平滑滑到新位置（用 Web Animations API）
+  const flipAnimations = [];
   if (rotationConfig && oldRects.size > 0) {
     oldRects.forEach((oldRect, id) => {
       const el = document.querySelector(`.tile[data-id="${id}"]`);
@@ -850,11 +851,12 @@ function placeInSlot(tile, onDone) {
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
       if (dx === 0 && dy === 0) return;
-      // 用 Web Animations API 做位移动画（不依赖 CSS transition）
-      el.animate([
-        { transform: `translate(${dx}px, ${dy}px)` },
-        { transform: 'translate(0, 0)' }
-      ], { duration: 500, easing: 'ease', fill: 'forwards' });
+      flipAnimations.push(
+        el.animate([
+          { transform: `translate(${dx}px, ${dy}px)` },
+          { transform: 'translate(0, 0)' }
+        ], { duration: 500, easing: 'ease', fill: 'forwards' })
+      );
     });
   }
   // 立即清除 reveal 标记，下次 render 不再重复触发动画
@@ -864,9 +866,13 @@ function placeInSlot(tile, onDone) {
   updateProgress();
   // 飞入动画 → 结束后更新显示
   flyInToSlot(tile, emptyIdx, fromRect, () => {
-    renderSlots();
-    updateProgress();
-    if (onDone) onDone();
+    // 等 FLIP 动画完成后再 render（防止重建元素取消动画）
+    const maxDelay = flipAnimations.length > 0 ? 500 : 0;
+    setTimeout(() => {
+      renderSlots();
+      updateProgress();
+      if (onDone) onDone();
+    }, maxDelay);
   });
 }
 
