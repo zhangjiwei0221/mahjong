@@ -820,6 +820,7 @@ function placeInSlot(tile, onDone) {
   }
   // 旋转机制（带 FLIP 位移动画）：记录旧位置 → 旋转 → render → 从旧位置动画到新位置
   if (rotationConfig) {
+    console.log('[placeInSlot] rotation active, tile being placed:', tile.id, 'typeId:', tile.typeId);
     const oldRects = new Map();
     tiles.forEach(t => {
       if (t.row == null || t.col == null) return;
@@ -833,6 +834,7 @@ function placeInSlot(tile, onDone) {
       }
     });
     rotateTiles();
+    console.log('[placeInSlot] after rotate, slots:', slots.map(s => s ? `${s.id}:${s.typeId}` : 'null'));
   }
   // 先取牌当前屏幕位置：render 会把牌从棋盘移除，动画要从这个位置起飞
   const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
@@ -840,6 +842,7 @@ function placeInSlot(tile, onDone) {
   // 立即从棋盘移除(不再可点),飞入动画只是视觉反馈
   slotTileIds.add(tile.id);
   slots[emptyIdx] = tile;  // 立即入槽,避免点击过快时两个麻将瞄准同一个空槽
+  console.log('[placeInSlot] after add to slot:', slots.map(s => s ? `${s.id}:${s.typeId}` : 'null'));
   render(); // 首次 render：新队列牌会带 reveal 动画 class
   // FLIP 动画：旋转牌从旧位置平滑滑到新位置（用 Web Animations API）
   const flipAnimations = [];
