@@ -850,11 +850,13 @@ function placeInSlot(tile, onDone) {
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
       if (dx !== 0 || dy !== 0) {
+        // 先去掉所有 transition（防止 left/top 抢占动画），瞬移到旧位置
         el.style.transition = 'none';
         el.style.transform = `translate(${dx}px, ${dy}px)`;
-        // 强制 reflow 让 transform 生效
-        el.offsetHeight;
-        el.style.transition = 'transform 0.35s ease';
+        // 强制 reflow
+        void el.offsetHeight;
+        // 加 transform transition，动画到 0（从旧位置滑到新位置）
+        el.style.transition = 'transform 0.5s ease';
         el.style.transform = 'translate(0, 0)';
       }
     });
