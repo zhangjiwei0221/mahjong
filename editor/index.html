@@ -564,6 +564,7 @@
           <div class="brush-btn active" data-brush="normal" onclick="setBrush('normal')">🀫 普通</div>
           <div class="brush-btn" data-brush="dark" onclick="setBrush('dark')">🂠 暗牌</div>
           <div class="brush-btn" data-brush="spitter" onclick="setBrush('spitter')">⚙ 吐牌</div>
+          <div class="brush-btn" data-brush="rotation" onclick="setBrush('rotation')">🎡 旋转</div>
         </div>
         <div id="spitterPanel" style="display:none; margin-top:10px;">
           <div class="card-sub">吐牌方向</div>
@@ -582,6 +583,27 @@
             <span>吐牌次数</span>
             <input type="number" id="spitterCount" value="2" min="1" max="99">
           </div>
+        </div>
+        <div id="rotationPanel" style="display:none; margin-top:10px;">
+          <div class="card-sub">旋转中心（点棋盘设置）</div>
+          <div class="field-row" style="justify-content:center; gap:8px;">
+            <span>行</span><input type="number" id="rotCenterRow" value="-2" style="width:50px;">
+            <span>列</span><input type="number" id="rotCenterCol" value="0" style="width:50px;">
+          </div>
+          <div class="card-sub" style="margin-top:8px;">旋转半径（外圈圈数）</div>
+          <div class="field-row" style="justify-content:center;">
+            <input type="number" id="rotRadius" value="4" min="0" max="8" style="width:60px;">
+          </div>
+          <div class="card-sub" style="margin-top:8px;">旋转方向</div>
+          <div class="dir-pad">
+            <div></div>
+            <div class="dir-btn active" data-dir="clockwise" onclick="setRotationDir('clockwise')">↻</div>
+            <div></div>
+            <div></div>
+            <div class="dir-btn" data-dir="counterclockwise" onclick="setRotationDir('counterclockwise')">↺</div>
+            <div></div>
+          </div>
+          <div class="hint">每次点牌进卡槽，外圈按方向旋转一格</div>
         </div>
       </div>
     </div>
@@ -1235,6 +1257,7 @@ let state = {
   currentLayer: 0,
   brush: 'normal',
   spitterDir: 'up',
+  rotationDir: 'clockwise',
   spitterCount: 2,
   symmetric: true,
   showAll: true,
@@ -1846,6 +1869,14 @@ canvas.addEventListener('mousedown', e => {
 
   if (e.button === 2) {
     state.paintMode = 'remove'; // 右键一律擦除
+  } else if (state.brush === 'rotation') {
+    // 旋转画笔：点击棋盘设置旋转中心
+    state.paintMode = 'setCenter';
+    document.getElementById('rotCenterRow').value = row;
+    document.getElementById('rotCenterCol').value = col;
+    toast('旋转中心已设为 (' + row + ', ' + col + ')', 'ok');
+    draw();
+    return;
   } else {
     const existing = layer.tiles[key];
     // 重复点击同一位置：吐牌机总是可删除；其他画笔需类型匹配才删除
@@ -2184,11 +2215,19 @@ function setBrush(brush) {
     b.classList.toggle('active', b.dataset.brush === brush);
   });
   document.getElementById('spitterPanel').style.display = brush === 'spitter' ? 'block' : 'none';
+  document.getElementById('rotationPanel').style.display = brush === 'rotation' ? 'block' : 'none';
 }
 
 function setSpitterDir(dir) {
   state.spitterDir = dir;
-  document.querySelectorAll('.dir-btn').forEach(b => {
+  document.querySelectorAll('#spitterPanel .dir-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.dir === dir);
+  });
+}
+
+function setRotationDir(dir) {
+  state.rotationDir = dir;
+  document.querySelectorAll('#rotationPanel .dir-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.dir === dir);
   });
 }
