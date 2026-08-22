@@ -1684,49 +1684,21 @@ function drawRotationOverlay() {
   // canvas 已由 draw() 设置过 scale/translate（视图缩放），这里直接用世界坐标绘制
   ctx.save();
 
-  // 旋转范围 = center ± radius（不依赖是否有牌）
+  // 旋转范围 = center ± radius（中空虚线方框，不依赖是否有牌）
   const leftC = centerC - radius;
   const rightC = centerC + radius;
   const topR = centerR - radius;
   const bottomR = centerR + radius;
-
-  // 计算四个角的屏幕坐标（作为旋转方向箭头的定位点）
-  const cornerTopLeftX = BOARD_PAD + (leftC + DISPLAY_OFFSET_COL) * CELL;
-  const cornerTopLeftY = BOARD_PAD + worldTopPad() + (topR + DISPLAY_OFFSET_ROW) * CELL;
-  const cornerTopRightX = BOARD_PAD + (rightC + 2 + DISPLAY_OFFSET_COL) * CELL;
-  const cornerTopRightY = cornerTopLeftY;
-  const cornerBottomLeftX = cornerTopLeftX;
-  const cornerBottomLeftY = BOARD_PAD + worldTopPad() + (bottomR + 2 + DISPLAY_OFFSET_ROW) * CELL;
-  const cornerBottomRightX = cornerTopRightX;
-  const cornerBottomRightY = cornerBottomLeftY;
-  const cellSize = CELL;
-  const arrowLen = Math.min(radius, 4) * cellSize * 0.5; // 箭头长度随半径缩放
-
-  // 顺时针：四角箭头沿框顺时针转；逆时针：反向
-  const arrowSign = direction === 'clockwise' ? 1 : -1;
-  const drawCornerArrow = (cx, cy, side) => {
-    // side: 'tl'='从左上向右下转'，'tr'='从右上向左下转'，'br'='从右下向左上转'，'bl'='从左下向右上转'
-    // 顺时针：tl 向右，tr 向下，br 向左，bl 向上
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    if (arrowSign > 0) {
-      if (side === 'tl') { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + arrowLen, cy); ctx.lineTo(cx, cy + arrowLen); ctx.stroke(); }
-      else if (side === 'tr') { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + arrowLen); ctx.lineTo(cx - arrowLen, cy); ctx.stroke(); }
-      else if (side === 'br') { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - arrowLen, cy); ctx.lineTo(cx, cy - arrowLen); ctx.stroke(); }
-      else { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - arrowLen); ctx.lineTo(cx + arrowLen, cy); ctx.stroke(); }
-    } else {
-      // 逆时针
-      if (side === 'tl') { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + arrowLen); ctx.lineTo(cx + arrowLen, cy); ctx.stroke(); }
-      else if (side === 'tr') { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - arrowLen, cy); ctx.lineTo(cx, cy + arrowLen); ctx.stroke(); }
-      else if (side === 'br') { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - arrowLen); ctx.lineTo(cx - arrowLen, cy); ctx.stroke(); }
-      else { ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + arrowLen, cy); ctx.lineTo(cx, cy - arrowLen); ctx.stroke(); }
-    }
-  };
-  drawCornerArrow(cornerTopLeftX, cornerTopLeftY, 'tl');
-  drawCornerArrow(cornerTopRightX, cornerTopRightY, 'tr');
-  drawCornerArrow(cornerBottomRightX, cornerBottomRightY, 'br');
-  drawCornerArrow(cornerBottomLeftX, cornerBottomLeftY, 'bl');
+  const boxX = BOARD_PAD + (leftC + DISPLAY_OFFSET_COL) * CELL;
+  const boxY = BOARD_PAD + worldTopPad() + (topR + DISPLAY_OFFSET_ROW) * CELL;
+  const boxW = (radius * 2 + 2) * CELL; // +2 是因为麻将占 2×2 格
+  const boxH = (radius * 2 + 2) * CELL;
+  // 中空虚线方框（只描边，不填色）
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+  ctx.setLineDash([]);
 
   // 旋转中心（精确在 centerR, centerC 格点上）
   const centerX = BOARD_PAD + (centerC + DISPLAY_OFFSET_COL) * CELL;
