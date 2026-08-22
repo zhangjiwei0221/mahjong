@@ -1690,7 +1690,7 @@ function drawRotationOverlay() {
     Object.keys(layer.tiles).forEach(key => {
       const [r, c] = key.split(',').map(Number);
       const dr = r - centerR;
-      const dc = c - centerCol;
+      const dc = c - centerC;
       const dist = Math.sqrt(dr * dr + dc * dc);
       if (dist > 0 && dist <= radius * 2) {
         const tx = BOARD_PAD + (c + DISPLAY_OFFSET_COL) * CELL - li * 3;
