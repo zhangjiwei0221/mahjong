@@ -1692,7 +1692,8 @@ function drawRotationOverlay() {
       const dr = r - centerR;
       const dc = c - centerC;
       const chebyshev = Math.max(Math.abs(dr), Math.abs(dc));
-      if (chebyshev > 0 && chebyshev <= radius) {
+      // 只高亮最外圈（chebyshev 等于 radius 的牌），内部不显示
+      if (chebyshev === radius) {
         const tx = BOARD_PAD + (c + DISPLAY_OFFSET_COL) * CELL - li * 3;
         const ty = BOARD_PAD + worldTopPad() + (r + DISPLAY_OFFSET_ROW) * CELL - li * 3;
         const w = TILE * CELL, h = TILE * CELL;
