@@ -841,7 +841,7 @@ function placeInSlot(tile, onDone) {
   slotTileIds.add(tile.id);
   slots[emptyIdx] = tile;  // 立即入槽,避免点击过快时两个麻将瞄准同一个空槽
   render(); // 首次 render：新队列牌会带 reveal 动画 class
-  // FLIP 动画：旋转牌从旧位置平滑滑到新位置
+  // FLIP 动画：旋转牌从旧位置平滑滑到新位置（用 Web Animations API）
   if (rotationConfig && oldRects.size > 0) {
     oldRects.forEach((oldRect, id) => {
       const el = document.querySelector(`.tile[data-id="${id}"]`);
@@ -850,16 +850,11 @@ function placeInSlot(tile, onDone) {
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
       if (dx === 0 && dy === 0) return;
-      // 先去掉所有 transition，把牌瞬移到旧位置
-      el.style.transition = 'none';
-      el.style.transform = `translate(${dx}px, ${dy}px)`;
-      // 强制 reflow（让浏览器把 translate(dx, dy) 提交到 GPU）
-      void el.offsetHeight;
-      // 下一帧：开 transform 过渡，动画到 0
-      requestAnimationFrame(() => {
-        el.style.transition = 'transform 0.5s ease';
-        el.style.transform = 'translate(0, 0)';
-      });
+      // 用 Web Animations API 做位移动画（不依赖 CSS transition）
+      el.animate([
+        { transform: `translate(${dx}px, ${dy}px)` },
+        { transform: 'translate(0, 0)' }
+      ], { duration: 500, easing: 'ease', fill: 'forwards' });
     });
   }
   // 立即清除 reveal 标记，下次 render 不再重复触发动画
