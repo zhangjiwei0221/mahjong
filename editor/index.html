@@ -3021,6 +3021,14 @@ function sendLevelToPreview(level) {
     specialTiles: level.specialTiles,
     rotation: level.rotation || null, // 保留旋转配置
   };
+  // 如果关卡带 rotation，编辑器自动切到旋转画笔并显示范围预警
+  if (clean.rotation) {
+    document.getElementById('rotCenterRow').value = clean.rotation.centerRow;
+    document.getElementById('rotCenterCol').value = clean.rotation.centerCol;
+    document.getElementById('rotRadius').value = clean.rotation.radius;
+    setRotationDir(clean.rotation.direction || 'clockwise');
+    setBrush('rotation');
+  }
   document.getElementById('previewPlaceholder').classList.add('hidden');
   iframe.contentWindow.postMessage({ type: 'loadLevel', level: clean }, '*');
   // file:// 直开时无法预检 demo，超时未收到回执则提示

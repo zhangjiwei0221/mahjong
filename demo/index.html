@@ -818,8 +818,22 @@ function placeInSlot(tile, onDone) {
       }
     }
   }
-  // 旋转机制：每次点牌进卡槽，外圈顺/逆时针旋转一格
-  if (rotationConfig) rotateTiles();
+  // 旋转机制（带 FLIP 位移动画）：记录旧位置 → 旋转 → render → 从旧位置动画到新位置
+  if (rotationConfig) {
+    const oldRects = new Map();
+    tiles.forEach(t => {
+      if (t.row == null || t.col == null) return;
+      if (t.type === 'spitter') return;
+      const dr = t.row - rotationConfig.centerRow;
+      const dc = t.col - rotationConfig.centerCol;
+      const cheb = Math.max(Math.abs(dr), Math.abs(dc));
+      if (cheb > 0 && cheb <= rotationConfig.radius) {
+        const el = document.querySelector(`.tile[data-id="${t.id}"]`);
+        if (el) oldRects.set(t.id, el.getBoundingClientRect());
+      }
+    });
+    rotateTiles();
+  }
   // 先取牌当前屏幕位置：render 会把牌从棋盘移除，动画要从这个位置起飞
   const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
   const fromRect = tileEl ? tileEl.getBoundingClientRect() : null;
@@ -827,6 +841,24 @@ function placeInSlot(tile, onDone) {
   slotTileIds.add(tile.id);
   slots[emptyIdx] = tile;  // 立即入槽,避免点击过快时两个麻将瞄准同一个空槽
   render(); // 首次 render：新队列牌会带 reveal 动画 class
+  // FLIP 动画：旋转牌从旧位置平滑滑到新位置
+  if (rotationConfig && oldRects.size > 0) {
+    oldRects.forEach((oldRect, id) => {
+      const el = document.querySelector(`.tile[data-id="${id}"]`);
+      if (!el) return;
+      const newRect = el.getBoundingClientRect();
+      const dx = oldRect.left - newRect.left;
+      const dy = oldRect.top - newRect.top;
+      if (dx !== 0 || dy !== 0) {
+        el.style.transition = 'none';
+        el.style.transform = `translate(${dx}px, ${dy}px)`;
+        // 强制 reflow 让 transform 生效
+        el.offsetHeight;
+        el.style.transition = 'transform 0.35s ease';
+        el.style.transform = 'translate(0, 0)';
+      }
+    });
+  }
   // 立即清除 reveal 标记，下次 render 不再重复触发动画
   spitterRevealedIds.clear();
   spitterRevealedDirs.clear();
