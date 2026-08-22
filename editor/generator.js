@@ -988,16 +988,16 @@ function computeMinSlots(tiles) {
       // fillTiles 包含：普通牌 + 队列牌（排除吐牌机本体）
       const fillTiles = level.tiles.filter((t, i) => !levelSpitterIdxSet.has(i)).concat(queueTiles);
 
-      // fillTiles 偶数校验（backwardFill 要求）
-      if (fillTiles.length % 2 !== 0) {
-        // 奇偶不匹配，跳过此 attempt
-        continue;
-      }
-
-      // 填色
+      // 填色（让 backwardFill 自己处理奇偶/可解性，不做前置校验）
       const startSeed = Math.floor(Math.random() * 1000) + 1;
       for (let seed = startSeed; seed <= startSeed + 50 && !filled; seed++) {
-        const result = backwardFill(fillTiles, makeRng(seed * 1000 + 42), slotPressure);
+        let result = null;
+        try {
+          result = backwardFill(fillTiles, makeRng(seed * 1000 + 42), slotPressure);
+        } catch (e) {
+          // backwardFill 抛错（奇数牌数等），跳过此 seed
+          continue;
+        }
         if (result) {
           // 把填色结果写回（跳过吐牌机）
           let fillIdx = 0;
