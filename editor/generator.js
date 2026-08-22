@@ -578,6 +578,34 @@ function isTileBuried(tile, allTiles) {
   return hasLeft && hasRight;
 }
 
+// 吐牌机队列压力：只计算"实际不可见/不可消"的队列牌贡献
+// 从第1张往后找，找到第一张无法立即配对的牌，它及之后所有牌都算压力
+// (因为前面不消就无法看到后面)
+function computeSpitterQueuePressure(tiles, queueTiles) {
+  if (!queueTiles || queueTiles.length === 0) return { pressure: 0, hiddenQueueCount: 0 };
+  // 按 spitterOrder 排序（1 先看到）
+  const sorted = queueTiles.slice().sort((a, b) => a.spitterOrder - b.spitterOrder);
+  // 找出第一张"出牌时立即可见且可配对"的队列牌
+  // 简化模型：判断队列牌的 pair（同 typeId 的另一张牌）是否在场上
+  // 如果 pair 在场上 → 立即可消 → 不算压力
+  // 如果 pair 被埋了 → 这张牌得等 pair 露出来才能消 → 算压力
+  let hiddenCount = 0;
+  for (const qt of sorted) {
+    const pair = tiles.find(t => t.id !== qt.id && t.spitterOrder == null && t.typeId === qt.typeId);
+    if (pair && !isTileBuried(pair, tiles)) {
+      // pair 在场上且可见（未埋），立即可消 → 这张牌不贡献压力
+      continue;
+    } else {
+      // pair 被埋或不存在 → 从这张开始所有后续牌都算压力
+      hiddenCount += sorted.length - sorted.indexOf(qt);
+      break;
+    }
+  }
+  // 公式：(0.5 + hiddenCount - 1) × 8
+  const pressure = hiddenCount > 0 ? (0.5 + hiddenCount - 1) * 8 : 0;
+  return { pressure, hiddenQueueCount: hiddenCount };
+}
+
 function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT) {
   const tiles = level.tiles;
   const total = tiles.length;
@@ -620,11 +648,12 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
   const slotTerm = Math.min(Math.max(0, minSlots - 2) / 4, 1) * 30;
   // 封顶调整:5 → 8,让钩子数拉开分数差距
   const darkHookTerm = Math.min(effDarkHooks / 8, 1) * darkWeight;
-  // 吐牌机队列压力：每张队列牌 ≈ 1 个暗钩贡献难度，首张折半（已可见未知性低）
-  // 公式：spitterQueuePressure = (0.5 + (queueCount - 1)) × 8
+  // 吐牌机队列压力：只计算"实际不可见/不可消"的队列牌贡献
+  // 从第1张往后找，找到第一张无法立即配对的牌，它及之后所有牌都算压力
   const queueTiles = tiles.filter(t => t.spitterOrder != null);
+  const queueResult = computeSpitterQueuePressure(tiles, queueTiles);
   const queueCount = queueTiles.length;
-  const spitterQueuePressure = queueCount > 0 ? (0.5 + (queueCount - 1)) * 8 : 0;
+  const spitterQueuePressure = queueResult.pressure;
   const score = Math.round(
     (1 - clickRatio) * 40 + maxLayer * 8 +
     Math.min(effHooks / 8, 1) * 30 + darkHookTerm + slotTerm +
@@ -644,6 +673,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     minSlots,
     slotSolvable: slotsResult.solvable,
     queueCount,
+    hiddenQueueCount: queueResult.hiddenQueueCount,
     spitterQueuePressure: +spitterQueuePressure.toFixed(2),
   };
 }
