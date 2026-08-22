@@ -849,16 +849,17 @@ function placeInSlot(tile, onDone) {
       const newRect = el.getBoundingClientRect();
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
-      if (dx !== 0 || dy !== 0) {
-        // 先去掉所有 transition（防止 left/top 抢占动画），瞬移到旧位置
-        el.style.transition = 'none';
-        el.style.transform = `translate(${dx}px, ${dy}px)`;
-        // 强制 reflow
-        void el.offsetHeight;
-        // 加 transform transition，动画到 0（从旧位置滑到新位置）
+      if (dx === 0 && dy === 0) return;
+      // 先去掉所有 transition，把牌瞬移到旧位置
+      el.style.transition = 'none';
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+      // 强制 reflow（让浏览器把 translate(dx, dy) 提交到 GPU）
+      void el.offsetHeight;
+      // 下一帧：开 transform 过渡，动画到 0
+      requestAnimationFrame(() => {
         el.style.transition = 'transform 0.5s ease';
         el.style.transform = 'translate(0, 0)';
-      }
+      });
     });
   }
   // 立即清除 reveal 标记，下次 render 不再重复触发动画
