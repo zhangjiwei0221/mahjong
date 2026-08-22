@@ -280,12 +280,12 @@ function validateShape(shape, opts = {}) {
 }
 
 // ========== 导出 JSON ==========
-function toEditorJSON(shape, levelId = 1) {
+function toEditorJSON(shape, levelId = 1, skipParity = false) {
   let tiles = shape.tiles.map(t => ({
     id: 0, layer: t.layer, row: t.row, col: t.col, typeId: null,
   }));
 
-  if (tiles.length % 2 !== 0) {
+  if (!skipParity && tiles.length % 2 !== 0) {
     const subTiles = shape.tiles.map(t => ({ layer: t.layer, row: t.row, col: t.col }));
     let removedOne = false;
     for (let l = shape.layers - 1; l >= 0; l--) {
@@ -954,7 +954,9 @@ function computeMinSlots(tiles) {
       const shape = generateFromTemplate(template, { layerCount: layerCount, mirror: mirror });
       const v = validateShape(shape, { skipSymmetry: !mirror });
       if (!v.ok) continue; // 校验不过就重搭
-      const level = toEditorJSON(shape, 1);
+      // 队列牌总数奇数 → 让 shape 也保持奇数（叠加后总牌数才能偶）
+      const skipParity = totalQueueTiles % 2 !== 0;
+      const level = toEditorJSON(shape, 1, skipParity);
       // 把编辑器的吐牌机队列牌和吐牌机标记加到 stacked 结果中
       const editorSpitters = options.spitters || [];
       // 堆塔路径:spitter 本体不参与填色(保持 typeId=null,不是麻将)
