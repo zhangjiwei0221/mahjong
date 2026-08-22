@@ -819,13 +819,15 @@ function placeInSlot(tile, onDone) {
     return;
   }
   // 吐牌机队列牌：点入卡槽时，如果是该 spitter 的最后一张牌，立即让 spitter 消失
+  // 遍历所有非耗尽的 spitter，找到指向该位置的 owner
   if (tile.spitterOrder != null) {
-    const owner = tiles.find(s => s.type === 'spitter' && !spitterExhaustedIds.has(s.id));
-    if (owner) {
+    const allSpitters = tiles.filter(s => s.type === 'spitter' && !spitterExhaustedIds.has(s.id));
+    for (const owner of allSpitters) {
       const tgt = spitterTargetPos(owner);
       const queueCount = (owner.count || 0) - 1;
       if (tgt && tgt.row === tile.row && tgt.col === tile.col && tile.spitterOrder === queueCount) {
         spitterExhaustedIds.add(owner.id);
+        break;
       }
     }
   }
