@@ -719,15 +719,16 @@ function computeMinSlots(tiles) {
     const normalCount = editorTiles.length - spitterTilesAll.length;
     // 计算 spitter 自动补的占位支撑牌数（target 位置已有牌就不补）
     let autoPlacedSupport = 0;
-    let totalQueueTiles = 0; // 队列牌总数 = sum(count - 1)，因为 count 包含初始牌
+    // count = 队列牌数量（全部都是吐牌机吐出的牌，初始显示第一张）
+    let totalQueueTiles = 0;
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
       const hasSupport = editorTiles.some(function (t) { return t.row === targetRow && t.col === targetCol; });
       if (!hasSupport) autoPlacedSupport++;
-      totalQueueTiles += (sp.count || 0) - 1; // count 包含初始牌，所以队列牌 = count - 1
+      totalQueueTiles += sp.count || 0;
     }
-    // 校验：spitter count 合理性（至少 1，即只有初始牌）
+    // 校验：spitter count 合理性
     for (const sp of spitterTilesAll) {
       if (!sp.count || sp.count < 1 || sp.count > 8) {
         throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~8)');
@@ -774,13 +775,13 @@ function computeMinSlots(tiles) {
     }
 
     // ===== 在 backwardFill 之前生成队列牌（typeId = null，由 backwardFill 分配）=====
-    // count 包含初始牌，所以队列牌数量 = count - 1
-    // 吐牌机机制：一次只显示一张，点一张吐一张
+    // count = 队列牌数量（全部都是吐牌机吐出的牌）
+    // 吐牌机机制：初始显示第一张（spitterOrder=1），点一张吐一张
     // 所有队列牌放在同一层（与 target 同层），demo 根据 spitterReleasedCount 决定显示哪张
     for (const sp of spitterTilesAll) {
       const targetRow = sp.row + ({up:-2,down:2,left:0,right:0}[sp.dir] || 0);
       const targetCol = sp.col + ({up:0,down:0,left:-2,right:2}[sp.dir] || 0);
-      const queueCount = sp.count - 1; // count 包含初始牌
+      const queueCount = sp.count; // count = 队列牌数量
       for (let i = 1; i <= queueCount; i++) {
         tiles.push({
           id: 0,
@@ -947,8 +948,8 @@ function computeMinSlots(tiles) {
         throw new Error('吐牌机 count=' + sp.count + ' 不合理(应为 1~8)');
       }
     }
-    // count 包含初始牌，队列牌总数 = sum(count - 1)
-    const totalQueueTiles = editorSpitters.reduce(function (s, sp) { return s + ((sp.count || 0) - 1); }, 0);
+    // count = 队列牌数量（全部都是吐牌机吐出的牌）
+    const totalQueueTiles = editorSpitters.reduce(function (s, sp) { return s + (sp.count || 0); }, 0);
     // ===== 校验 target 位置支撑 =====
     // L1+ 的吐牌机：指向的位置必须有支撑（下方有下层牌托住），否则生成报错
     // L0 的吐牌机：target 在底层，地面就是支撑，无需校验
@@ -1009,10 +1010,10 @@ function computeMinSlots(tiles) {
         if (!hasSupport) {
           supportTiles.push({ id: 0, layer: sp.layer, row: targetRow, col: targetCol, typeId: null });
         }
-        // 生成 count - 1 张队列牌（count 包含初始牌）
-        // 吐牌机机制：一次只显示一张，点一张吐一张
+        // 生成 count 张队列牌（count = 队列牌数量）
+        // 吐牌机机制：初始显示第一张，点一张吐一张
         // 所有队列牌放在同一层（与 target 同层）
-        const queueCount = sp.count - 1;
+        const queueCount = sp.count;
         for (let i = 1; i <= queueCount; i++) {
           queueTiles.push({
             id: 0,
