@@ -1684,20 +1684,28 @@ function drawRotationOverlay() {
   // canvas 已由 draw() 设置过 scale/translate（视图缩放），这里直接用世界坐标绘制
   ctx.save();
 
-  // 旋转范围 = center ± radius（中空虚线方框，不依赖是否有牌）
+  // 旋转范围 = center ± radius（双虚线方框，两线之间夹住会旋转的麻将范围）
   const leftC = centerC - radius;
   const rightC = centerC + radius;
   const topR = centerR - radius;
   const bottomR = centerR + radius;
-  const boxX = BOARD_PAD + (leftC + DISPLAY_OFFSET_COL) * CELL;
-  const boxY = BOARD_PAD + worldTopPad() + (topR + DISPLAY_OFFSET_ROW) * CELL;
-  const boxW = (radius * 2 + 2) * CELL; // +2 是因为麻将占 2×2 格
-  const boxH = (radius * 2 + 2) * CELL;
-  // 中空虚线方框（只描边，不填色）
+  // 外框：麻将的实际边界（+2 因为麻将占 2×2 格）
+  const outerX = BOARD_PAD + (leftC + DISPLAY_OFFSET_COL) * CELL;
+  const outerY = BOARD_PAD + worldTopPad() + (topR + DISPLAY_OFFSET_ROW) * CELL;
+  const outerW = (radius * 2 + 2) * CELL;
+  const outerH = (radius * 2 + 2) * CELL;
+  // 内框：比外框缩小一格（CELL），形成双线效果
+  const inset = CELL;
+  const innerX = outerX + inset;
+  const innerY = outerY + inset;
+  const innerW = outerW - 2 * inset;
+  const innerH = outerH - 2 * inset;
+  // 两条虚线方框
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.setLineDash([6, 4]);
-  ctx.strokeRect(boxX, boxY, boxW, boxH);
+  ctx.strokeRect(outerX, outerY, outerW, outerH);
+  ctx.strokeRect(innerX, innerY, innerW, innerH);
   ctx.setLineDash([]);
 
   // 旋转中心（精确在 centerR, centerC 格点上）
