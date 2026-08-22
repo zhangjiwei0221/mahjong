@@ -1258,6 +1258,7 @@ let state = {
   brush: 'normal',
   spitterDir: 'up',
   rotationDir: 'clockwise',
+  sentRotation: null,                // 已发送到 demo 的旋转配置（用于 overlay 显示，与 demo 实际保持一致）
   spitterCount: 2,
   symmetric: true,
   showAll: true,
@@ -1673,12 +1674,19 @@ function draw() {
 // 旋转画笔激活时的视觉反馈：旋转中心 + 旋转圈 + 高亮会旋转的牌
 function drawRotationOverlay() {
   const ctx = canvas.getContext('2d');
-  const centerR = parseInt(document.getElementById('rotCenterRow').value);
-  const centerC = parseInt(document.getElementById('rotCenterCol').value);
-  const radius = parseInt(document.getElementById('rotRadius').value);
-  const direction = state.rotationDir || 'clockwise';
-  if (isNaN(centerR) || isNaN(centerC) || isNaN(radius) || radius <= 0) return;
-
+  // 优先用已发送的关卡配置（与 demo 实际保持一致），其次用输入框的值
+  const cfg = state.sentRotation || (() => {
+    const cr = parseInt(document.getElementById('rotCenterRow').value);
+    const cc = parseInt(document.getElementById('rotCenterCol').value);
+    const r = parseInt(document.getElementById('rotRadius').value);
+    if (isNaN(cr) || isNaN(cc) || isNaN(r) || r <= 0) return null;
+    return { centerRow: cr, centerCol: cc, radius: r, direction: state.rotationDir || 'clockwise' };
+  })();
+  if (!cfg) return;
+  const centerR = cfg.centerRow;
+  const centerC = cfg.centerCol;
+  const radius = cfg.radius;
+  const direction = cfg.direction || 'clockwise';
   const color = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
 
   // canvas 已由 draw() 设置过 scale/translate（视图缩放），这里直接用世界坐标绘制
@@ -3028,6 +3036,10 @@ function sendLevelToPreview(level) {
     document.getElementById('rotRadius').value = clean.rotation.radius;
     setRotationDir(clean.rotation.direction || 'clockwise');
     setBrush('rotation');
+    // 记录"已发送的旋转配置"（用于 overlay 显示，与 demo 实际配置保持一致）
+    state.sentRotation = { ...clean.rotation };
+  } else {
+    state.sentRotation = null;
   }
   document.getElementById('previewPlaceholder').classList.add('hidden');
   iframe.contentWindow.postMessage({ type: 'loadLevel', level: clean }, '*');
