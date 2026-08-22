@@ -1684,12 +1684,35 @@ function drawRotationOverlay() {
   // canvas 已由 draw() 设置过 scale/translate（视图缩放），这里直接用世界坐标绘制
   ctx.save();
 
-  // 画一个整体虚线方框（不依赖是否有牌），代表整个旋转区域
-  // 方框边界 = (centerR ± radius, centerC ± radius)
-  const boxX = BOARD_PAD + (centerC - radius + DISPLAY_OFFSET_COL) * CELL;
-  const boxY = BOARD_PAD + worldTopPad() + (centerR - radius + DISPLAY_OFFSET_ROW) * CELL;
-  const boxW = (radius * 2 + 1) * CELL;
-  const boxH = (radius * 2 + 1) * CELL;
+  // 计算所有会旋转的牌的包围盒（不是固定 radius 的网格，而是实际牌的范围）
+  let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+  let hasRotating = false;
+  state.layers.forEach((layer, li) => {
+    Object.keys(layer.tiles).forEach(key => {
+      const [r, c] = key.split(',').map(Number);
+      const dr = r - centerR;
+      const dc = c - centerC;
+      const chebyshev = Math.max(Math.abs(dr), Math.abs(dc));
+      // 范围 = center ± radius，但只有实际有牌的格子才计入包围盒
+      if (chebyshev > 0 && chebyshev <= radius) {
+        if (r < minR) minR = r;
+        if (r > maxR) maxR = r;
+        if (c < minC) minC = c;
+        if (c > maxC) maxC = c;
+        hasRotating = true;
+      }
+    });
+  });
+  if (!hasRotating) {
+    // 范围内没有牌：按 radius 算一个虚拟框
+    minR = centerR - radius; maxR = centerR + radius;
+    minC = centerC - radius; maxC = centerC + radius;
+  }
+  // 画包围盒（实心麻将区域）
+  const boxX = BOARD_PAD + (minC + DISPLAY_OFFSET_COL) * CELL;
+  const boxY = BOARD_PAD + worldTopPad() + (minR + DISPLAY_OFFSET_ROW) * CELL;
+  const boxW = (maxC - minC + 2) * CELL; // +2 是因为麻将占 2×2 格
+  const boxH = (maxR - minR + 2) * CELL;
   // 半透明填充
   ctx.fillStyle = direction === 'clockwise' ? 'rgba(232,93,109,0.08)' : 'rgba(91,143,232,0.08)';
   ctx.fillRect(boxX, boxY, boxW, boxH);
@@ -1924,6 +1947,15 @@ canvas.addEventListener('mousedown', e => {
   if (!state.hoverCell) return;
   if (!state.hoverCell.valid && state.snapToSupport && state.currentLayer > 0) return;
 
+  // 旋转画笔只设置中心点，不进入 painting 状态（否则移动鼠标会画/擦麻将）
+  if (e.button === 0 && state.brush === 'rotation') {
+    document.getElementById('rotCenterRow').value = state.hoverCell.row;
+    document.getElementById('rotCenterCol').value = state.hoverCell.col;
+    toast('旋转中心已设为 (' + state.hoverCell.row + ', ' + state.hoverCell.col + ')', 'ok');
+    draw();
+    return;
+  }
+
   state.painting = true;
   state.strokeSnapshot = serializeLayers(); // 笔画前快照，mouseup 时入历史
   const layer = state.layers[state.currentLayer];
@@ -1932,14 +1964,6 @@ canvas.addEventListener('mousedown', e => {
 
   if (e.button === 2) {
     state.paintMode = 'remove'; // 右键一律擦除
-  } else if (state.brush === 'rotation') {
-    // 旋转画笔：点击棋盘设置旋转中心
-    state.paintMode = 'setCenter';
-    document.getElementById('rotCenterRow').value = row;
-    document.getElementById('rotCenterCol').value = col;
-    toast('旋转中心已设为 (' + row + ', ' + col + ')', 'ok');
-    draw();
-    return;
   } else {
     const existing = layer.tiles[key];
     // 重复点击同一位置：吐牌机总是可删除；其他画笔需类型匹配才删除
