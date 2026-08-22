@@ -1679,63 +1679,63 @@ function drawRotationOverlay() {
   const direction = state.rotationDir || 'clockwise';
   if (isNaN(centerR) || isNaN(centerC) || isNaN(radius) || radius <= 0) return;
 
+  const color = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
 
   ctx.save();
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
 
-
-  // 旋转范围虚线方框（带四角旋转方向箭头）
-  const boxLeft = BOARD_PAD + (centerC - radius * 2 + DISPLAY_OFFSET_COL) * CELL;
-  const boxTop = BOARD_PAD + worldTopPad() + (centerR - radius * 2 + DISPLAY_OFFSET_ROW) * CELL;
-  const boxW = radius * 4 * CELL;
-  const boxH = radius * 4 * CELL;
-  const color = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2.5 / view.scale;
-  ctx.setLineDash([8 / view.scale, 5 / view.scale]);
-  ctx.strokeRect(boxLeft, boxTop, boxW, boxH);
-  ctx.setLineDash([]);
-  const arrowSign = direction === 'clockwise' ? 1 : -1;
-  const corners = [
-    { x: boxLeft, y: boxTop, side: 'tl' },
-    { x: boxLeft + boxW, y: boxTop, side: 'tr' },
-    { x: boxLeft, y: boxTop + boxH, side: 'bl' },
-    { x: boxLeft + boxW, y: boxTop + boxH, side: 'br' }
-  ];
-  const arrowRadius = Math.min(boxW, boxH) * 0.12;
-  corners.forEach(c => {
-    let startA, endA;
-    if (arrowSign > 0) {
-      if (c.side === 'tl') { startA = Math.PI * 0.5; endA = Math.PI; }
-      else if (c.side === 'tr') { startA = Math.PI; endA = Math.PI * 1.5; }
-      else if (c.side === 'br') { startA = Math.PI * 1.5; endA = Math.PI * 2; }
-      else { startA = 0; endA = Math.PI * 0.5; }
-    } else {
-      if (c.side === 'tl') { startA = 0; endA = Math.PI * 0.5; }
-      else if (c.side === 'tr') { startA = Math.PI * 0.5; endA = Math.PI; }
-      else if (c.side === 'br') { startA = Math.PI; endA = Math.PI * 1.5; }
-      else { startA = Math.PI * 1.5; endA = Math.PI * 2; }
-    }
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3 / view.scale;
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, arrowRadius, startA, endA);
-    ctx.stroke();
+  // 给每个会旋转的牌画虚线方框（多个方框围成一个圈）
+  state.layers.forEach((layer, li) => {
+    Object.keys(layer.tiles).forEach(key => {
+      const [r, c] = key.split(',').map(Number);
+      const dr = r - centerR;
+      const dc = c - centerCol;
+      const dist = Math.sqrt(dr * dr + dc * dc);
+      if (dist > 0 && dist <= radius * 2) {
+        const tx = BOARD_PAD + (c + DISPLAY_OFFSET_COL) * CELL - li * 3;
+        const ty = BOARD_PAD + worldTopPad() + (r + DISPLAY_OFFSET_ROW) * CELL - li * 3;
+        const w = TILE * CELL, h = TILE * CELL;
+        // 半透明填充
+        ctx.fillStyle = direction === 'clockwise' ? 'rgba(232,93,109,0.10)' : 'rgba(91,143,232,0.10)';
+        ctx.fillRect(tx - w/2, ty - h/2, w, h);
+        // 虚线方框
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5 / view.scale;
+        ctx.setLineDash([5 / view.scale, 4 / view.scale]);
+        ctx.strokeRect(tx - w/2, ty - h/2, w, h);
+        ctx.setLineDash([]);
+      }
+    });
   });
-  const centerX = boxLeft + boxW / 2;
-  const centerY = boxTop + boxH / 2;
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, 6 / view.scale, 0, Math.PI * 2);
-  ctx.fill();
+
+  // 旋转中心（精确在 centerR, centerC 格点上）
+  const centerX = BOARD_PAD + (centerC + DISPLAY_OFFSET_COL) * CELL;
+  const centerY = BOARD_PAD + worldTopPad() + (centerR + DISPLAY_OFFSET_ROW) * CELL;
+
+  // 十字准星（精确指示中心格）
   ctx.strokeStyle = color;
   ctx.lineWidth = 2 / view.scale;
-  const cs = 8 / view.scale;
+  const ext = 14 / view.scale;
   ctx.beginPath();
-  ctx.moveTo(centerX - cs, centerY); ctx.lineTo(centerX + cs, centerY);
-  ctx.moveTo(centerX, centerY - cs); ctx.lineTo(centerX, centerY + cs);
+  ctx.moveTo(centerX - ext, centerY); ctx.lineTo(centerX + ext, centerY);
+  ctx.moveTo(centerX, centerY - ext); ctx.lineTo(centerX, centerY + ext);
   ctx.stroke();
+
+  // 中心实心圆点
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 4 / view.scale, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 中心上方标方向符号
+  ctx.fillStyle = color;
+  ctx.font = `bold ${16 / view.scale}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const dirText = direction === 'clockwise' ? '↻' : '↺';
+  ctx.fillText(dirText, centerX, centerY - 24 / view.scale);
+
   ctx.restore();
 }
 
