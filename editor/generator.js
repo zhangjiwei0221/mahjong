@@ -939,12 +939,8 @@ function computeMinSlots(tiles) {
         throw new Error('吐牌机 [L' + sp.layer + ',' + sp.row + ',' + sp.col + '] 指向位置 (' + targetRow + ',' + targetCol + ') 无支撑：下方缺少下层牌托住。请在指向位置下方加牌，或调整吐牌机方向/位置');
       }
     }
-    // 关键校验：fillTiles = level.tiles + queueTiles 必须偶数
-    // level.tiles 总是偶数（toEditorJSON 会删一张凑偶）
-    // 所以 totalQueueTiles 必须偶数
-    if (totalQueueTiles % 2 !== 0) {
-      throw new Error('吐牌机配置错误：队列牌总数(' + totalQueueTiles + ') 为奇数，无法配对。请调整吐牌机 count');
-    }
+    // 堆塔路径不预先检查队列牌奇偶性：堆上去的牌数是随机的，
+    // 实际总牌数 = shape.tiles + queueTiles，由 backwardFill 在填色时判断奇偶并重试
     const template = { layers: layerNums.map(function (l) { return { layer: l, cells: layerMap[l] }; }), layerCount: layerNums.length };
     // 检测底座是否左右对称（std 坐标：每个 (layer,row,col) 都要有 (layer,row,-col)）
     // 对称底座 → 正常镜像堆塔；不对称底座 → 关掉镜像展开、跳过对称校验，按实际形状堆
