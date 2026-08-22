@@ -836,6 +836,7 @@ function placeInSlot(tile, onDone) {
 }
 
 // 旋转外圈：所有半径内的牌按 direction 旋转 90°
+// 用 Chebyshev 距离（max(|dr|, |dc|)）形成干净的方框旋转区域
 function rotateTiles() {
   if (!rotationConfig) return;
   const { centerRow, centerCol, radius, direction } = rotationConfig;
@@ -845,8 +846,8 @@ function rotateTiles() {
     if (t.type === 'spitter') return false;
     const dr = t.row - centerRow;
     const dc = t.col - centerCol;
-    const dist = Math.sqrt(dr * dr + dc * dc);
-    return dist > 0 && dist <= radius * 2;
+    const chebyshev = Math.max(Math.abs(dr), Math.abs(dc));
+    return chebyshev > 0 && chebyshev <= radius;
   });
   rotating.forEach(t => {
     const dr = t.row - centerRow;
