@@ -386,44 +386,9 @@ function spitterTargetPos(sp) {
   }
 }
 
-// 检查 matchedNow 中是否有一张是某 spitter 的指向位置；是则释放下一张队列牌
-// 返回 true 表示有触发（需要重新 render）
+// 吐牌机释放下一张队列牌的逻辑已移到 placeInSlot（点入卡槽时立即吐出）
 function triggerSpitters(matchedNow) {
-  if (!matchedNow || matchedNow.length === 0) return false;
-  let changed = false;
-  const allSpitters = tiles.filter(t => t.type === 'spitter' && !spitterExhaustedIds.has(t.id));
-  if (allSpitters.length === 0) return false;
-
-  for (const matched of matchedNow) {
-    // 找到指向该位置的 spitter
-    const owner = allSpitters.find(sp => {
-      const target = spitterTargetPos(sp);
-      return target && target.row === matched.row && target.col === matched.col;
-    });
-    if (!owner) continue;
-
-    // spitter 的消失时机已在 placeInSlot 中处理（点入卡槽即消失）
-    // 这里只负责释放下一张队列牌
-    if (spitterExhaustedIds.has(owner.id)) continue;
-
-    const target = spitterTargetPos(owner);
-    const released = spitterReleasedCount.get(owner.id) ?? 0;
-    const nextOrder = released + 1;
-
-    // 找下一张队列牌：同 row/col(指向位置)、spitterOrder === nextOrder
-    const queueTile = tiles.find(t =>
-      t.spitterOrder === nextOrder &&
-      t.row === target.row &&
-      t.col === target.col
-    );
-    if (queueTile) {
-      spitterReleasedCount.set(owner.id, nextOrder);
-      spitterRevealedIds.add(queueTile.id);
-      spitterRevealedDirs.set(queueTile.id, owner.dir); // 记录方向用于方向性动画
-      changed = true;
-    }
-  }
-  return changed;
+  return false;
 }
 
 // ========== 花色池 ==========
@@ -818,14 +783,32 @@ function placeInSlot(tile, onDone) {
     showMessage('💀 卡槽满了', '没有可匹配的牌，游戏结束', true);
     return;
   }
-  // 吐牌机队列牌：点入卡槽时，如果是该 spitter 的最后一张牌，立即让 spitter 消失
-  // count = 队列牌数量，最后一张 = spitterOrder === count
+  // 吐牌机队列牌：点入卡槽时立即吐出下一张
   if (tile.spitterOrder != null) {
     const allSpitters = tiles.filter(s => s.type === 'spitter' && !spitterExhaustedIds.has(s.id));
     for (const owner of allSpitters) {
       const tgt = spitterTargetPos(owner);
-      if (tgt && tgt.row === tile.row && tgt.col === tile.col && tile.spitterOrder === owner.count) {
-        spitterExhaustedIds.add(owner.id);
+      if (tgt && tgt.row === tile.row && tgt.col === tile.col) {
+        const oldReleased = spitterReleasedCount.get(owner.id) ?? 0;
+        const newReleased = oldReleased + 1;
+        spitterReleasedCount.set(owner.id, newReleased);
+
+        // 如果这是最后一张队列牌，spitter 消失
+        if (tile.spitterOrder === owner.count) {
+          spitterExhaustedIds.add(owner.id);
+        } else {
+          // 触发下一张队列牌的 reveal 动画
+          const nextOrder = newReleased + 1;
+          const queueTile = tiles.find(t =>
+            t.spitterOrder === nextOrder &&
+            t.row === tgt.row &&
+            t.col === tgt.col
+          );
+          if (queueTile) {
+            spitterRevealedIds.add(queueTile.id);
+            spitterRevealedDirs.set(queueTile.id, owner.dir);
+          }
+        }
         break;
       }
     }
