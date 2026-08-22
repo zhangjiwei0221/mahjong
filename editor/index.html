@@ -3019,6 +3019,7 @@ function sendLevelToPreview(level) {
     totalPairs: level.totalPairs,
     tiles: level.tiles,
     specialTiles: level.specialTiles,
+    rotation: level.rotation || null, // 保留旋转配置
   };
   document.getElementById('previewPlaceholder').classList.add('hidden');
   iframe.contentWindow.postMessage({ type: 'loadLevel', level: clean }, '*');
