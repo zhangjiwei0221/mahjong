@@ -1,8 +1,13 @@
 {
-  "version": "c3b9d27",
+  "version": "current-commit-hash",
   "updated": "2026-08-22",
-  "notes": "L0吐牌机跳过支撑校验 + 队列牌参与backwardFill",
+  "notes": "新增吐牌机队列压力维度",
   "changelog": [
+    {
+      "version": "v4.6.41",
+      "date": "2026-08-22",
+      "notes": "新增吐牌机队列压力维度(0.5 + N - 1) × 8：每张队列牌 ≈1 个暗钩贡献难度,首张折半。目标分数问号补充说明"
+    },
     {
       "version": "v4.6.40",
       "date": "2026-08-22",

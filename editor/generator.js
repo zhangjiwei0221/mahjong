@@ -620,9 +620,15 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
   const slotTerm = Math.min(Math.max(0, minSlots - 2) / 4, 1) * 30;
   // 封顶调整:5 → 8,让钩子数拉开分数差距
   const darkHookTerm = Math.min(effDarkHooks / 8, 1) * darkWeight;
+  // 吐牌机队列压力：每张队列牌 ≈ 1 个暗钩贡献难度，首张折半（已可见未知性低）
+  // 公式：spitterQueuePressure = (0.5 + (queueCount - 1)) × 8
+  const queueTiles = tiles.filter(t => t.spitterOrder != null);
+  const queueCount = queueTiles.length;
+  const spitterQueuePressure = queueCount > 0 ? (0.5 + (queueCount - 1)) * 8 : 0;
   const score = Math.round(
     (1 - clickRatio) * 40 + maxLayer * 8 +
-    Math.min(effHooks / 8, 1) * 30 + darkHookTerm + slotTerm + 10
+    Math.min(effHooks / 8, 1) * 30 + darkHookTerm + slotTerm +
+    spitterQueuePressure + 10
   );
   return {
     score: Math.max(0, score),
@@ -637,6 +643,8 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     darkHookDensity: totalPairs ? +(darkHooks / totalPairs).toFixed(3) : 0,
     minSlots,
     slotSolvable: slotsResult.solvable,
+    queueCount,
+    spitterQueuePressure: +spitterQueuePressure.toFixed(2),
   };
 }
 
