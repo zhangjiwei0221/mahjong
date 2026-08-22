@@ -1684,32 +1684,21 @@ function drawRotationOverlay() {
   // canvas 已由 draw() 设置过 scale/translate（视图缩放），这里直接用世界坐标绘制
   ctx.save();
 
-  // 给每个会旋转的牌画虚线方框（多个方框围成一个圈）
-  // 用 Chebyshev 距离（max(|dr|, |dc|)）形成干净的方框旋转区域
-  state.layers.forEach((layer, li) => {
-    Object.keys(layer.tiles).forEach(key => {
-      const [r, c] = key.split(',').map(Number);
-      const dr = r - centerR;
-      const dc = c - centerC;
-      const chebyshev = Math.max(Math.abs(dr), Math.abs(dc));
-      // 只高亮最外圈（chebyshev 等于 radius 的牌），内部不显示
-      if (chebyshev === radius) {
-        const tx = BOARD_PAD + (c + DISPLAY_OFFSET_COL) * CELL - li * 3;
-        const ty = BOARD_PAD + worldTopPad() + (r + DISPLAY_OFFSET_ROW) * CELL - li * 3;
-        const w = TILE * CELL, h = TILE * CELL;
-        const pad = 2; // 跟 drawTile 的 pad 一致
-        // 半透明填充（紧贴麻将实心区域）
-        ctx.fillStyle = direction === 'clockwise' ? 'rgba(232,93,109,0.10)' : 'rgba(91,143,232,0.10)';
-        ctx.fillRect(tx + pad, ty + pad, w - 2*pad, h - 2*pad);
-        // 虚线方框（紧贴麻将实心区域）
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.strokeRect(tx + pad, ty + pad, w - 2*pad, h - 2*pad);
-        ctx.setLineDash([]);
-      }
-    });
-  });
+  // 画一个整体虚线方框（不依赖是否有牌），代表整个旋转区域
+  // 方框边界 = (centerR ± radius, centerC ± radius)
+  const boxX = BOARD_PAD + (centerC - radius + DISPLAY_OFFSET_COL) * CELL;
+  const boxY = BOARD_PAD + worldTopPad() + (centerR - radius + DISPLAY_OFFSET_ROW) * CELL;
+  const boxW = (radius * 2 + 1) * CELL;
+  const boxH = (radius * 2 + 1) * CELL;
+  // 半透明填充
+  ctx.fillStyle = direction === 'clockwise' ? 'rgba(232,93,109,0.08)' : 'rgba(91,143,232,0.08)';
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  // 虚线方框
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+  ctx.setLineDash([]);
 
   // 旋转中心（精确在 centerR, centerC 格点上）
   const centerX = BOARD_PAD + (centerC + DISPLAY_OFFSET_COL) * CELL;
