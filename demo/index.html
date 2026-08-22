@@ -865,29 +865,30 @@ function rotateTiles() {
   if (rotating.length === 0) return;
   // 顺时针：顶行→右，右列→下，底行→左，左列→上
   // 逆时针：反方向
+  // 每边步进 = 一整块麻将宽度 = 2 格（TILE=2）
   rotating.forEach(t => {
     const isTop = t.row === minR;
     const isBottom = t.row === maxR;
     const isLeft = t.col === minC;
     const isRight = t.col === maxC;
     if (direction === 'clockwise') {
-      if (isTop && !isRight) t.col += 1;
-      else if (isRight && !isBottom) t.row += 1;
-      else if (isBottom && !isLeft) t.col -= 1;
-      else if (isLeft && !isTop) t.row -= 1;
-      else if (isTop && isRight) t.col += 1;
-      else if (isRight && isBottom) t.row += 1;
-      else if (isBottom && isLeft) t.col -= 1;
-      else if (isLeft && isTop) t.row -= 1;
+      if (isTop && !isRight) t.col += 2;
+      else if (isRight && !isBottom) t.row += 2;
+      else if (isBottom && !isLeft) t.col -= 2;
+      else if (isLeft && !isTop) t.row -= 2;
+      else if (isTop && isRight) t.col += 2;
+      else if (isRight && isBottom) t.row += 2;
+      else if (isBottom && isLeft) t.col -= 2;
+      else if (isLeft && isTop) t.row -= 2;
     } else {
-      if (isTop && !isLeft) t.col -= 1;
-      else if (isLeft && !isBottom) t.row += 1;
-      else if (isBottom && !isRight) t.col += 1;
-      else if (isRight && !isTop) t.row -= 1;
-      else if (isTop && isLeft) t.col -= 1;
-      else if (isLeft && isBottom) t.row += 1;
-      else if (isBottom && isRight) t.col += 1;
-      else if (isRight && isTop) t.row -= 1;
+      if (isTop && !isLeft) t.col -= 2;
+      else if (isLeft && !isBottom) t.row += 2;
+      else if (isBottom && !isRight) t.col += 2;
+      else if (isRight && !isTop) t.row -= 2;
+      else if (isTop && isLeft) t.col -= 2;
+      else if (isLeft && isBottom) t.row += 2;
+      else if (isBottom && isRight) t.col += 2;
+      else if (isRight && isTop) t.row -= 2;
     }
   });
   rotationState++;
