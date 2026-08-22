@@ -1696,14 +1696,15 @@ function drawRotationOverlay() {
         const tx = BOARD_PAD + (c + DISPLAY_OFFSET_COL) * CELL - li * 3;
         const ty = BOARD_PAD + worldTopPad() + (r + DISPLAY_OFFSET_ROW) * CELL - li * 3;
         const w = TILE * CELL, h = TILE * CELL;
-        // 半透明填充
+        const pad = 2; // 跟 drawTile 的 pad 一致
+        // 半透明填充（实心麻将区域）
         ctx.fillStyle = direction === 'clockwise' ? 'rgba(232,93,109,0.10)' : 'rgba(91,143,232,0.10)';
-        ctx.fillRect(tx - w/2, ty - h/2, w, h);
-        // 虚线方框
+        ctx.fillRect(tx - w/2 + pad, ty - h/2 + pad, w - 2*pad, h - 2*pad);
+        // 虚线方框（紧贴麻将可视边缘）
         ctx.strokeStyle = color;
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 4]);
-        ctx.strokeRect(tx - w/2, ty - h/2, w, h);
+        ctx.strokeRect(tx - w/2 + pad, ty - h/2 + pad, w - 2*pad, h - 2*pad);
         ctx.setLineDash([]);
       }
     });
