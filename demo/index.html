@@ -872,23 +872,23 @@ function rotateTiles() {
     const isLeft = t.col === minC;
     const isRight = t.col === maxC;
     if (direction === 'clockwise') {
-      if (isTop && !isRight) t.col += 4;
-      else if (isRight && !isBottom) t.row += 4;
-      else if (isBottom && !isLeft) t.col -= 4;
-      else if (isLeft && !isTop) t.row -= 4;
-      else if (isTop && isRight) t.col += 4;
-      else if (isRight && isBottom) t.row += 4;
-      else if (isBottom && isLeft) t.col -= 4;
-      else if (isLeft && isTop) t.row -= 4;
+      if (isTop && !isRight) t.col += 2;
+      else if (isRight && !isBottom) t.row += 2;
+      else if (isBottom && !isLeft) t.col -= 2;
+      else if (isLeft && !isTop) t.row -= 2;
+      else if (isTop && isRight) t.col += 2;
+      else if (isRight && isBottom) t.row += 2;
+      else if (isBottom && isLeft) t.col -= 2;
+      else if (isLeft && isTop) t.row -= 2;
     } else {
-      if (isTop && !isLeft) t.col -= 4;
-      else if (isLeft && !isBottom) t.row += 4;
-      else if (isBottom && !isRight) t.col += 4;
-      else if (isRight && !isTop) t.row -= 4;
-      else if (isTop && isLeft) t.col -= 4;
-      else if (isLeft && isBottom) t.row += 4;
-      else if (isBottom && isRight) t.col += 4;
-      else if (isRight && isTop) t.row -= 4;
+      if (isTop && !isLeft) t.col -= 2;
+      else if (isLeft && !isBottom) t.row += 2;
+      else if (isBottom && !isRight) t.col += 2;
+      else if (isRight && !isTop) t.row -= 2;
+      else if (isTop && isLeft) t.col -= 2;
+      else if (isLeft && isBottom) t.row += 2;
+      else if (isBottom && isRight) t.col += 2;
+      else if (isRight && isTop) t.row -= 2;
     }
   });
   rotationState++;
