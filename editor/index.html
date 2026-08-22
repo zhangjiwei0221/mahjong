@@ -1670,7 +1670,7 @@ function draw() {
   updateStatusbar();
 }
 
-// 旋转画笔激活时的视觉反馈：旋转中心 + 旋转圈
+// 旋转画笔激活时的视觉反馈：旋转中心 + 旋转圈 + 高亮会旋转的牌
 function drawRotationOverlay() {
   const ctx = ctx2;
   const centerR = parseInt(document.getElementById('rotCenterRow').value);
@@ -1687,8 +1687,29 @@ function drawRotationOverlay() {
   ctx.translate(view.ox, view.oy);
   ctx.scale(view.scale, view.scale);
 
+  // 高亮所有会旋转的牌（半径圈内的所有层）
+  const color = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
+  state.layers.forEach((layer, li) => {
+    Object.keys(layer.tiles).forEach(key => {
+      const [r, c] = key.split(',').map(Number);
+      const dr = r - centerR;
+      const dc = c - centerC;
+      const dist = Math.sqrt(dr * dr + dc * dc);
+      if (dist > 0 && dist <= radius * 2) {
+        const tx = BOARD_PAD + (c + DISPLAY_OFFSET_COL) * CELL - li * 3;
+        const ty = BOARD_PAD + worldTopPad() + (r + DISPLAY_OFFSET_ROW) * CELL - li * 3;
+        const w = TILE * CELL, h = TILE * CELL;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3 / view.scale;
+        ctx.setLineDash([4 / view.scale, 3 / view.scale]);
+        ctx.strokeRect(tx - w/2 + 1, ty - h/2 + 1, w - 2, h - 2);
+        ctx.setLineDash([]);
+      }
+    });
+  });
+
   // 旋转圈（虚线圆环）
-  ctx.strokeStyle = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2 / view.scale;
   ctx.setLineDash([6 / view.scale, 4 / view.scale]);
   ctx.beginPath();
@@ -1697,15 +1718,15 @@ function drawRotationOverlay() {
   ctx.setLineDash([]);
 
   // 旋转中心（十字标记 + 圆点）
-  ctx.fillStyle = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
+  ctx.fillStyle = color;
   ctx.beginPath();
   ctx.arc(centerX, centerY, 5 / view.scale, 0, Math.PI * 2);
   ctx.fill();
 
   // 方向箭头（顺时针/逆时针）
-  ctx.strokeStyle = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2.5 / view.scale;
-  const arrowRadius = ringRadiusPx + 12 / view.scale;
+  const arrowRadius = ringRadiusPx + 14 / view.scale;
   const startAngle = direction === 'clockwise' ? -Math.PI / 2 : Math.PI / 2;
   ctx.beginPath();
   ctx.arc(centerX, centerY, arrowRadius, startAngle, startAngle + Math.PI * 1.4);
@@ -1720,7 +1741,7 @@ function drawRotationOverlay() {
   ctx.lineTo(hx - Math.cos(headAngle - 0.4) * 10 / view.scale, hy - Math.sin(headAngle - 0.4) * 10 / view.scale);
   ctx.lineTo(hx - Math.cos(headAngle + 0.4) * 10 / view.scale, hy - Math.sin(headAngle + 0.4) * 10 / view.scale);
   ctx.closePath();
-  ctx.fillStyle = direction === 'clockwise' ? '#e85d6d' : '#5b8fe8';
+  ctx.fillStyle = color;
   ctx.fill();
 
   ctx.restore();
@@ -2617,6 +2638,16 @@ function attachGenParams(level, mode, layerCount) {
   return level;
 }
 
+// 从编辑器 UI 读取旋转配置（始终返回，不允许关闭）
+function getRotationConfig() {
+  const centerRow = parseInt(document.getElementById('rotCenterRow').value);
+  const centerCol = parseInt(document.getElementById('rotCenterCol').value);
+  const radius = parseInt(document.getElementById('rotRadius').value);
+  const direction = state.rotationDir || 'clockwise';
+  if (isNaN(centerRow) || isNaN(centerCol) || isNaN(radius) || radius <= 0) return null;
+  return { centerRow, centerCol, radius, direction, trigger: 'onAnyClick' };
+}
+
 // 把 _genParams 渲染成短标签串(用于结果列表行内)
 // 前缀"参数"由 CSS ::before 加上,这里只输出值,更紧凑
 function genParamText(p) {
@@ -2836,7 +2867,7 @@ function generateCurrentShape() {
     let closest = null;
     setTimeout(function tryGen() {
       try {
-        const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
+        const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig() }, genDarkOptions())), 'shape');
         attempts++;
         const score = level._difficulty.score;
         const structHit = matchStructTarget(level._difficulty, target);
@@ -2905,7 +2936,7 @@ function generateStackFromCurrent() {
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions())),
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
           'stack', layerCount
         );
         attempts++;
@@ -3194,7 +3225,7 @@ function batchGenerate() {
     try {
       let level;
       if (mode === 'shape') {
-        level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, genDarkOptions()), 'shape');
+        level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig() }, genDarkOptions())), 'shape');
       } else {
         level = attachGenParams(
           GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions())),

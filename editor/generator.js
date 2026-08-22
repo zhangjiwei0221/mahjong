@@ -751,6 +751,7 @@ function computeMinSlots(tiles) {
     const darkRatio = options.darkRatio;
     const darkWeight = options.darkWeight != null ? options.darkWeight : DARK_WEIGHT;
     const slotPressure = options.slotPressure != null ? options.slotPressure : 0.5;
+    const rotation = options.rotation || null; // {centerRow, centerCol, radius, direction}
     // ===== 填色前校验（吐牌机相关）=====
     const spitterTilesAll = editorTiles.filter(function (t) { return t.type === 'spitter'; });
     // 队列牌由生成器自动生成（用户不画），所以 editorTiles 里没有队列牌
@@ -872,7 +873,7 @@ function computeMinSlots(tiles) {
       .map(function (t) { return { id: t.id, type: 'dark', layer: t.layer, row: t.row, col: t.col }; });
     const darkIds = new Set(finalTiles.filter(function (t) { return t.isDark; }).map(function (t) { return t.id; }));
     const diff = evaluateDifficulty({ tiles: finalTiles }, darkIds, darkWeight);
-    return { levelId: 1, totalPairs: Math.floor(finalTiles.length / 2), tiles: finalTiles, specialTiles: specialTiles, _difficulty: diff };
+    return { levelId: 1, totalPairs: Math.floor(finalTiles.length / 2), tiles: finalTiles, specialTiles: specialTiles, rotation: rotation, _difficulty: diff };
   }
 
   function generateAndFill(options) {
