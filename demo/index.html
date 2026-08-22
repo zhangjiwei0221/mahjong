@@ -866,13 +866,9 @@ function placeInSlot(tile, onDone) {
   updateProgress();
   // 飞入动画 → 结束后更新显示
   flyInToSlot(tile, emptyIdx, fromRect, () => {
-    // 等 FLIP 动画完成后再 render（防止重建元素取消动画）
-    const maxDelay = flipAnimations.length > 0 ? 500 : 0;
-    setTimeout(() => {
-      renderSlots();
-      updateProgress();
-      if (onDone) onDone();
-    }, maxDelay);
+    renderSlots();
+    updateProgress();
+    if (onDone) onDone();
   });
 }
 
