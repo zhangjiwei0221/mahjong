@@ -1022,6 +1022,7 @@ function checkMatch() {
   for (const t of slots) {
     if (t) counts[t.typeId] = (counts[t.typeId] || 0) + 1;
   }
+  console.log('[checkMatch] slots:', slots.map(s => s ? `${s.id}:${s.typeId}` : 'null'), 'counts:', counts);
 
   let matched = false;
   let matchIndices = [];
@@ -1041,6 +1042,7 @@ function checkMatch() {
   }
 
   if (matched) {
+    console.log('[checkMatch] MATCHED! eliminating indices:', matchIndices);
     // 立即清空卡槽,让下一个麻将能立刻进来(动画只是视觉效果)
     const matchedNow = []; // 本轮被消除的牌（含场上进入卡槽 + 卡槽里配对消除的）
     for (const idx of matchIndices) {
