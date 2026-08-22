@@ -813,6 +813,8 @@ function placeInSlot(tile, onDone) {
       }
     }
   }
+  // 旋转机制：每次点牌进卡槽，外圈顺/逆时针旋转一格
+  if (rotationConfig) rotateTiles();
   // 先取牌当前屏幕位置：render 会把牌从棋盘移除，动画要从这个位置起飞
   const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
   const fromRect = tileEl ? tileEl.getBoundingClientRect() : null;
@@ -831,6 +833,30 @@ function placeInSlot(tile, onDone) {
     updateProgress();
     if (onDone) onDone();
   });
+}
+
+// 旋转外圈：所有半径内的牌按 direction 旋转 90°
+function rotateTiles() {
+  if (!rotationConfig) return;
+  const { centerRow, centerCol, radius, direction } = rotationConfig;
+  const sign = direction === 'clockwise' ? 1 : -1;
+  const rotating = tiles.filter(t => {
+    if (t.row == null || t.col == null) return false;
+    if (t.type === 'spitter') return false;
+    const dr = t.row - centerRow;
+    const dc = t.col - centerCol;
+    const dist = Math.sqrt(dr * dr + dc * dc);
+    return dist > 0 && dist <= radius * 2;
+  });
+  rotating.forEach(t => {
+    const dr = t.row - centerRow;
+    const dc = t.col - centerCol;
+    const newDr = sign * dc;
+    const newDc = -sign * dr;
+    t.row = centerRow + newDr;
+    t.col = centerCol + newDc;
+  });
+  rotationState++;
 }
 
 function checkWin() {
@@ -1014,6 +1040,8 @@ const spitterReleasedCount = new Map(); // spitterId → 已释放队列牌数
 const spitterRevealedDirs = new Map();   // 队列牌 id → 吐牌机方向（用于方向性弹出动画）
 const spitterRevealedIds = new Set();    // 本次新释放的队列牌 id（用于加 reveal 动画 class）
 const spitterExhaustedIds = new Set();   // 已用尽的吐牌机本体 id（不再渲染、不计入棋盘）
+let rotationConfig = null;               // 旋转配置 {centerRow, centerCol, radius, direction}
+let rotationState = 0;                   // 已旋转次数（用于动画）
 function loadLevel(json) {
   levelData = json;
   currentSpecialTiles = json.specialTiles || [];
@@ -1022,6 +1050,9 @@ function loadLevel(json) {
   spitterRevealedDirs.clear();
   spitterRevealedIds.clear();
   spitterExhaustedIds.clear();
+  // 旋转配置（可选）
+  rotationConfig = json.rotation || null;
+  rotationState = 0; // 累计旋转次数
   const numPairs = Math.floor(json.tiles.length / 2);
   const typePool = buildTypePool(numPairs);
   tiles = json.tiles.map(t => {

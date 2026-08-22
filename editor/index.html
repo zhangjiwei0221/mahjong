@@ -1672,7 +1672,7 @@ function draw() {
 
 // 旋转画笔激活时的视觉反馈：旋转中心 + 旋转圈 + 高亮会旋转的牌
 function drawRotationOverlay() {
-  const ctx = ctx2;
+  const ctx = canvas.getContext('2d');
   const centerR = parseInt(document.getElementById('rotCenterRow').value);
   const centerC = parseInt(document.getElementById('rotCenterCol').value);
   const radius = parseInt(document.getElementById('rotRadius').value);
