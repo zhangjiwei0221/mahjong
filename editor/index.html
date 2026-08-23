@@ -2094,17 +2094,13 @@ function paintAt(col, row) {
   const mkey = `${row},${mcol}`;
 
   if (state.paintMode === 'add') {
-    // spitter 画笔可以与已有牌重叠（它是叠加在牌上的机制）
-    if (state.paintMode === 'add') {
-      // spitter 主体只占 1 格（不像普通牌占 2x2 格），所以用单格检查
-      if (state.brush === 'spitter') {
-        if (layer.tiles[key]) return;
-        if (state.symmetric && mcol !== col && layer.tiles[mkey]) return;
-      } else {
-        if (!isPlaceable(layer, key)) return;
-        if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
-
-      const newCells = tileOccupiesCells(key);
+    // spitter 主体只占 1 格（不像普通牌占 2x2 格），所以用单格检查
+    if (state.brush === 'spitter') {
+      if (layer.tiles[key]) return;
+      if (state.symmetric && mcol !== col && layer.tiles[mkey]) return;
+    } else {
+      if (!isPlaceable(layer, key)) return;
+      if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
       if (layer.tiles[key]) {
         const oldCells = tileOccupiesCells(key);
         const sameAll = [...newCells].every(c => oldCells.has(c));
