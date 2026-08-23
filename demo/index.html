@@ -821,16 +821,17 @@ function placeInSlot(tile, onDone) {
       }
     }
   }
-  // 旋转机制：每次点牌进卡槽，外圈顺/逆时针旋转一格（带位移动画）
+  // 旋转机制：被点击牌先飞入卡槽，其他牌播放旋转动画
   if (rotationConfig && tiles.some(t => {
     if (t.row == null || t.col == null || t.type === 'spitter') return false;
     const dr = t.row - rotationConfig.centerRow;
     const dc = t.col - rotationConfig.centerCol;
     return Math.max(Math.abs(dr), Math.abs(dc)) > 0;
   })) {
-    // FLIP 动画：记录旧屏幕位置 → 旋转 → render → 从旧位置动画到新位置
+    // 1. 捕获其他牌的旧屏幕位置（排除被点击的牌）
     const oldRects = new Map();
     tiles.forEach(t => {
+      if (t.id === tile.id) return; // 排除被点击的牌
       if (t.row == null || t.col == null || t.type === 'spitter') return;
       const dr = t.row - rotationConfig.centerRow;
       const dc = t.col - rotationConfig.centerCol;
@@ -840,9 +841,16 @@ function placeInSlot(tile, onDone) {
         if (el) oldRects.set(t.id, el.getBoundingClientRect());
       }
     });
+    // 2. 立即把被点击的牌飞入卡槽（不等旋转动画）
+    const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
+    const fromRect = tileEl ? tileEl.getBoundingClientRect() : null;
+    slotTileIds.add(tile.id);
+    slots[emptyIdx] = tile;
+    // 3. 旋转其他牌的位置数据
     rotateTiles();
-    // render 后：把旋转牌瞬移到旧屏幕位置，再动画到新位置
+    // 4. render：真实牌在新位置
     render();
+    // 5. clone 元素从旧位置动画到新位置（只动画其他牌）
     oldRects.forEach((oldRect, id) => {
       const el = document.querySelector(`.tile[data-id="${id}"]`);
       if (!el) return;
@@ -858,28 +866,26 @@ function placeInSlot(tile, onDone) {
       clone.style.width = oldRect.width + 'px';
       clone.style.height = oldRect.height + 'px';
       clone.style.zIndex = '9999';
-      clone.style.pointerEvents = 'none'; // 不拦截点击
+      clone.style.pointerEvents = 'none';
       clone.style.transition = 'none';
       document.body.appendChild(clone);
-      // 下一帧：开始动画
       requestAnimationFrame(() => {
         clone.style.transition = 'left 0.4s ease, top 0.4s ease';
         clone.style.left = newRect.left + 'px';
         clone.style.top = newRect.top + 'px';
       });
-      // 动画结束后移除 clone
       setTimeout(() => { clone.remove(); }, 500);
     });
-    // 清除 reveal 标记
     spitterRevealedIds.clear();
     spitterRevealedDirs.clear();
     renderSlots();
     updateProgress();
-    // 被点击的牌直接入槽（不飞入动画，避免卡顿感）
-    slotTileIds.add(tile.id);
-    slots[emptyIdx] = tile;
-    renderSlots();
-    if (onDone) onDone();
+    // 6. 被点击的牌飞入卡槽动画
+    flyInToSlot(tile, emptyIdx, fromRect, () => {
+      renderSlots();
+      updateProgress();
+      if (onDone) onDone();
+    });
     return; // 跳过下面的常规流程
   }
 
