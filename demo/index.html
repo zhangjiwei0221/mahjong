@@ -875,16 +875,11 @@ function placeInSlot(tile, onDone) {
     spitterRevealedDirs.clear();
     renderSlots();
     updateProgress();
-    // 飞入动画
-    const tileEl = document.querySelector(`.tile[data-id="${tile.id}"]`);
-    const fromRect = tileEl ? tileEl.getBoundingClientRect() : null;
+    // 被点击的牌直接入槽（不飞入动画，避免卡顿感）
     slotTileIds.add(tile.id);
     slots[emptyIdx] = tile;
-    flyInToSlot(tile, emptyIdx, fromRect, () => {
-      renderSlots();
-      updateProgress();
-      if (onDone) onDone();
-    });
+    renderSlots();
+    if (onDone) onDone();
     return; // 跳过下面的常规流程
   }
 
