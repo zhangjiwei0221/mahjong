@@ -648,7 +648,8 @@ function render() {
     const remaining = isSpitterBody ? (spitterRemainingQueueCount(t.id)) : 0;
     const dirArrow = isSpitterBody ? SPITTER_DIR_ARROW[t.dir] || '▼' : '';
 
-    const z = isSpitterBody ? 10000 + t.id : t.layer * 1000 + t.id;
+    // spitter 本体和 queue 牌都用高 z-index（10000+id），避免被同层普通牌盖住
+    const z = (isSpitterBody || t.spitterOrder != null) ? 10000 + t.id : t.layer * 1000 + t.id;
     html += `<div class="${cssClass}" data-id="${t.id}" data-type="${t.typeId}" data-dark="${isBack ? 1 : 0}"
       style="left:${x}px; top:${y}px; width:${tileSize}px; height:${tileSize}px; --ld:${t.layer};
              z-index:${z};"
