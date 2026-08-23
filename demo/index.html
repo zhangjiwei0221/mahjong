@@ -648,9 +648,10 @@ function render() {
     const remaining = isSpitterBody ? (spitterRemainingQueueCount(t.id)) : 0;
     const dirArrow = isSpitterBody ? SPITTER_DIR_ARROW[t.dir] || '▼' : '';
 
+    const z = isSpitterBody ? 10000 + t.id : t.layer * 1000 + t.id;
     html += `<div class="${cssClass}" data-id="${t.id}" data-type="${t.typeId}" data-dark="${isBack ? 1 : 0}"
       style="left:${x}px; top:${y}px; width:${tileSize}px; height:${tileSize}px; --ld:${t.layer};
-             z-index:${t.layer * 1000 + t.id};"
+             z-index:${z};"
       onclick="clickTile(${t.id})">
       <img class="tile-img" src="${src}" alt="">
       ${isSpitterBody ? `<div class="spitter-overlay"><div class="spitter-arrow">${dirArrow}</div><div class="spitter-count">×${remaining}</div></div>` : ''}
