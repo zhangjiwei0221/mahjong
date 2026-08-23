@@ -44,6 +44,20 @@ function hasSupport(row, col, lowerArr) {
   return covered === 4;
 }
 
+// 兜底：校验整关每张"可消麻将"(排除吐牌机本体,它不是可消的牌)是否被下方任意层托住(象限规则)。
+// validateShape 只在校对偶化/装配前的 shape；mirror 展开、偶化删牌、队列/回填重排都可能让上层牌悬空,
+// 用这份在【最终输出】上的检查兜底:但凡有一张悬空就判该塔形不可用(让上层循环重搭新塔形)。
+function levelHasFullSupport(arr) {
+  const playable = arr.filter(t => t.type !== 'spitter');
+  for (let i = 0; i < playable.length; i++) {
+    const t = playable[i];
+    if (t.layer <= 0) continue;
+    const lower = playable.filter(o => o !== t && o.layer < t.layer);
+    if (!hasSupport(t.row, t.col, lower)) return false;
+  }
+  return true;
+}
+
 // ========== 模板加载 ==========
 function loadTemplate(jsonInput) {
   const json = jsonInput;
@@ -1066,6 +1080,11 @@ function computeMinSlots(tiles) {
 
           // 重新分配 id
           assignedTiles.forEach((t, i) => { t.id = i + 1; });
+          // 最终支撑兜底：防止偶化删牌/mirror 展开/回填重排让上层牌悬空
+          if (!levelHasFullSupport(assignedTiles)) {
+            filled = null; // 该塔形不可行 → 跳出内层，重搭新塔形
+            break;
+          }
           filled = {
             levelId: level.levelId, totalPairs: level.totalPairs,
             tiles: assignedTiles,
