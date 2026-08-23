@@ -338,6 +338,25 @@ let tiles = [];
 let slots = [];
 let matchedTileIds = new Set(); // 已永久消除的具体牌 id（按张记录，不按花色）
 let slotTileIds = new Set();
+
+// 支撑检查：tile 在 layer 是否有支撑（layer-1 覆盖 4 象限）
+function hasSupport(tile, allTiles) {
+  if (tile.row == null || tile.col == null) return true;
+  if (tile.layer <= 0) return true; // L0 默认有支撑
+  if (tile.type === 'spitter') return true; // spitter 本体不检查
+  // 检查下方 4 象限
+  const quads = [[0,0],[0,1],[1,0],[1,1]];
+  for (const [dr, dc] of quads) {
+    const qr = tile.row + dr * 1; // L 层麻将占 (row, row+1) × (col, col+1)
+    const qc = tile.col + dc * 1;
+    const covered = allTiles.some(t =>
+      t.id !== tile.id && t.layer === tile.layer - 1 && t.row === qr && t.col === qc
+    );
+    if (!covered) return false;
+  }
+  return true;
+}
+
 let gameOver = false;
 let levelStartTime = 0;       // 本轮关卡开始时间（毫秒），用于试玩计时
 let gameStarted = false;      // 玩家是否已首次点击（开始计时）
@@ -375,7 +394,8 @@ function getActiveTiles() {
     !slotTileIds.has(t.id) &&
     !spitterExhaustedIds.has(t.id) &&
     !(t.type === 'spitter' && !activeSpitterIds.has(t.id)) &&
-    !(t.spitterOrder != null && !activeQueueIds.has(t.id))
+    !(t.spitterOrder != null && !activeQueueIds.has(t.id)) &&
+    hasSupport(t, tiles)
   );
 }
 
