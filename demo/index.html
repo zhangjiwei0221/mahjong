@@ -108,9 +108,10 @@ body {
 }
 
 .tile.spitter {
-  border: 2px solid #8a4a12;
-  box-shadow: 0 0 8px rgba(176,106,42,0.6);
-  background: linear-gradient(160deg, #fdfaf1, #f1e8d3 60%, #ddcfab);
+  border: 3px solid #b91c1c;
+  box-shadow: 0 0 12px rgba(185,28,28,0.7);
+  background: linear-gradient(160deg, #fef9e7, #fde68a 60%, #fbbf24);
+  z-index: 10000; /* 确保 spitter 永远在所有普通牌之上 */
 }
 .tile.spitter .tile-img { display: none; } /* 不用麻将图，纯 CSS 绘制吐牌机标识 */
 /* 吐牌机本体叠加层：♻ 图标 + 方向箭头 + 剩余队列数 */
