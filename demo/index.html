@@ -850,10 +850,25 @@ function placeInSlot(tile, onDone) {
       const dx = oldRect.left - newRect.left;
       const dy = oldRect.top - newRect.top;
       if (dx === 0 && dy === 0) return;
-      el.animate([
-        { transform: `translate(${dx}px, ${dy}px)` },
-        { transform: 'translate(0, 0)' }
-      ], { duration: 300, easing: 'ease' });
+      // 创建 clone 元素（不影响真实元素），从旧位置动画到新位置
+      const clone = el.cloneNode(true);
+      clone.style.position = 'fixed';
+      clone.style.left = oldRect.left + 'px';
+      clone.style.top = oldRect.top + 'px';
+      clone.style.width = oldRect.width + 'px';
+      clone.style.height = oldRect.height + 'px';
+      clone.style.zIndex = '9999';
+      clone.style.pointerEvents = 'none'; // 不拦截点击
+      clone.style.transition = 'none';
+      document.body.appendChild(clone);
+      // 下一帧：开始动画
+      requestAnimationFrame(() => {
+        clone.style.transition = 'left 0.4s ease, top 0.4s ease';
+        clone.style.left = newRect.left + 'px';
+        clone.style.top = newRect.top + 'px';
+      });
+      // 动画结束后移除 clone
+      setTimeout(() => { clone.remove(); }, 500);
     });
     // 清除 reveal 标记
     spitterRevealedIds.clear();
