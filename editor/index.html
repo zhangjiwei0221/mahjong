@@ -2095,7 +2095,7 @@ function paintAt(col, row) {
 
   if (state.paintMode === 'add') {
     // spitter 画笔可以与已有牌重叠（它是叠加在牌上的机制）
-    if (state.brush !== 'spitter') {
+    if (state.paintMode === 'add') {
       if (!isPlaceable(layer, key)) return;
       if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
 
