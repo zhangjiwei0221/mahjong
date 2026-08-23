@@ -394,8 +394,7 @@ function getActiveTiles() {
     !slotTileIds.has(t.id) &&
     !spitterExhaustedIds.has(t.id) &&
     !(t.type === 'spitter' && !activeSpitterIds.has(t.id)) &&
-    !(t.spitterOrder != null && !activeQueueIds.has(t.id)) &&
-    hasSupport(t, tiles)
+    !(t.spitterOrder != null && !activeQueueIds.has(t.id))
   );
 }
 
