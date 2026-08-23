@@ -592,6 +592,22 @@ function isTileBuried(tile, allTiles) {
   return hasLeft && hasRight;
 }
 
+// 埋深：这张牌要"挖开多少张"才能见到。
+// 上压 → 被多少张上层牌盖住(深度 = 盖住它的牌数)；左右夹 → 算深度 1。
+// 深度越大越难（要清掉越多张才能点到它）。
+function tileBuriedDepth(tile, all) {
+  let depth = 0;
+  for (const o of all) {
+    if (o.id !== tile.id && o.layer > tile.layer &&
+      Math.abs(o.row - tile.row) < 2 && Math.abs(o.col - tile.col) < 2) depth++;
+  }
+  if (depth > 0) return depth;
+  const same = all.filter(t => t.layer === tile.layer && t.id !== tile.id);
+  const L = same.some(t => t.col === tile.col - 2 && Math.abs(t.row - tile.row) < 2);
+  const R = same.some(t => t.col === tile.col + 2 && Math.abs(t.row - tile.row) < 2);
+  return (L && R) ? 1 : 0;
+}
+
 // 吐牌机队列压力：只计算"实际不可见/不可消"的队列牌贡献
 // 从第1张往后找，找到第一张无法立即配对的牌，它及之后所有牌都算压力
 // (因为前面不消就无法看到后面)
@@ -636,22 +652,32 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
     const arr = byType[k];
     const pairs = Math.floor(arr.length / 2);
     if (pairs < 1) continue;
-    // 新定义:一对里**两张都埋**才算钩子。一张见一张埋的不算(玩家看到那张就能联想到同色另一张)
-    const buriedList = arr.filter(t => isTileBuried(t, tiles));
-    const visibleCount = arr.length - buriedList.length;
-    // 双埋对子数 = floor(埋的张数 / 2),上限不超过 pairs
-    const doubleBuriedPairs = Math.floor(buriedList.length / 2);
-    const hookInst = Math.min(doubleBuriedPairs, pairs);
-    const buriedDarkList = buriedList.filter(t => darkIds.has(t.id));
-    const doubleBuriedDarkPairs = Math.floor(buriedDarkList.length / 2);
-    const darkHookInst = Math.min(doubleBuriedDarkPairs, pairs);
-    hooks += hookInst;
-    darkHooks += darkHookInst;
-    // 加权:每个钩子对子的权重 = 1 / (同花色可见张数 + 1)
-    // 同色可见越多 → 越容易找到伴侣 → 权重越低
-    const w = 1 / (visibleCount + 1);
-    effHooks += hookInst * w;
-    effDarkHooks += darkHookInst * w;
+    // 埋深:每张牌被盖住/夹住的深度(0=完全可见)
+    const depths = arr.map(t => tileBuriedDepth(t, tiles));
+    const darkIdx = arr.map(t => darkIds.has(t.id));
+    // 按埋深从深到浅排序,配对时深的对深的(避免任意结对影响计分)
+    const order = depths.map((_, i) => i).sort((a, b) => depths[b] - depths[a]);
+    let locked = 0;        // 新钩子数:一对里至少有一张被埋
+    let pairW = 0;         // 计分权重:深度缩放 + 双埋加成
+    let darkLocked = 0;    // 含暗牌的锁定对(显示用)
+    let darkPairW = 0;
+    for (let p = 0; p < pairs; p++) {
+      const i = order[2 * p], j = order[2 * p + 1];
+      const d1 = (i != null ? depths[i] : 0), d2 = (j != null ? depths[j] : 0);
+      const dm = Math.max(d1, d2), dn = Math.min(d1, d2);
+      if (dm === 0) continue;                 // 两张都可见 → 不算钩子(好拿)
+      locked++;
+      const w = dm + (dn > 0 ? dn : 0);       // 一明一暗=深那张;双埋=两深相加
+      pairW += w;
+      if (darkIdx[i] || darkIdx[j]) { darkPairW += w; darkLocked++; }
+    }
+    // 伴侣型加权:同色露得越多 → 越容易找到同伴 → 权重越低(保留"伴侣型钩子影响分数"思想)
+    const visibleCount = arr.filter((_, i) => depths[i] === 0).length;
+    const wc = 1 / (visibleCount + 1);
+    hooks += locked;
+    effHooks += pairW * wc;
+    darkHooks += darkLocked;
+    effDarkHooks += darkPairW * wc;
   }
 
   const totalPairs = Math.floor(total / 2);
@@ -661,7 +687,7 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
   // 槽位压力项:2 槽起 0 分,每 +1 槽 +7.5 分,6 槽拿满 30 分
   const slotTerm = Math.min(Math.max(0, minSlots - 2) / 4, 1) * 30;
   // 封顶调整:5 → 8,让钩子数拉开分数差距
-  const darkHookTerm = Math.min(effDarkHooks / 8, 1) * darkWeight;
+  const darkHookTerm = Math.min(effDarkHooks / 40, 1) * darkWeight;
   // 吐牌机队列压力：只计算"实际不可见/不可消"的队列牌贡献
   // 从第1张往后找，找到第一张无法立即配对的牌，它及之后所有牌都算压力
   const queueTiles = tiles.filter(t => t.spitterOrder != null);
@@ -669,9 +695,9 @@ function evaluateDifficulty(level, darkIds = new Set(), darkWeight = DARK_WEIGHT
   const queueCount = queueTiles.length;
   const spitterQueuePressure = queueResult.pressure;
   const score = Math.round(
-    (1 - clickRatio) * 40 + maxLayer * 8 +
-    Math.min(effHooks / 8, 1) * 30 + darkHookTerm + slotTerm +
-    spitterQueuePressure + 10
+    (1 - clickRatio) * 30 + maxLayer * 8 +
+    Math.min(effHooks / 40, 1) * 30 + darkHookTerm + slotTerm +
+    spitterQueuePressure + 5
   );
   return {
     score: Math.max(0, score),

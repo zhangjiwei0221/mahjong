@@ -2628,8 +2628,8 @@ function switchTabTo(tab) {
   // 切到难度模式时,把自动计算的值同步到滑轮,避免两个 Tab 显示不一致
   if (tab === 'difficulty') {
     const d = parseInt(document.getElementById('difficultyLevel').value);
-    const scoreMin = Math.round(50 + (d - 1) * 8);
-    const scoreMax = Math.round(70 + (d - 1) * 9);
+    const scoreMin = Math.round(44 + (d - 1) * 4);
+    const scoreMax = Math.round(60 + (d - 1) * 4);
     const hooks = Math.round(10 + (d - 1) * 7.8);
     const dark = Math.round(5 + (d - 1) * 1.7);
     document.getElementById('scoreMin').value = scoreMin;
@@ -2647,8 +2647,8 @@ function onDifficultyChange() {
   const d = parseInt(document.getElementById('difficultyLevel').value);
   document.getElementById('difficultyVal').textContent = d;
   // 线性映射: 1→最简单, 10→最难(根据实测分数范围 60~150)
-  const scoreMin = Math.round(50 + (d - 1) * 8);   // 50~122
-  const scoreMax = Math.round(70 + (d - 1) * 9);   // 70~151
+  const scoreMin = Math.round(44 + (d - 1) * 4);   // 44~80
+  const scoreMax = Math.round(60 + (d - 1) * 4);   // 60~96
   const hooks = Math.round(10 + (d - 1) * 7.8);      // 10~80%
   const dark = Math.round(5 + (d - 1) * 1.7);        // 5~20%
   document.getElementById('autoScoreVal').textContent = scoreMin + '~' + scoreMax;
@@ -2969,8 +2969,8 @@ function generateCurrentShape() {
     let scoreLo, scoreHi;
     if (genMode === 'difficulty') {
       const d = parseInt(document.getElementById('difficultyLevel').value);
-      scoreLo = Math.round(50 + (d - 1) * 8);
-      scoreHi = Math.round(70 + (d - 1) * 9);
+      scoreLo = Math.round(44 + (d - 1) * 4);
+      scoreHi = Math.round(60 + (d - 1) * 4);
     } else {
       scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
       scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
@@ -3037,8 +3037,8 @@ function generateStackFromCurrent() {
     let scoreLo, scoreHi;
     if (genMode === 'difficulty') {
       const d = parseInt(document.getElementById('difficultyLevel').value);
-      scoreLo = Math.round(50 + (d - 1) * 8);
-      scoreHi = Math.round(70 + (d - 1) * 9);
+      scoreLo = Math.round(44 + (d - 1) * 4);
+      scoreHi = Math.round(60 + (d - 1) * 4);
     } else {
       scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
       scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
@@ -3317,8 +3317,8 @@ function batchGenerate() {
   let scoreMin, scoreMax;
   if (genMode === 'difficulty') {
     const d = parseInt(document.getElementById('difficultyLevel').value);
-    scoreMin = Math.round(50 + (d - 1) * 8);
-    scoreMax = Math.round(70 + (d - 1) * 9);
+    scoreMin = Math.round(44 + (d - 1) * 4);
+    scoreMax = Math.round(60 + (d - 1) * 4);
   } else {
     const lo = parseInt(document.getElementById('scoreMin').value);
     const hi = parseInt(document.getElementById('scoreMax').value);
