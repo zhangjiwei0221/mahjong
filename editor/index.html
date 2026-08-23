@@ -2143,14 +2143,6 @@ function paintAt(col, row) {
         }
         // 如果只需要保证吐牌机可点,需要升起上层牌 — 这里简化为:吐牌机本身不能被覆盖
       }
-      // 检查目标位置（spitter 指向的位置）上方是否被其他牌挡住——挡着的话，新吐出来的牌没地方放
-      const tKey = `${targetPos.row},${targetPos.col}`;
-      for (let li = state.currentLayer + 1; li < state.layers.length; li++) {
-        if (state.layers[li].tiles[tKey]) {
-          toast('吐牌机指向的位置上面已经有牌挡着,换个方向或换个位置试试', 'err');
-          return;
-        }
-      }
       // 吐牌机本体不需要用户手动堆队列牌——队列牌由生成器在填色时自动生成 count 张
       // 但 target 位置必须有支撑牌(L0 任意类型)才能让队列牌有底
       // 如果 target 是空的,生成器自动在 target L0 补一张普通牌作为支撑
