@@ -379,6 +379,13 @@ function getActiveTiles() {
   const spitters = tiles.filter(t => t.type === 'spitter');
   const activeSpitterIds = new Set(spitters.filter(s => !spitterExhaustedIds.has(s.id)).map(s => s.id));
   const activeQueueIds = new Set();
+  // 收集所有 spitter target 位置(用于隐藏 target 位置的普通牌——避免与队列牌视觉重叠)
+  const targetKeys = new Set();
+  for (const s of spitters) {
+    if (spitterExhaustedIds.has(s.id)) continue; // 队列用尽后,target 普通牌正常显示
+    const tgt = spitterTargetPos(s);
+    if (tgt) targetKeys.add(`${tgt.layer},${tgt.row},${tgt.col}`);
+  }
   for (const t of tiles) {
     if (t.spitterOrder == null) continue;
     const owner = spitters.find(s => {
@@ -395,18 +402,20 @@ function getActiveTiles() {
     !slotTileIds.has(t.id) &&
     !spitterExhaustedIds.has(t.id) &&
     !(t.type === 'spitter' && !activeSpitterIds.has(t.id)) &&
-    !(t.spitterOrder != null && !activeQueueIds.has(t.id))
+    !(t.spitterOrder != null && !activeQueueIds.has(t.id)) &&
+    !(t.spitterOrder == null && targetKeys.has(`${t.layer},${t.row},${t.col}`))
   );
 }
 
 // ========== 吐牌机触发 ==========
 // 计算 spitter 指向位置的 (row, col)。layer 同 spitter 自身
 function spitterTargetPos(sp) {
+  const tgt = sp.layer;
   switch (sp.dir) {
-    case 'up':    return { row: sp.row - 2, col: sp.col };
-    case 'down':  return { row: sp.row + 2, col: sp.col };
-    case 'left':  return { row: sp.row,     col: sp.col - 2 };
-    case 'right': return { row: sp.row,     col: sp.col + 2 };
+    case 'up':    return { row: sp.row - 2, col: sp.col,     layer: tgt };
+    case 'down':  return { row: sp.row + 2, col: sp.col,     layer: tgt };
+    case 'left':  return { row: sp.row,     col: sp.col - 2, layer: tgt };
+    case 'right': return { row: sp.row,     col: sp.col + 2, layer: tgt };
     default:      return null;
   }
 }
@@ -540,6 +549,13 @@ function overlaps(a, b) {
 
 // std 坐标：row=纵向(上下)，col=横向(左右)。左右夹住 = 同行(row 相等)、同列(col±2)。
 function isClickable(tile, allTiles) {
+  // spitter 本体:仅要求不被上层牌压住,左右夹住不算(本身是装饰物,允许任意位置被点)
+  if (tile.type === 'spitter') {
+    for (const other of allTiles) {
+      if (other.id !== tile.id && other.layer > tile.layer && overlaps(other, tile)) return false;
+    }
+    return true;
+  }
   for (const other of allTiles) {
     if (other.id !== tile.id && other.layer > tile.layer && overlaps(other, tile)) return false;
   }
@@ -628,8 +644,12 @@ function render() {
   for (const t of sorted) {
     // 队列牌初始全部可见(堆叠在 target 上方),不需要"逐步释放"
     // 跳过未激活的队列牌的条件已移除
-    const x = offsetX + (t.col - minCol) * cell - t.layer * layerOffset * cell;
-    const y = offsetY + (t.row - minRow) * cell - t.layer * layerOffset * cell;
+    // spitter 本体和队列牌(spitterOrder)都不带 layerOffset（保持在自身位置,不向左上漂）
+    const isSpitterForRender = spitterIds.has(t.id);
+    const isQueueForRender = t.spitterOrder != null;
+    const layerOff = (isSpitterForRender || isQueueForRender) ? 0 : layerOffset;
+    const x = offsetX + (t.col - minCol) * cell - t.layer * layerOff * cell;
+    const y = offsetY + (t.row - minRow) * cell - t.layer * layerOff * cell;
     // spitter 关联的 target 牌即使被队列牌压,也算可点(让玩家能点 target 进卡槽配对)
     let clickable = isClickable(t, active);
     if (!clickable && t.spitterOrder == null) {
@@ -668,6 +688,9 @@ function render() {
   renderSlots();
   updateProgress();
 }
+
+// hover 牌时不再 dim 下层牌（去掉半透明黑色特效，保持所有牌同等显示）
+// 只保留点击反馈（CSS .tile.clickable:hover）
 
 // 点到不可操作的牌：轻微抖动提示（不移动牌，仅供玩家感知）
 function showHint(id) {
@@ -708,7 +731,6 @@ function clickTile(id) {
   }
   // 队列牌：走普通进卡槽+配对消除流程(checkMatch 配对后触发 release 下一张)
   // 不进 matchedTileIds(由 checkMatch 在配对消除时处理)
-  if (tile.type === 'spitter') { showHint(id); return; }
 
   // 已有选中的正面暗牌 A → 配对分支
   if (selectedDarkId != null) {

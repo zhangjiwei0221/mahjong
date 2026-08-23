@@ -764,6 +764,17 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.7.0 · 2026-08-24</div>
+        <div class="gh-desc">
+          • 吐牌机交互重做：spitter 画笔下"再次点击已放置的吐牌机 → 直接消除"(对齐普通牌点已存在即擦除,不再依赖双击)<br>
+          • 修复吐牌机放置左右不对称：去掉镜像位置重叠检查(spitter 本就不对称放置)<br>
+          • 非当前层吐牌机半透明淡出(alpha 0.4),俯视编辑当前层时不再抢眼<br>
+          • 同层禁止把吐牌机塞进两张普通牌中间的缝(与普通牌放置规则一致)<br>
+          • 吐牌机输出目标位也做支撑校验：目标位下方无支撑则禁止放置<br>
+          • 工作台新增"预览"按钮：内嵌 demo iframe 弹层即时试玩该关
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.6.41 · 2026-08-22</div>
         <div class="gh-desc">
           • 新增吐牌机队列压力维度:只算"实际不可见/不可消"的队列牌贡献<br>
@@ -1650,7 +1661,16 @@ function draw() {
       const tile = layer.tiles[key];
       const [r, c0] = key.split(',').map(Number);
       const isHover = state.hoverTile && state.hoverTile.key === key && state.hoverTile.layer === layerIdx;
-      drawTile(c0, r, layerIdx, tile, isCurrent, isHover, issues && layerIdx > 0 && issues.has(key));
+      // 俯视编辑时，非当前层上的吐牌机(及其队列)太抢眼 → 调淡一些，方便看清当前层
+      // 普通麻将保持原样，只对 spitter 生效
+      if (isCurrent || (tile.type !== 'spitter' && tile.type !== 'spitterQueue')) {
+        drawTile(c0, r, layerIdx, tile, isCurrent, isHover, issues && layerIdx > 0 && issues.has(key));
+      } else {
+        ctx.save();
+        ctx.globalAlpha = 0.4;
+        drawTile(c0, r, layerIdx, tile, isCurrent, isHover, issues && layerIdx > 0 && issues.has(key));
+        ctx.restore();
+      }
     });
     // 绘制吐牌机队列（堆叠牌）
     Object.keys(layer.stacks || {}).forEach(key => {
@@ -1658,7 +1678,14 @@ function draw() {
       const [r, c0] = key.split(',').map(Number);
       stack.forEach((st, idx) => {
         // 每层稍微偏移，显示堆叠效果
-        drawTile(c0, r, layerIdx, { type: 'spitterQueue', order: st.order }, false, false, false);
+        if (isCurrent) {
+          drawTile(c0, r, layerIdx, { type: 'spitterQueue', order: st.order }, false, false, false);
+        } else {
+          ctx.save();
+          ctx.globalAlpha = 0.4;
+          drawTile(c0, r, layerIdx, { type: 'spitterQueue', order: st.order }, false, false, false);
+          ctx.restore();
+        }
       });
     });
   });
@@ -1946,6 +1973,22 @@ canvas.addEventListener('mousedown', e => {
   if (!state.hoverCell) return;
   if (!state.hoverCell.valid && state.snapToSupport && state.currentLayer > 0) return;
 
+  // 吐牌机画笔:再次点击已存在的吐牌机 → 直接消除(像普通牌那样,点已存在的就擦除)
+  // 只在 spitter 画笔下生效
+  const layer0 = state.layers[state.currentLayer];
+  const key0 = `${state.hoverCell.row},${state.hoverCell.col}`;
+  if (state.brush === 'spitter' && layer0.tiles[key0] && layer0.tiles[key0].type === 'spitter') {
+    const before = serializeLayers();
+    const sp = layer0.tiles[key0];
+    const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
+    const tKey = `${state.hoverCell.row + offset[0]},${state.hoverCell.col + offset[1]}`;
+    if (layer0.stacks[tKey]) delete layer0.stacks[tKey];
+    delete layer0.tiles[key0];
+    if (before !== serializeLayers()) pushHistory(before);
+    draw(); updateUI();
+    return;
+  }
+
   // 旋转画笔只设置中心点，不进入 painting 状态（否则移动鼠标会画/擦麻将）
   if (e.button === 0 && state.brush === 'rotation') {
     document.getElementById('rotCenterRow').value = state.hoverCell.row;
@@ -2077,6 +2120,16 @@ function isPlaceable(layer, key) {
   const newCells = tileOccupiesCells(key);
   for (const existingKey of Object.keys(layer.tiles)) {
     if (existingKey === key) continue;
+    const t = layer.tiles[existingKey];
+    // 同层 spitter 占 1 子格,会被新普通牌的 2x2 范围覆盖 — 允许替换(后面 paintAt 会处理)
+    // 其他普通牌/暗牌才需要检查 2x2 重叠
+    if (t.type === 'spitter') {
+      const tCells = new Set([existingKey]); // spitter 只占 1 个子格(即它的 key)
+      // 检查 spitter 子格是否被新普通牌的 2x2 子格完全包含(允许覆盖);否则允许(邻接不重叠)
+      // 实际上邻接不重叠就是 ok,只需要确认新普通牌的子格不会与 spitter 邻接冲突
+      // 简化:spitter 不参与 isPlaceable 检查,允许新普通牌放上
+      continue;
+    }
     const existCells = tileOccupiesCells(existingKey);
     for (const cell of newCells) {
       if (existCells.has(cell)) return false;
@@ -2094,13 +2147,51 @@ function paintAt(col, row) {
   const mkey = `${row},${mcol}`;
 
   if (state.paintMode === 'add') {
-    // spitter 主体只占 1 格（不像普通牌占 2x2 格），所以用单格检查
+    // spitter 本体只占 1 格（不像普通牌占 2x2 子格），所以用单格检查
     if (state.brush === 'spitter') {
-      if (layer.tiles[key]) return;
-      if (state.symmetric && mcol !== col && layer.tiles[mkey]) return;
+      // 检查能否放置:spitter 视觉占 2x2 cell(子格 row..row+1, col..col+1)
+      // 同层:spitter 视觉不能与已有 spitter 重叠(邻接 1 cell 视觉重叠 1 cell,禁止)
+      // 跨层:不限制——spitter 视觉范围内的普通牌保留(层叠关系)
+      // 注:双击 spitter 走 mousedown 双击分支,不在 paintAt 这里
+      const spitterArea = [`${row},${col}`, `${row},${col+1}`, `${row+1},${col}`, `${row+1},${col+1}`];
+      // 同层 spitter 视觉重叠检查(邻接 1 cell 拒绝)
+      for (const k of Object.keys(layer.tiles)) {
+        const t = layer.tiles[k];
+        if (t.type !== 'spitter') continue;
+        const [tr, tc] = k.split(',').map(Number);
+        const tArea = [`${tr},${tc}`, `${tr},${tc+1}`, `${tr+1},${tc}`, `${tr+1},${tc+1}`];
+        for (const tsk of tArea) {
+          if (spitterArea.includes(tsk)) return;
+        }
+      }
+      // 同层普通牌/暗牌:跟普通麻将一样,spitter 视觉 2x2 要么完全落在空处,
+      // 要么恰好覆盖一张牌(shared==4,替换);禁止"半压"在两张牌中间的缝(shared 1~3)
+      for (const k of Object.keys(layer.tiles)) {
+        const t = layer.tiles[k];
+        if (t.type === 'spitter' || t.type === 'spitterQueue') continue;
+        const tCells = tileOccupiesCells(k);
+        let shared = 0;
+        for (const cell of spitterArea) if (tCells.has(cell)) shared++;
+        if (shared > 0 && shared < 4) return; // 部分重叠 = 夹缝,禁止放置
+      }
+      // 吐牌机吐出的牌(目标位)也要满足支撑:目标位=getSpitterTarget(同层,+dir偏移 2 格)。
+      // 若目标位下层无支撑(空),则这里不能放吐牌机 — 与吐牌机本体自身的支撑判断一致
+      const tp = getSpitterTarget(state.currentLayer, row, col, state.spitterDir);
+      if (!tp) {
+        toast('吐牌机指向位置超出边界', 'err');
+        return;
+      }
+      if (state.currentLayer > 0 && !hasSupportAtLayer(state.currentLayer, tp.col, tp.row)) {
+        toast('吐牌机吐牌目标位下方是空格，无法放置', 'err');
+        return;
+      }
+      // 注:不做镜像位置重叠检查——spitter 是"不对称"放置(下面 2229 明确跳过镜像写入),
+      // 若还按镜像位置查重叠,会把已有 spitter 镜像一侧全拦住,导致左右放置不对称(例如右侧能放、左侧全被拦)
+      // 通过检查后:放 spitter(不跨层删除任何牌)
     } else {
       if (!isPlaceable(layer, key)) return;
       if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
+      const newCells = tileOccupiesCells(key);
       if (layer.tiles[key]) {
         const oldCells = tileOccupiesCells(key);
         const sameAll = [...newCells].every(c => oldCells.has(c));
@@ -2170,13 +2261,29 @@ function paintAt(col, row) {
     }
     delete layer.tiles[key];
     if (state.symmetric && mcol !== col) {
-      if (layer.tiles[mkey] && layer.tiles[mkey].type === 'spitter') {
-        const sp = layer.tiles[mkey];
-        const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
-        const tKey = `${row + offset[0]},${mcol + offset[1]}`;
-        if (layer.stacks[tKey]) delete layer.stacks[tKey];
+      // spitter 画笔固定不对称:擦 spitter 不动镜像位置（即使镜像位置是普通牌也不删）
+      if (state.brush === 'spitter') {
+        // 仅当镜像位置也是 spitter 时才删（保持多个 spitter 对称）
+        if (layer.tiles[mkey] && layer.tiles[mkey].type === 'spitter') {
+          const sp = layer.tiles[mkey];
+          const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
+          const tKey = `${row + offset[0]},${mcol + offset[1]}`;
+          if (layer.stacks[tKey]) delete layer.stacks[tKey];
+          delete layer.tiles[mkey];
+        }
+      } else {
+        // 普通/暗牌画笔:对称镜像擦除
+        const mType = layer.tiles[mkey] && layer.tiles[mkey].type;
+        if (mType === 'spitter') {
+          const sp = layer.tiles[mkey];
+          const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
+          const tKey = `${row + offset[0]},${mcol + offset[1]}`;
+          if (layer.stacks[tKey]) delete layer.stacks[tKey];
+          delete layer.tiles[mkey];
+        } else if (mType === 'normal' || mType === 'dark') {
+          delete layer.tiles[mkey];
+        }
       }
-      delete layer.tiles[mkey];
     }
   }
 
@@ -2356,22 +2463,27 @@ function findSupportIssues() {
   return issues;
 }
 
-// 检查某个位置（当前层）是否有支撑
-function hasSupportAt(col, row) {
-  if (state.currentLayer === 0) return true;
-  if (!state.snapToSupport) return true;
-  const lower = state.layers[state.currentLayer - 1].tiles;
+// 检查某个位置（指定层）是否有支撑（2x2 footprint 全部被下层覆盖）
+function hasSupportAtLayer(layerIndex, col, row) {
+  if (layerIndex <= 0) return true; // 底层恒有支撑
+  const lower = state.layers[layerIndex - 1].tiles;
   const lowerArr = Object.keys(lower).map(k => {
     const [lr, lc] = k.split(',').map(Number);
     return { row: lr, col: lc };
   });
-
   const quads = [[row, col], [row, col + 1], [row + 1, col], [row + 1, col + 1]];
   let covered = 0;
   quads.forEach(([r, c]) => {
     if (quadCovered(lowerArr, r, c)) covered++;
   });
   return covered === 4;
+}
+
+// 检查某个位置（当前层）是否有支撑
+function hasSupportAt(col, row) {
+  if (state.currentLayer === 0) return true;
+  if (!state.snapToSupport) return true;
+  return hasSupportAtLayer(state.currentLayer, col, row);
 }
 
 // ========== UI ==========
@@ -2702,7 +2814,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = '5000ca5'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.7.0'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
