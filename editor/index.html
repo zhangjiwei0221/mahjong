@@ -2151,7 +2151,7 @@ function paintAt(col, row) {
       // 如果 target 是空的,生成器自动在 target L0 补一张普通牌作为支撑
     }
 
-    if (state.symmetric && mcol !== col) {
+    if (state.symmetric && mcol !== col && state.brush !== 'spitter') {
       const mTile = { ...tileData };
       if (mTile.type === 'spitter') {
         if (mTile.dir === 'left') mTile.dir = 'right';
