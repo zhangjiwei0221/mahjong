@@ -2094,19 +2094,22 @@ function paintAt(col, row) {
   const mkey = `${row},${mcol}`;
 
   if (state.paintMode === 'add') {
-    if (!isPlaceable(layer, key)) return;
-    if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
+    // spitter 画笔可以与已有牌重叠（它是叠加在牌上的机制）
+    if (state.brush !== 'spitter') {
+      if (!isPlaceable(layer, key)) return;
+      if (state.symmetric && mcol !== col && !isPlaceable(layer, mkey)) return;
 
-    const newCells = tileOccupiesCells(key);
-    if (layer.tiles[key]) {
-      const oldCells = tileOccupiesCells(key);
-      const sameAll = [...newCells].every(c => oldCells.has(c));
-      if (!sameAll) return;
-    }
-    if (state.symmetric && mcol !== col && layer.tiles[mkey]) {
-      const oldCells = tileOccupiesCells(mkey);
-      const sameAll = [...tileOccupiesCells(mkey)].every(c => oldCells.has(c));
-      if (!sameAll) return;
+      const newCells = tileOccupiesCells(key);
+      if (layer.tiles[key]) {
+        const oldCells = tileOccupiesCells(key);
+        const sameAll = [...newCells].every(c => oldCells.has(c));
+        if (!sameAll) return;
+      }
+      if (state.symmetric && mcol !== col && layer.tiles[mkey]) {
+        const oldCells = tileOccupiesCells(mkey);
+        const sameAll = [...tileOccupiesCells(mkey)].every(c => oldCells.has(c));
+        if (!sameAll) return;
+      }
     }
 
     const tileData = {
