@@ -747,6 +747,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.8.3 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 修复"保存到工作台后在工作台刷新看不到"：口令原来存 sessionStorage（每标签独立，编辑器与工作台跨标签不共享）→ 工作台 getPass 为空就静默不加载。改为 localStorage 跨标签共享，编辑器存的关拿到工作台任意标签自动带出。
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.8.2 · 2026-08-24</div>
         <div class="gh-desc">
           • 修复"点击推塔生成后右侧预览不出现"：预览起始对 demo 的 HEAD 探测会把"超大文件 HEAD 被取消(ERR_ABORTED)"误判为"demo 缺失"→ 直接禁用整场预览。改为只有确认 404 才禁用，其余照常加载。
@@ -2796,7 +2802,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.8.2'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.8.3'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
@@ -3180,8 +3186,8 @@ function enablePreviewActions(enable) {
 // ========== 保存到共享工作台（Netlify 部署版可用） ==========
 const WORKBENCH_API = '/levels';
 
-// 口令存 sessionStorage，与「📋 工作台」页共享
-function getWbPass() { return sessionStorage.getItem('wbPass') || ''; }
+// 口令存 localStorage，与「📋 工作台」页跨标签共享（sessionStorage 是每个标签独立的，存不平）
+function getWbPass() { return localStorage.getItem('wbPass') || ''; }
 
 function workbenchApi(path, options) {
   options = options || {};
@@ -3222,6 +3228,7 @@ function saveCurrentLevelToWorkbench(btn) {
   const pass = document.getElementById('wbPass').value.trim();
   if (!pass) { alert('请输入共享口令（默认 1）'); toggleWbSaveBox(true); document.getElementById('wbPass').focus(); return; }
   sessionStorage.setItem('wbPass', pass);
+  localStorage.setItem('wbPass', pass); // 跨标签共享给工作台页
   const name = document.getElementById('wbSaveName').value.trim() || '未命名关卡';
   const orderEl = document.getElementById('wbNewOrder') || document.getElementById('wbSaveOrder');
   const orderVal = orderEl ? orderEl.value.trim() : '';

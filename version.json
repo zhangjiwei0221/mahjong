@@ -1,8 +1,13 @@
 {
-  "version": "v4.8.2",
-  "updated": "2026-08-24",
-  "notes": "修复推塔生成后预览不出现",
+  "version": "v4.8.3",
+  "updated": "2026-08-25",
+  "notes": "修复工作台跨标签看不到已保存关卡",
   "changelog": [
+    {
+      "version": "v4.8.3",
+      "date": "2026-08-25",
+      "notes": "修复'保存到工作台后在工作台刷新看不到':口令原存 sessionStorage(每标签独立,编辑器与工作台跨标签不共享)→工作台 getPass 为空则静默不加载(refresh 直接 return)。改为 localStorage 跨标签共享,编辑器存的关在工作台任意标签自动带出。"
+    },
     {
       "version": "v4.8.2",
       "date": "2026-08-24",
