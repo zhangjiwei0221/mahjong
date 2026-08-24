@@ -747,6 +747,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.8.2 · 2026-08-24</div>
+        <div class="gh-desc">
+          • 修复"点击推塔生成后右侧预览不出现"：预览起始对 demo 的 HEAD 探测会把"超大文件 HEAD 被取消(ERR_ABORTED)"误判为"demo 缺失"→ 直接禁用整场预览。改为只有确认 404 才禁用，其余照常加载。
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.8.1 · 2026-08-24</div>
         <div class="gh-desc">
           • 修复"探测本底座可出分数"按钮无反应：初始状态行残留对已删变量 N 的引用(N 未声明 → 抛 ReferenceError，函数未真正运行)
@@ -2790,7 +2796,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.8.1'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.8.2'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
@@ -2922,11 +2928,15 @@ async function initPreview() {
     }
   });
   // http 模式先探测 demo 是否存在，避免 iframe 里挂 404
+  // 注意:预览本来就是巨型单文件(6.6MB),HEAD 也可能因超时/取消抛错(ERR_ABORTED),
+  // 那 ≠ 缺失——只有确认 404 才禁用预览;其余情况照常加载 iframe。
   if (location.protocol !== 'file:') {
+    let is404 = false;
     try {
       const r = await fetch(getDemoUrl(), { method: 'HEAD' });
-      if (!r.ok) { showDemoMissing(); return; }
-    } catch (_) { showDemoMissing(); return; }
+      is404 = r.status === 404;
+    } catch (_) { is404 = false; }
+    if (is404) { showDemoMissing(); return; }
   }
   iframe.src = getDemoUrl();
   iframe.addEventListener('load', () => {

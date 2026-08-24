@@ -1,8 +1,13 @@
 {
-  "version": "v4.8.1",
+  "version": "v4.8.2",
   "updated": "2026-08-24",
-  "notes": "修复探测本底座按钮无反应",
+  "notes": "修复推塔生成后预览不出现",
   "changelog": [
+    {
+      "version": "v4.8.2",
+      "date": "2026-08-24",
+      "notes": "修复'点击推塔生成后右侧预览不出现':预览起始对 demo 的 HEAD 探测把'超大文件 HEAD 被取消(ERR_ABORTED)'误判为'demo 缺失'→showDemoMissing 禁用了整场预览。改为仅确认 404 才禁用,其余照常加载 iframe。"
+    },
     {
       "version": "v4.8.1",
       "date": "2026-08-24",
