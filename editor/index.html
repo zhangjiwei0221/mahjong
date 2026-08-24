@@ -628,12 +628,7 @@
             <input type="number" id="scoreMax" value="999" min="0" max="999">
           </div>
           <button class="sbtn block" onclick="probeScoreRange()">📊 探测本底座可出分数</button>
-          <div class="card-sub">结构参数（单关重试命中，批量过滤命中）</div>
-          <div class="slider-row">
-            <span class="slabel">钩子目标</span>
-            <input type="range" id="hooksTarget" min="0" max="100" value="30" step="5" oninput="onGenParamChange()">
-            <span class="sval" id="hooksTargetVal">30%</span>
-          </div>
+          <div class="card-sub">结构参数（单关和批量按分数/暗牌过滤；钩子难度由层数自动产生）</div>
           <div class="slider-row">
             <span class="slabel">暗牌总数</span>
             <input type="range" id="darkRatio" min="0" max="50" value="10" step="5" oninput="onGenParamChange()">
@@ -644,11 +639,7 @@
             <input type="range" id="darkCoverage" min="0" max="100" value="100" step="25" oninput="onGenParamChange()">
             <span class="sval" id="darkCoverageVal">100%</span>
           </div>
-          <div class="slider-row" style="opacity:.8">
-            <span class="slabel">≈ 暗钩目标</span>
-            <span class="sval" id="derivedDarkHooksVal" style="color:var(--sub)">30%</span>
-          </div>
-          <div class="hint">单关和批量都匹配目标分数范围 + 钩子/暗牌参数。</div>
+          <div class="hint">堆层数越多 → 牌埋得越深 → 钩子越难（看生成结果的"均深"）。钩子%不用手动设。</div>
         </div>
 
         <!-- Tab 2: 难度模式 -->
@@ -659,14 +650,10 @@
             <input type="range" id="difficultyLevel" min="1" max="10" value="5" step="1" oninput="onDifficultyChange()">
             <span class="sval" id="difficultyVal">5</span>
           </div>
-          <div class="hint">系统自动分配目标分数、钩子/暗牌比例。</div>
+          <div class="hint">系统自动分配目标分数、暗牌比例；钩子难度由层数/埋深自然决定。</div>
           <div class="slider-row" style="opacity:.8">
             <span class="slabel">≈ 目标分数</span>
             <span class="sval" id="autoScoreVal" style="color:var(--sub)">100~120</span>
-          </div>
-          <div class="slider-row" style="opacity:.8">
-            <span class="slabel">≈ 钩子目标</span>
-            <span class="sval" id="autoHooksVal" style="color:var(--sub)">40%</span>
           </div>
           <div class="slider-row" style="opacity:.8">
             <span class="slabel">≈ 暗牌总数</span>
@@ -703,16 +690,12 @@
     <div class="gen-help-pop" id="genHelpPop">
       <h4>生成参数说明</h4>
       <div class="gh-item">
-        <div class="gh-title">钩子目标</div>
-        <div class="gh-desc">钩子数占总对子数的百分比。钩子 = 同一对牌层差 ≥ 2(一张在上、一张深埋)。越高越难。</div>
+        <div class="gh-title">钩子难度（已改为自动）</div>
+        <div class="gh-desc">钩子 = 一对同花色里至少一张被埋(上压/左右夹)。堆层数越多 → 埋得越深 → 钩子越难。钩子%由底座深度自然决定，不用手动设，看生成结果的"均深"即可。</div>
       </div>
       <div class="gh-item">
         <div class="gh-title">暗钩比例</div>
-        <div class="gh-desc">钩子中有多少比例被标成暗牌。100% = 所有钩子都暗，0% = 没有暗钩。</div>
-      </div>
-      <div class="gh-item">
-        <div class="gh-title">≈ 暗钩目标(自动推导)</div>
-        <div class="gh-desc">暗钩数占总对子数百分比 = 钩子目标 × 暗钩比例。暗钩 = 钩子对里深埋的那张恰好是暗牌(看不到花色，难度更高)。</div>
+        <div class="gh-desc">钩子中有多少比例被标成暗牌。100% = 所有钩子都暗，0% = 没有暗钩。暗钩 = 钩子对里深埋的那张恰好是暗牌(看不到花色，难度更高)。</div>
       </div>
       <div class="gh-item">
         <div class="gh-title">暗牌总数</div>
@@ -724,13 +707,13 @@
       <div class="gh-item">
         <div class="gh-title">难度分 =</div>
         <div class="gh-desc" style="font-family:monospace; line-height:1.8">
-          (1 - 可点率) × 40<br>
+          (1 - 可点率) × 30<br>
           + 层数 × 8<br>
-          + min(有效钩子数 / 8, 1) × 30<br>
-          + min(有效暗钩数 / 8, 1) × 20<br>
+          + min(钩子埋深加权 / 40, 1) × 30<br>
+          + min(暗钩埋深加权 / 40, 1) × 20<br>
           + min((槽位压力 - 2) / 4, 1) × 30<br>
-          + (0.5 + 队列牌数 - 1) × 8<br>
-          + 10
+          + 队列压力<br>
+          + 5
         </div>
       </div>
       <div class="gh-item">
@@ -738,11 +721,11 @@
         <div class="gh-desc">
           <b>可点率</b>:开局时可点牌占总牌数比例。可点=上方无压牌且左右未被夹住。越低越难(大部分牌被压住)。满分 40 分,范围 0~40。<br>
           <b>层数</b>:最大层号(从 0 开始)。层越多牌越难到达。每层 +8 分,4 层封顶(32 分)。<br>
-          <b>有效钩子</b>:钩子数经稀缺度加权。钩子=同一对牌层差 ≥ 2(一张在上、一张深埋)。稀缺度加权:独占型钩子(1 对 1 张)计 1.0,泛滥型(3 对 6 张)每张只计 0.33。8 个有效钩子拿满 30 分。<br>
-          <b>有效暗钩</b>:暗钩数经稀缺度加权。暗钩=钩子对里深埋的那张恰好是暗牌(看不到花色,难度更高)。8 个有效暗钩拿满 20 分。<br>
+          <b>钩子埋深加权</b>:钩子 = 一对里至少一张被埋(上压/左右夹)。每对权重 = 埋得最深那张的埋深 + (双埋则再加另一张埋深)，再乘"所见伴侣加权"(同色露越多越好找 → 打折)。埋深 = 被多少层牌盖住。除以 40 拿满 30 分(浅层塔均深低、深层高，拉开难度)。<br>
+          <b>暗钩埋深加权</b>:钩子对里深埋那张恰好是暗牌(看不到花色)的同规则加权。除以 40 拿满 20 分。<br>
           <b>槽位压力</b>:最优打法下卡槽最多同时占几个花色位(7 格上限)。值越高容错率越低——走错一步顺序就容易把槽堆满。2 槽起 0 分,每 +1 槽 +7.5 分,6 槽拿满 30 分。这是"消除顺序不对就死局"的核心指标。<br>
           <b>吐牌机队列压力</b>:只算"实际不可见/不可消"的队列牌贡献。从第 1 张往后找，找到第一张无法立即配对的牌（即它的配对被埋了），它及之后所有牌都算压力。公式:(0.5 + hiddenCount - 1) × 8。如果第 1 张就能立即配对，它就完全不算压力（出牌即消）。每张不可消的队列牌 ≈1 个暗钩贡献难度，第 1 张折半。<br>
-          <b>保底 10 分</b>:确保最低难度也有基础分。
+          <b>保底 5 分</b>:确保最低难度也有基础分。
         </div>
       </div>
       <div class="gh-item">
@@ -2630,11 +2613,9 @@ function switchTabTo(tab) {
     const d = parseInt(document.getElementById('difficultyLevel').value);
     const scoreMin = Math.round(44 + (d - 1) * 4);
     const scoreMax = Math.round(60 + (d - 1) * 4);
-    const hooks = Math.round(10 + (d - 1) * 7.8);
     const dark = Math.round(5 + (d - 1) * 1.7);
     document.getElementById('scoreMin').value = scoreMin;
     document.getElementById('scoreMax').value = scoreMax;
-    document.getElementById('hooksTarget').value = hooks;
     document.getElementById('darkRatio').value = dark;
     onGenParamChange();
   }
@@ -2649,10 +2630,8 @@ function onDifficultyChange() {
   // 线性映射: 1→最简单, 10→最难(根据实测分数范围 60~150)
   const scoreMin = Math.round(44 + (d - 1) * 4);   // 44~80
   const scoreMax = Math.round(60 + (d - 1) * 4);   // 60~96
-  const hooks = Math.round(10 + (d - 1) * 7.8);      // 10~80%
   const dark = Math.round(5 + (d - 1) * 1.7);        // 5~20%
   document.getElementById('autoScoreVal').textContent = scoreMin + '~' + scoreMax;
-  document.getElementById('autoHooksVal').textContent = hooks + '%';
   document.getElementById('autoDarkVal').textContent = dark + '%';
 }
 
@@ -2664,12 +2643,6 @@ function onGenParamChange() {
   genDarkRatio = parseInt(document.getElementById('darkRatio').value) / 100;
   syncSliderVal('darkCoverageVal', Math.round(genDarkCoverage * 100), '%');
   syncSliderVal('darkRatioVal', Math.round(genDarkRatio * 100), '%');
-  syncSliderVal('hooksTargetVal', document.getElementById('hooksTarget').value, '%');
-  // 推导暗钩目标 = 钩子目标 × 暗钩比例
-  const hooks = parseInt(document.getElementById('hooksTarget').value) / 100;
-  const derivedDarkHooks = Math.round(hooks * genDarkCoverage * 100);
-  const derivedEl = document.getElementById('derivedDarkHooksVal');
-  if (derivedEl) derivedEl.textContent = derivedDarkHooks + '%';
 }
 function genDarkOptions() {
   let darkRatio;
@@ -2686,20 +2659,9 @@ function genDarkOptions() {
   };
 }
 
-// 结构目标：百分比（占对子数的比例）
-const TOL_HOOKS = 0.10;   // 钩子/暗钩容差 ±10%
+// 结构目标：钩子/暗钩%是埋深的自然结果，不再是可调硬目标 → 返回空 target（只按分数验收）
 function getStructTarget() {
-  let hooks;
-  if (genMode === 'difficulty') {
-    const d = parseInt(document.getElementById('difficultyLevel').value);
-    hooks = Math.round(10 + (d - 1) * 7.8) / 100; // 10~80%
-  } else {
-    hooks = parseInt(document.getElementById('hooksTarget').value) / 100;
-  }
-  return {
-    hooks: hooks,
-    darkHooks: hooks * genDarkCoverage, // 推导值
-  };
+  return {};
 }
 // 计算关卡的钩子密度（钩子数/总对子数）
 function getHookDensity(d) {
@@ -2711,40 +2673,38 @@ function getDarkHookDensity(d) {
   return d.darkHooks / d.totalPairs;
 }
 function matchStructTarget(d, t) {
-  // 难度模式下不严格匹配:参数是自动分配的,直接接受
-  if (genMode === 'difficulty') return true;
-  if (Math.abs(getHookDensity(d) - t.hooks) > TOL_HOOKS) return false;
-  if (Math.abs(getDarkHookDensity(d) - t.darkHooks) > TOL_HOOKS) return false;
+  // 钩子/暗钩%不设目标 → 命中只看分数(分数已含钩子深度)
   return true;
 }
 // 生成结果 vs 目标的对比文字
 function structCompareText(d, t) {
-  const hd = Math.round(getHookDensity(d) * 100);
-  const dhd = Math.round(getDarkHookDensity(d) * 100);
   const parts = [];
-  const diff = (a, b) => a === b ? '' : (a > b ? '(+' + (a - b) + ')' : '(' + (a - b) + ')');
-  parts.push('钩' + hd + '%' + diff(hd, Math.round(t.hooks * 100)));
-  parts.push('暗' + dhd + '%' + diff(dhd, Math.round(t.darkHooks * 100)));
+  if (t.hooks != null) parts.push('钩' + Math.round(getHookDensity(d) * 100) + '%');
+  if (t.darkHooks != null) parts.push('暗' + Math.round(getDarkHookDensity(d) * 100) + '%');
   return parts.join(' ');
+}
+// 状态行后缀：有内容才加 " · " 前缀（避免末尾孤立分隔符）
+function structSuffix(d, t) {
+  const s = structCompareText(d, t);
+  return s ? ' · ' + s : '';
 }
 const STRUCT_MAX_RETRY = 60;
 const STRUCT_MAX_RETRY_STACK = 100; // 堆塔模式重试更多次
 
 // 计算关卡与目标的偏差分（越小越匹配）
 function structMismatch(d, t) {
-  const hd = getHookDensity(d), dhd = getDarkHookDensity(d);
-  return Math.abs(hd - t.hooks) + Math.abs(dhd - t.darkHooks);
+  let mm = 0;
+  if (t.hooks != null) mm += Math.abs(getHookDensity(d) - t.hooks);
+  if (t.darkHooks != null) mm += Math.abs(getDarkHookDensity(d) - t.darkHooks);
+  return mm;
 }
 
 // 把生成参数挂到 level 上,后续渲染结果列表用得到
 function attachGenParams(level, mode, layerCount) {
-  const hooks = parseInt(document.getElementById('hooksTarget').value) || 0;
   const darkCov = Math.round(genDarkCoverage * 100);
   const darkR = Math.round(genDarkRatio * 100);
   level._genParams = {
-    hooksTarget: hooks,           // 钩子目标(%)
     darkCoverage: darkCov,        // 暗钩比例(%)
-    darkHooks: Math.round(hooks * genDarkCoverage),  // 推导暗钩目标(%)
     darkRatio: darkR,             // 暗牌总数比例(%)
     mode: mode || 'shape',        // 形状/堆塔
     layerCount: layerCount || 0,  // 堆层数(堆塔模式)
@@ -2766,7 +2726,7 @@ function getRotationConfig() {
 // 前缀"参数"由 CSS ::before 加上,这里只输出值,更紧凑
 function genParamText(p) {
   if (!p) return '';
-  return `钩${p.hooksTarget} 暗钩${p.darkHooks} 暗${p.darkRatio}` + (p.mode === 'stack' ? ` ${p.layerCount}L` : '');
+  return `暗${p.darkRatio}` + (p.mode === 'stack' ? ` · ${p.layerCount}层` : '');
 }
 
 function buildEditorShape() {
@@ -3000,18 +2960,13 @@ function generateCurrentShape() {
           const d = best._difficulty;
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           if (structHit && scoreHit) {
-            setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · ${structCompareText(d, target)}${retryTxt}</span>`);
+            setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分${structSuffix(d, target)}${retryTxt}</span>`);
           } else {
             // 没命中:展示实际最佳值,客观说明与目标的差距
             const parts = [];
             const actualScore = d.score;
             if (actualScore > scoreHi) parts.push(`分数 ${actualScore} 高于上限 ${scoreHi}`);
             else if (actualScore < scoreLo) parts.push(`分数 ${actualScore} 低于下限 ${scoreLo}`);
-            const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
-            const targetHooks = Math.round(target.hooks * 100);
-            if (actualHooks < targetHooks - 10) parts.push(`钩子 ${actualHooks}% 低于目标 ${targetHooks}%`);
-            const targetDarkRatio = targetHooks * genDarkCoverage;
-            if (d.darkHooks / d.totalPairs * 100 < targetDarkRatio - 10) parts.push(`暗钩 ${Math.round(d.darkHooks / d.totalPairs * 100)}% 低于目标`);
             setGenStatus(`<span class="warn">⚠ 重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分）。偏差：${parts.join('；') || '微小差距'}</span>`);
           }
         } else {
@@ -3067,16 +3022,13 @@ function generateStackFromCurrent() {
           const d = best._difficulty;
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           if (structHit && scoreHit) {
-            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · ${structCompareText(d, target)}${retryTxt}</span>`);
+            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层${structSuffix(d, target)}${retryTxt}</span>`);
           } else {
             // 没命中:展示实际最佳值,客观说明与目标的差距
             const parts = [];
             const actualScore = d.score; // 用 best 的分数(最接近的)
             if (actualScore > scoreHi) parts.push(`分数 ${actualScore} 高于上限 ${scoreHi}`);
             else if (actualScore < scoreLo) parts.push(`分数 ${actualScore} 低于下限 ${scoreLo}`);
-            const actualHooks = Math.round(d.hooks / d.totalPairs * 100);
-            const targetHooks = Math.round(target.hooks * 100);
-            if (actualHooks < targetHooks - 10) parts.push(`钩子 ${actualHooks}% 低于目标 ${targetHooks}%`);
             setGenStatus(`<span class="warn">⚠ 堆塔重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分）。偏差：${parts.join('；') || '微小差距'}</span>`);
           }
         } else {
