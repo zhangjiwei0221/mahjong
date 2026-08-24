@@ -747,6 +747,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.8.1 · 2026-08-24</div>
+        <div class="gh-desc">
+          • 修复"探测本底座可出分数"按钮无反应：初始状态行残留对已删变量 N 的引用(N 未声明 → 抛 ReferenceError，函数未真正运行)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.8.0 · 2026-08-24</div>
         <div class="gh-desc">
           • 目标分数 → 可点率 反向驱动：按目标分数自动调节堆塔层数(塔形密度跟随目标)<br>
@@ -2784,7 +2790,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.8.0'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.8.1'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
@@ -3255,7 +3261,7 @@ function probeScoreRange() {
   let layer = LAYER_START, k = 0;
   let failCount = 0;
   let lastError = '';
-  setGenStatus('探测分数范围… 0/' + N);
+  setGenStatus('探测分数范围… 层 2/7');
   function step() {
     if (layer > LAYER_END) {
       if (scores.length === 0) {
