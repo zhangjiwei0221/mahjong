@@ -531,11 +531,13 @@ function isClickable(tile, all) {
 }
 
 // ============ 暗牌分配 ============
-// options: { coverageRate: 0~1 (深埋对子覆盖率), totalCount: 暗牌总数上限(不含 null/undefined=纯钩子模式,不补随机) }
+// options: { coverageRate: 暗钩比例(暗牌里标在钩子埋牌上的比例), totalCount: 暗牌总数上限(<=0/null = 无暗牌) }
 function assignDarkTiles(tiles, rng, options) {
   options = options || {};
   const coverageRate = options.coverageRate != null ? options.coverageRate : 1; // 默认全覆盖
-  const totalCount = options.totalCount; // undefined = 纯钩子模式
+  const totalCount = options.totalCount; // 暗牌总数上限;undefined/<=0 = 无暗牌
+  // 暗牌总数 <= 0 → 一张暗牌都没有(自然也没有暗钩)
+  if (totalCount == null || totalCount <= 0) return [];
   const byType = {};
   tiles.forEach((t, i) => { (byType[t.typeId] ||= []).push({ t, i }); });
   const darkIdx = [];
@@ -546,7 +548,7 @@ function assignDarkTiles(tiles, rng, options) {
     const arr = byType[k];
     if (arr.length < 2) continue;
     const pairs = Math.floor(arr.length / 2);
-    // 找出该花色中被埋的牌(用新定义 isTileBuried)
+    // 找出该花色中被埋的牌(用新定义 isTileBuried:上压 OR 左右夹 都算)
     const buriedInType = arr.filter(x => isTileBuried(x.t, tiles));
     // 每对中有一张被埋就算埋对,埋对最多 pairs 个
     const pairCount = Math.min(buriedInType.length, pairs);
@@ -555,7 +557,8 @@ function assignDarkTiles(tiles, rng, options) {
     }
   }
   shuffle(buriedPairs, rng);
-  const hookTarget = Math.round(buriedPairs.length * coverageRate);
+  // 暗钩 = 暗牌里标在"钩子被埋牌"上的那部分;不超过总数上限
+  const hookTarget = Math.min(Math.round(buriedPairs.length * coverageRate), totalCount);
   for (let p = 0; p < hookTarget && p < buriedPairs.length; p++) {
     const arr = buriedPairs[p];
     // 找该花色中第一个被埋的牌作为暗牌

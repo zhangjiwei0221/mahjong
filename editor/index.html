@@ -699,7 +699,7 @@
       </div>
       <div class="gh-item">
         <div class="gh-title">暗牌总数</div>
-        <div class="gh-desc">暗牌占总牌数的比例。0% = 纯钩子模式(只有钩子对里深埋的那张是暗的)，10% = 额外再标一些随机牌为暗。</div>
+        <div class="gh-desc">暗牌占总牌数的比例。0% = 无暗牌（也不会有暗钩）。暗钩 = 这些暗牌里，标在钩子被埋牌上的那部分（由"暗钩比例"决定）。</div>
       </div>
     </div>
     <div class="gen-help-pop" id="scoreHelpPop">
@@ -2636,7 +2636,7 @@ function onDifficultyChange() {
 }
 
 let genDarkCoverage = 1;   // 暗钩子覆盖率 0~1
-let genDarkRatio = 0.1;    // 暗牌总数比例 (0=纯钩子模式, 0.05~0.5)
+let genDarkRatio = 0.1;    // 暗牌总数比例 (0=无暗牌/无暗钩, 0.05~0.5)
 function syncSliderVal(id, v, suffix) { document.getElementById(id).textContent = v + (suffix || ''); }
 function onGenParamChange() {
   genDarkCoverage = parseInt(document.getElementById('darkCoverage').value) / 100;
