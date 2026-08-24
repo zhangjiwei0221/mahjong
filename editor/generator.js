@@ -1114,7 +1114,8 @@ function computeMinSlots(tiles) {
           filled = {
             levelId: level.levelId, totalPairs: level.totalPairs,
             tiles: assignedTiles,
-            specialTiles: [] // spitter 标记在 level.tiles 里通过 type 字段标识
+            specialTiles: [], // spitter 标记在 level.tiles 里通过 type 字段标识
+            rotation: options.rotation || null, // 堆塔路径也要输出旋转配置
           };
         }
       }
