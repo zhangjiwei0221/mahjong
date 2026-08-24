@@ -519,6 +519,24 @@ function verifyByElimination(tiles, pairsPlaced) {
   return { ok: remaining.size === 0 };
 }
 
+// 正向可解检查:反复找"两张同 typeId 且都可点"的一对消除,能否清空棋盘。
+// 用于'完整导入的关卡是否可保留原花色'判断。贪心(个别刁钻配置可能误判),仅为保留与否做护栏;
+// 误判只会导致"改走重填"(结果仍合法),不会产出死局。
+function forwardEliminable(arr) {
+  let remaining = arr.slice();
+  while (remaining.length > 0) {
+    const clickable = remaining.filter(t => isClickable(t, remaining));
+    if (clickable.length < 2) return false;
+    const byType = {};
+    clickable.forEach(t => { (byType[t.typeId] ||= []).push(t); });
+    let pair = null;
+    for (const k in byType) { if (byType[k].length >= 2) { pair = byType[k].slice(0, 2); break; } }
+    if (!pair) return false;
+    remaining = remaining.filter(t => t !== pair[0] && t !== pair[1]);
+  }
+  return true;
+}
+
 // 游戏规则：被更高层压住不可点；被同层左右夹住不可点
 // std 坐标：row=上下(纵)，col=左右(横)。左右夹住 = 同列(col 相等)、row 相同、col±2。
 function isClickable(tile, all) {
@@ -869,12 +887,31 @@ function computeMinSlots(tiles) {
       throw new Error('总可消除牌数 ' + fillTiles.length + ' 为奇数，无法配对。请调整普通牌数量或吐牌机 count（普通牌 + 队列牌 必须为偶数）');
     }
 
-    let result = null;
-    const startSeed = Math.floor(Math.random() * 1000) + 1;
-    for (let seed = startSeed; seed <= startSeed + 100 && !result; seed++) {
-      result = backwardFill(fillTiles, makeRng(seed * 9301 + 49297), slotPressure);
+    // ===== 完整导入 → 保留原牌面(不重新填色) =====
+    // 仅当:无吐牌机队列牌,且每张可消除牌都带非空 typeId(用户导入了完整关卡)。
+    // 且花色计数成对 + 正向可解。任一不满足 → 照旧 backwardFill 全量重填(结果仍合法)。
+    const hasQueue = fillTiles.some(function (t) { return t.spitterOrder != null; });
+    const fullImported = !hasQueue && fillTiles.length > 0 && fillTiles.every(function (t) { return t.typeId != null; });
+    let preserve = false;
+    if (fullImported) {
+      const cnt = {};
+      let even = true;
+      fillTiles.forEach(function (t) { cnt[t.typeId] = (cnt[t.typeId] || 0) + 1; });
+      Object.keys(cnt).forEach(function (k) { if (cnt[k] % 2 !== 0) even = false; });
+      if (even && forwardEliminable(fillTiles)) preserve = true;
     }
-    if (!result) throw new Error('fill failed after 100 retries');
+
+    let result = null;
+    if (preserve) {
+      // 原样使用导入的 typeId(不重新填色),让"导入→生成"复现同一关
+      result = { assigned: fillTiles.map(function (t) { return t.typeId; }) };
+    } else {
+      const startSeed = Math.floor(Math.random() * 1000) + 1;
+      for (let seed = startSeed; seed <= startSeed + 100 && !result; seed++) {
+        result = backwardFill(fillTiles, makeRng(seed * 9301 + 49297), slotPressure);
+      }
+      if (!result) throw new Error('fill failed after 100 retries');
+    }
 
     // 把填色结果写回非 spitter 的牌（包括普通牌、target 牌、队列牌）
     let fillIdx = 0;

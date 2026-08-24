@@ -532,6 +532,7 @@
     <div class="chip on" id="snapToggle" onclick="toggleSnap()" title="上层牌必须 4 象限都有支撑"><span class="dot"></span>支撑限制</div>
     <div class="chip on" id="gridToggle" onclick="toggleGrid()"><span class="dot"></span>网格</div>
     <div class="chip" id="coordToggle" onclick="toggleCoord()"><span class="dot"></span>坐标</div>
+    <div class="chip" id="typeIdToggle" onclick="toggleTypeId()" title="显示每一张普通牌的牌面 Type ID(导入关卡时保留)"><span class="dot"></span>牌面ID</div>
   </div>
   <div class="tb-spacer"></div>
   <button class="tbtn" onclick="window.open('/workbench.html','_blank')" title="打开关卡工作台（部署版）">📋 工作台</button>
@@ -745,6 +746,15 @@
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
         <h4 style="margin:0;">📜 变更日志</h4>
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.9.0 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 导入支持「形状 + Type ID」：导入 JSON 时保留每张普通牌的 typeId(牌面)，不再只导空壳形状
+          • 新增工具条「🀫 牌面ID」开关，显示每张牌的 Type ID
+          • 按当前形状生成：完整导入的关卡(每张牌都有 typeId 且可解)直接保留原花色复现同一关；不完整/不可解才重新填色
+          • 导出也写回普通牌的 typeId
+        </div>
       </div>
       <div class="gh-item">
         <div class="gh-title">v4.8.5 · 2026-08-25</div>
@@ -1299,6 +1309,7 @@ let state = {
   snapToSupport: true,
   showGrid: true,
   showCoord: false,
+  showTypeId: false, // 显示普通牌的牌面 Type ID(导入时保留)
   painting: false,
   paintMode: null,
   strokeSnapshot: null, // 笔画开始前的 layers 快照（用于撤销）
@@ -1890,6 +1901,11 @@ function drawTile(col, row, layerIdx, tile, isCurrent, isHover, isIssue) {
     ctx.fillStyle = '#fff';
     ctx.font = `${CELL * 0.3}px sans-serif`;
     ctx.fillText('×' + tile.count, x + w / 2, y + h / 2 + CELL * 0.4);
+  } else if (state.showTypeId && tile.typeId != null) {
+    // 牌面 Type ID 标签(导入时保留的花色),开关「牌面ID」
+    ctx.fillStyle = 'rgba(30,20,10,0.72)';
+    ctx.font = `bold ${CELL * 0.38}px monospace`;
+    ctx.fillText(tile.typeId, x + w / 2, y + h / 2);
   }
 
   ctx.restore();
@@ -2455,6 +2471,7 @@ function toggleAll()  { bindChip('allToggle', 'showAll', true); }
 function toggleSnap() { bindChip('snapToggle', 'snapToSupport', true); }
 function toggleGrid() { bindChip('gridToggle', 'showGrid', true); }
 function toggleCoord(){ bindChip('coordToggle', 'showCoord', true); }
+function toggleTypeId(){ bindChip('typeIdToggle', 'showTypeId', true); }
 
 // ========== 支撑问题（象限规则） ==========
 // 规则：上层牌 4 个象限（左上/右上/左下/右下）的中心子格，
@@ -2564,7 +2581,8 @@ function loadFromEditorJSON(json) {
       if (!layerMap[l].stacks[key]) layerMap[l].stacks[key] = [];
       layerMap[l].stacks[key].push({ type: 'spitterQueue', order: t.spitterOrder });
     } else {
-      layerMap[l].tiles[key] = { type: 'normal' };
+      // 普通牌：保留导入的 typeId(牌面)；文件里没有就一直 null(等价"只导形状")
+      layerMap[l].tiles[key] = { type: 'normal', typeId: (t.typeId != null ? t.typeId : null) };
     }
   });
 
@@ -2584,7 +2602,7 @@ function exportJSON() {
     Object.keys(layer.tiles).forEach(key => {
       const tile = layer.tiles[key];
       const [r, c] = key.split(',').map(Number);
-      tiles.push({ id: 0, layer: layerIdx, row: r, col: c, typeId: null });
+      tiles.push({ id: 0, layer: layerIdx, row: r, col: c, typeId: (tile.typeId != null ? tile.typeId : null) });
       if (tile.type !== 'normal') {
         specialTiles.push({
           id: 0, type: tile.type, layer: layerIdx, row: r, col: c,
@@ -2779,7 +2797,7 @@ function buildEditorShape() {
       const tile = layer.tiles[key];
       const [r, c] = key.split(',').map(Number);
       // 保留 type 字段（spitter/dark 需要）和 dir/count（spitter 需要）
-      const tileEntry = { id: 0, layer: layerIdx, row: r, col: c, typeId: null };
+      const tileEntry = { id: 0, layer: layerIdx, row: r, col: c, typeId: (tile.typeId != null ? tile.typeId : null) };
       if (tile.type && tile.type !== 'normal') tileEntry.type = tile.type;
       if (tile.type === 'spitter') {
         tileEntry.dir = tile.dir || 'up';
@@ -2814,7 +2832,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.8.5'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.0'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

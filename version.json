@@ -1,8 +1,13 @@
 {
-  "version": "v4.8.5",
+  "version": "v4.9.0",
   "updated": "2026-08-25",
-  "notes": "工作台列表:GitHub目录列表子请求缓存修复",
+  "notes": "导入支持「形状+Type ID」并保留牌面",
   "changelog": [
+    {
+      "version": "v4.9.0",
+      "date": "2026-08-25",
+      "notes": "导入支持形状+Type ID:导入JSON时保留每张普通牌typeId(牌面)；工具条加「牌面ID」开关显示Type ID；按当前形状生成时,完整导入且可解的关卡直接保留原花色复现(复用forwardEliminable判断),不完整/不可解才重新填色；导出写回typeId。"
+    },
     {
       "version": "v4.8.5",
       "date": "2026-08-25",
