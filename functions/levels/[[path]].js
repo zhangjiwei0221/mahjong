@@ -60,6 +60,7 @@ async function ghRequest(env, path, opts) {
       ...(opts.headers || {}),
     },
     body: opts.body ? JSON.stringify(opts.body) : undefined,
+    cache: 'no-store', // 防止 GitHub 目录列表子请求被 Cloudflare 缓存返回旧快照(之前列表一直停在旧文件数)
   });
   const text = await r.text();
   let data;

@@ -1,8 +1,13 @@
 {
-  "version": "v4.8.4",
+  "version": "v4.8.5",
   "updated": "2026-08-25",
-  "notes": "工作台列表被边缘缓存,修复实时性",
+  "notes": "工作台列表:GitHub目录列表子请求缓存修复",
   "changelog": [
+    {
+      "version": "v4.8.5",
+      "date": "2026-08-25",
+      "notes": "工作台列表仍显示旧关数:根因是 Function 对 GitHub「目录列表」子请求(/contents/data/levels?ref=main)被缓存——单关读取实时、唯独列表停在旧快照。给 Function 的 GitHub 子请求加请求侧 cache:'no-store',列表每次实时拉。"
+    },
     {
       "version": "v4.8.4",
       "date": "2026-08-25",
