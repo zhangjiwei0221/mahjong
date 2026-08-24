@@ -747,6 +747,16 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.8.0 · 2026-08-24</div>
+        <div class="gh-desc">
+          • 目标分数 → 可点率 反向驱动：按目标分数自动调节堆塔层数(塔形密度跟随目标)<br>
+          • 目标低 → 自动降层(塔更"开" → 可点率↑)；目标高 → 自动升层(埋更多 → 可点率↓)<br>
+          • 堆塔单关/批量生成都支持自动调层，从用户设定层数起步，够不到目标时才调<br>
+          • 探测分数范围改为扫描层数2~7，报出底座真正可达区间<br>
+          • 结果状态显示 可点%，未命中时兜底取"分数离目标最近"而不是第一个
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.7.0 · 2026-08-24</div>
         <div class="gh-desc">
           • 吐牌机交互重做：spitter 画笔下"再次点击已放置的吐牌机 → 直接消除"(对齐普通牌点已存在即擦除,不再依赖双击)<br>
@@ -1223,7 +1233,7 @@
   <div class="hrow"><span><kbd>S</kbd> / <kbd>A</kbd></span><span>对称 / 显示全部层</span></div>
 </div>
 
-<script src="generator.js?v=480"></script>
+<script src="generator.js?v=481"></script>
 <script>
 // ========== 配置：编辑器坐标显示范围 ==========
 // 横向固定 12 个子格 = 6 个麻将位（每张牌占 2 子格）
@@ -2774,7 +2784,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.7.0'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.8.0'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
@@ -2919,22 +2929,30 @@ async function initPreview() {
   });
 }
 
+// 当前目标分数范围(依据所处 tab)
+function currentScoreRange() {
+  if (genMode === 'difficulty') {
+    const d = parseInt(document.getElementById('difficultyLevel').value);
+    return { scoreLo: Math.round(44 + (d - 1) * 4), scoreHi: Math.round(60 + (d - 1) * 4) };
+  }
+  return {
+    scoreLo: parseInt(document.getElementById('scoreMin').value) || 0,
+    scoreHi: parseInt(document.getElementById('scoreMax').value) || 999,
+  };
+}
+// 目标分数 → 期望可点率(软目标,反向驱动:低分→好点,高分→难)(见 generator.desiredClickRatio)
+function desiredCR(scoreLo, scoreHi) {
+  return GEN.desiredClickRatio((scoreLo + scoreHi) / 2);
+}
+
 function generateCurrentShape() {
   try {
     const { tiles, specialTiles } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     // 总牌数偶数校验已移到 fillEditorShape 内部（含 spitter/队列牌的细粒度校验更准确）
     const target = getStructTarget();
-    // 根据当前 tab 决定参数来源
-    let scoreLo, scoreHi;
-    if (genMode === 'difficulty') {
-      const d = parseInt(document.getElementById('difficultyLevel').value);
-      scoreLo = Math.round(44 + (d - 1) * 4);
-      scoreHi = Math.round(60 + (d - 1) * 4);
-    } else {
-      scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
-      scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
-    }
+    const { scoreLo, scoreHi } = currentScoreRange();
+    const dCR = desiredCR(scoreLo, scoreHi);
     setGenStatus('生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
@@ -2958,16 +2976,17 @@ function generateCurrentShape() {
           }
           addResult(best);
           const d = best._difficulty;
+          const crPct = Math.round(d.clickRatio * 100);
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           if (structHit && scoreHit) {
-            setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分${structSuffix(d, target)}${retryTxt}</span>`);
+            setGenStatus(`<span class="good">✓ ${best.tiles.length}张 · ${d.score}分 · 可点${crPct}%${structSuffix(d, target)}${retryTxt}</span>`);
           } else {
             // 没命中:展示实际最佳值,客观说明与目标的差距
             const parts = [];
             const actualScore = d.score;
             if (actualScore > scoreHi) parts.push(`分数 ${actualScore} 高于上限 ${scoreHi}`);
             else if (actualScore < scoreLo) parts.push(`分数 ${actualScore} 低于下限 ${scoreLo}`);
-            setGenStatus(`<span class="warn">⚠ 重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分）。偏差：${parts.join('；') || '微小差距'}</span>`);
+            setGenStatus(`<span class="warn">⚠ 重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分 · 可点${crPct}%，目标≈${Math.round(dCR*100)}%）。偏差：${parts.join('；') || '微小差距'}</span>`);
           }
         } else {
           if (attempts % 10 === 0) setGenStatus(`生成中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY}`);
@@ -2986,27 +3005,25 @@ function generateStackFromCurrent() {
   try {
     const { tiles, specialTiles, spitters } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
-    const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
     const target = getStructTarget();
-    // 根据当前 tab 决定参数来源
-    let scoreLo, scoreHi;
-    if (genMode === 'difficulty') {
-      const d = parseInt(document.getElementById('difficultyLevel').value);
-      scoreLo = Math.round(44 + (d - 1) * 4);
-      scoreHi = Math.round(60 + (d - 1) * 4);
-    } else {
-      scoreLo = parseInt(document.getElementById('scoreMin').value) || 0;
-      scoreHi = parseInt(document.getElementById('scoreMax').value) || 999;
-    }
+    const { scoreLo, scoreHi } = currentScoreRange();
+    const scoreMid = (scoreLo + scoreHi) / 2;
+    const dCR = desiredCR(scoreLo, scoreHi);
+    // 目标分数 → 可点率 反向驱动:塔形密度(层数)自动跟随目标。
+    // 目标低 → 自动降层(塔更"开",可点率↑);目标高 → 自动升层(埋更多,可点率↓)。
+    // 从用户设定的层数起步,只有在该层无法打到目标范围时才往目标方向调。
+    let curLayer = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+    let consistentHi = 0, consistentLo = 0; // 连续偏高/偏低的次数(drift 缓冲,避免单次抖动就换层)
     setGenStatus('堆层生成中…');
     enablePreviewActions(false);
     let attempts = 0, best = null, bestMismatch = Infinity, lastErr = '';
-    let closest = null;
+    let bestByDist = null, bestDist = Infinity; // 兜底:分数离目标最近的
+    let hintDir = null; // 记录本层偏低/偏高方向,用于状态提示
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
-          'stack', layerCount
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount: curLayer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
+          'stack', curLayer
         );
         attempts++;
         const score = level._difficulty.score;
@@ -3014,25 +3031,34 @@ function generateStackFromCurrent() {
         const scoreHit = score >= scoreLo && score <= scoreHi;
         const mm = (structHit && scoreHit) ? structMismatch(level._difficulty, target) : Infinity;
         if (mm < bestMismatch) { bestMismatch = mm; best = level; }
-        if (!closest) closest = level;
+        const dist = Math.abs(score - scoreMid);
+        if (dist < bestDist) { bestDist = dist; bestByDist = level; }
+        // ---- 可点率反向驱动:依目标分数调节层数 ----
+        if (!(structHit && scoreHit)) {
+          if (score > scoreHi) { consistentHi++; consistentLo = 0; hintDir = (curLayer < 7 ? '偏高' : null); }
+          else if (score < scoreLo) { consistentLo++; consistentHi = 0; hintDir = (curLayer > 2 ? '偏低' : null); }
+          if (consistentHi >= 3 && curLayer > 2) { curLayer--; consistentHi = 0; consistentLo = 0; }  // 分数过高→降层(可点率↑)
+          else if (consistentLo >= 3 && curLayer < 7) { curLayer++; consistentHi = 0; consistentLo = 0; } // 分数过低→升层(可点率↓)
+        }
         if ((structHit && scoreHit) || attempts >= STRUCT_MAX_RETRY_STACK) {
-          // 未命中但生成了关卡:展示最接近的那个
-          if (!best && closest) { best = closest; }
+          // 未严格命中:兜底取"分数离目标最近"的关卡
+          if (!best && bestByDist) { best = bestByDist; }
           addResult(best);
           const d = best._difficulty;
+          const crPct = Math.round(d.clickRatio * 100);
           const retryTxt = attempts > 1 ? '（重试' + attempts + '次）' : '';
           if (structHit && scoreHit) {
-            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层${structSuffix(d, target)}${retryTxt}</span>`);
+            setGenStatus(`<span class="good">✓ 堆塔 ${best.tiles.length}张 · ${d.score}分 · ${d.maxLayer + 1}层 · 可点${crPct}%（目标分数自动调层→控制可点率）${structSuffix(d, target)}${retryTxt}</span>`);
           } else {
             // 没命中:展示实际最佳值,客观说明与目标的差距
             const parts = [];
             const actualScore = d.score; // 用 best 的分数(最接近的)
             if (actualScore > scoreHi) parts.push(`分数 ${actualScore} 高于上限 ${scoreHi}`);
             else if (actualScore < scoreLo) parts.push(`分数 ${actualScore} 低于下限 ${scoreLo}`);
-            setGenStatus(`<span class="warn">⚠ 堆塔重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分）。偏差：${parts.join('；') || '微小差距'}</span>`);
+            setGenStatus(`<span class="warn">⚠ 堆塔重试 ${attempts} 次未严格命中，已展示最接近的关卡（${d.score}分 · 可点${crPct}%，目标≈${Math.round(dCR*100)}%）${hintDir ? '（' + hintDir + '，已尝试调' + (hintDir === '偏高' ? '低' : '高') + '层数）' : ''}。偏差：${parts.join('；') || '微小差距'}</span>`);
           }
         } else {
-          if (attempts % 15 === 0) setGenStatus(`堆塔中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY_STACK}`);
+          if (attempts % 15 === 0) setGenStatus(`堆塔中… 已尝试 ${attempts}/${STRUCT_MAX_RETRY_STACK}（当前${curLayer}层）`);
           setTimeout(tryGen, 0);
         }
       } catch (e) {
@@ -3222,37 +3248,41 @@ function probeScoreRange() {
   try { ({ tiles, spitters } = buildEditorShape()); }
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
-  const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
-  const N = 20;
+  // 扫描层数 2~7,找出本底座真正可达到的分数区间(而非单层的局部群聚)
+  const baseLayer = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+  const LAYER_START = 2, LAYER_END = 7, PER_LAYER = 3;
   const scores = [];
-  let i = 0;
+  let layer = LAYER_START, k = 0;
   let failCount = 0;
   let lastError = '';
   setGenStatus('探测分数范围… 0/' + N);
   function step() {
-    if (i >= N) {
+    if (layer > LAYER_END) {
       if (scores.length === 0) {
         const errHint = lastError ? '：' + lastError : '';
-        setGenStatus(`<span class="bad">探测失败：${N} 次生成都未成功${errHint}（试试调整底座形状或堆层数）</span>`);
+        setGenStatus(`<span class="bad">探测失败：各层均未生成成功${errHint}（试试调整底座形状）</span>`);
         return;
       }
-      const min = Math.min(...scores), max = Math.max(...scores);
-      const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      const min = Math.min(...scores.map(s => s.score)), max = Math.max(...scores.map(s => s.score));
+      const avg = Math.round(scores.reduce((a, b) => a + b.score, 0) / scores.length);
       document.getElementById('scoreMin').value = min;
       document.getElementById('scoreMax').value = max;
       const extra = failCount > 0 ? `（${failCount} 次失败已跳过）` : '';
-      setGenStatus(`<span class="good">本底座可出：最低 ${min} / 最高 ${max} / 平均 ${avg}${extra}（已填入目标分数框，可再收窄）</span>`);
+      setGenStatus(`<span class="good">本底座可出：最低 ${min} / 最高 ${max} / 平均 ${avg}（层数 2~7 扫描）${extra}（已填入目标分数框，可再收窄）</span>`);
       return;
     }
     try {
-      const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions()));
-      scores.push(level._difficulty.score);
+      const level = GEN.generateStackFromShape(tiles, Object.assign({ layerCount: layer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions()));
+      scores.push({ score: level._difficulty.score, layer });
     } catch (e) {
       failCount++;
       lastError = e.message;
     }
-    i++;
-    if (i % 4 === 0) setGenStatus('探测分数范围… ' + i + '/' + N + (failCount > 0 ? `（${failCount} 次失败）` : ''));
+    k++;
+    if (k >= PER_LAYER) { k = 0; layer++; }
+    if (((layer - LAYER_START) * PER_LAYER + k) % 6 === 0) {
+      setGenStatus(`探测分数范围… 层 ${layer}/7` + (failCount > 0 ? `（${failCount} 次失败）` : ''));
+    }
     setTimeout(step, 0);
   }
   step();
@@ -3279,13 +3309,16 @@ function batchGenerate() {
   }
   const target = getStructTarget();
   const count = Math.min(50, Math.max(1, parseInt(document.getElementById('batchCount').value) || 5));
-  const layerCount = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
+  const startLayer = Math.min(7, Math.max(2, parseInt(document.getElementById('stackCount').value) || 5));
   const mode = document.getElementById('batchMode').value;
 
   const results = [];
   let candidates = []; // 候选池:收集所有在分数范围内的关卡,按偏差排序
   let attempts = 0;
   const maxAttempts = count * 80 + 400;
+  // 可点率反向驱动:目标分数 → 自动调层数,让批次也能命中低/高目标
+  let curLayer = startLayer;
+  let consistentHi = 0, consistentLo = 0;
 
   setGenStatus('批量生成中… 已就绪 0 / ' + count);
   function step() {
@@ -3307,11 +3340,17 @@ function batchGenerate() {
         level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig() }, genDarkOptions())), 'shape');
       } else {
         level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
-          'stack', layerCount
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount: curLayer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
+          'stack', curLayer
         );
       }
       const s = level._difficulty.score;
+      // 依目标分数调节层数(与单关堆塔一致)
+      if (s > scoreMax) { consistentHi++; consistentLo = 0; }
+      else if (s < scoreMin) { consistentLo++; consistentHi = 0; }
+      else { consistentHi = 0; consistentLo = 0; }
+      if (consistentHi >= 3 && curLayer > 2) { curLayer--; consistentHi = 0; consistentLo = 0; }
+      else if (consistentLo >= 3 && curLayer < 7) { curLayer++; consistentHi = 0; consistentLo = 0; }
       if (s >= scoreMin && s <= scoreMax) {
         const mm = structMismatch(level._difficulty, target);
         if (matchStructTarget(level._difficulty, target)) {

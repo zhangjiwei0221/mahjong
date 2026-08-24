@@ -1161,13 +1161,26 @@ function computeMinSlots(tiles) {
     return filled;
   }
 
+  // ============ 目标分数 → 期望可点率(软目标,反驱动) ============
+  // 用户想要的耦合:目标分数越低 → 生成越"开"的塔(可点率高);越高 → 埋得越多(可点率低)。
+  // 真实驱动是塔形密度(层数):分数主要由层数 + 可点率项 (1-cr)*30 决定。
+  // 这里给一个朝向性期望(软目标,供编辑器展示 + 候选择优),生成器在可选塔形里朝它靠。
+  // 注意:绝对可点率带宽取决于底座(实测 4×5 平底约 0.10~0.22),故此为"引导"而非"硬达标"。
+  function desiredClickRatio(scoreMid) {
+    if (scoreMid <= 55) return 0.50;   // 很低分 → 尽量好点
+    if (scoreMid <= 70) return 0.38;
+    if (scoreMid <= 85) return 0.28;
+    if (scoreMid <= 105) return 0.20;
+    return 0.12;                        // 很高分 → 大多被埋
+  }
+
   global.GEN = {
     TEMPLATE_T2_GONG: TEMPLATE_T2_GONG,
     loadTemplate: loadTemplate, generateFromTemplate: generateFromTemplate, validateShape: validateShape, toEditorJSON: toEditorJSON, drawShape: drawShape,
     keyOf: keyOf, mirrorRow: mirrorRow, inBounds: inBounds, hasSupport: hasSupport, quadCovered: quadCovered,
     NAMES: NAMES, DARK_RATIO_MIN: DARK_RATIO_MIN, DARK_RATIO_MAX: DARK_RATIO_MAX, DARK_WEIGHT: DARK_WEIGHT,
     makeRng: makeRng, shuffle: shuffle, covers: covers, isClickable: isClickable,
-    backwardFill: backwardFill, verifyByElimination: verifyByElimination, assignDarkTiles: assignDarkTiles, evaluateDifficulty: evaluateDifficulty,
+    desiredClickRatio: desiredClickRatio, backwardFill: backwardFill, verifyByElimination: verifyByElimination, assignDarkTiles: assignDarkTiles, evaluateDifficulty: evaluateDifficulty,
     fillEditorShape: fillEditorShape, generateAndFill: generateAndFill, generateStackFromShape: generateStackFromShape, downloadJSON: downloadJSON,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
