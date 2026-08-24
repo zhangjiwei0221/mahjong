@@ -1,12 +1,17 @@
 {
-  "version": "v4.9.2",
+  "version": "v4.9.3",
   "updated": "2026-08-25",
-  "notes": "工作台列表改用git trees API枚举,修掉/contents目录列表陈旧",
+  "notes": "工作台列表改用 _index.json 索引,彻底对齐最新关卡",
   "changelog": [
+    {
+      "version": "v4.9.3",
+      "date": "2026-08-25",
+      "notes": "工作台列表仍缺最新存关:函数对 GitHub 列目录(/contents 与 /git/trees)拿到的都是旧文件清单快照(已布署的新函数也如此),唯独'按精确路径读单个文件'实时。改用维护 data/levels/_index.json 索引:存关(appendIndex)加 key;列表(readIndex+逐关读内容)读它→永远实时。已从 git 回填 _index.json(61关,含 mt7ilehy='2')。"
+    },
     {
       "version": "v4.9.2",
       "date": "2026-08-25",
-      "notes": "工作台列表仍漏最新存的关:/contents 目录列表接口对同 URL 返回陈旧快照(最新创建的关看不到),cache:no-store 与 URL 时间戳都治不了(是 GitHub 侧问题)。改用 git trees API(基于 commit tree 实时反映)递归列文件,内容仍逐文件精确定位读取。"
+      "notes": "工作台列表改用git trees API枚举(修/contents目录列表陈旧导致漏最新关)。"
     },
     {
       "version": "v4.9.1",

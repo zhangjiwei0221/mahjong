@@ -75,29 +75,70 @@ async function ghRequest(env, path, opts) {
   return { data, status: r.status };
 }
 
+// 读 _index.json（单文件精确路径——经验证实时，不受"列目录陈旧"的坑影响）。返回 keys 数组或 null。
+async function readIndex(env) {
+  const branch = env.GITHUB_BRANCH || 'main';
+  try {
+    const { data } = await ghRequest(env, `/contents/${LEVELS_DIR}/_index.json?ref=${branch}`);
+    const raw = Buffer.from(data.content, 'base64').toString('utf8');
+    const idx = JSON.parse(raw);
+    return Array.isArray(idx.keys) ? idx.keys : null;
+  } catch (_) { return null; }
+}
+
+// 向 _index.json 追加一个 key（读-改-写，带 sha；冲突重试）。失败只影响索引，不影响关卡本身已保存。
+async function appendIndex(env, key) {
+  const branch = env.GITHUB_BRANCH || 'main';
+  const filePath = `${LEVELS_DIR}/_index.json`;
+  for (let att = 0; att < 3; att++) {
+    let sha = null, keys = [];
+    try {
+      const { data } = await ghRequest(env, `/contents/${filePath}?ref=${branch}`);
+      sha = data.sha;
+      const raw = Buffer.from(data.content, 'base64').toString('utf8');
+      const idx = JSON.parse(raw);
+      if (Array.isArray(idx.keys)) keys = idx.keys;
+    } catch (e) { if (e.status !== 404) return false; } // 不存在 → 新建
+    if (keys.includes(key)) return true;
+    keys.push(key);
+    const body = {
+      message: `workbench: idx add ${key}`,
+      content: Buffer.from(JSON.stringify({ keys: keys.sort() }, null, 2)).toString('base64'),
+      branch,
+    };
+    if (sha) body.sha = sha;
+    try { await ghRequest(env, `/contents/${filePath}`, { method: 'PUT', body }); return true; }
+    catch (_) { if (att >= 2) return false; } // sha 冲突 → 重读重试
+  }
+  return false;
+}
+
 async function getLevelList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const levels = [];
-  // 用 git trees API 列文件：/contents 目录列表接口对同 URL 返回陈旧快照(新存的高分关看不到)，
-  // 且 cache:no-store / URL 时间戳都治不了它(是 GitHub 侧的问题)。
-  // git trees 基于 commit tree，实时反映；加 &_t 破任意 URL 缓存。
-  // 内容仍逐文件精确定位读取（单文件读取经验证是实时的）。
-  const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${Date.now()}`);
-  const blobs = Array.isArray(tree && tree.tree)
-    ? tree.tree.filter(function (x) {
-        return x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 && x.path.endsWith('.json');
-      })
-    : [];
-  const seen = new Set();
-  for (const b of blobs) {
-    const rel = b.path.slice(LEVELS_DIR.length + 1); // data/levels/<name.json>
-    if (seen.has(rel)) continue;
-    seen.add(rel);
+  let keys = await readIndex(env);
+  // _index.json 缺失/损坏 → 回退 git trees 枚举（可能陈旧，至少能列出已有的）
+  if (!keys || keys.length === 0) {
+    keys = [];
     try {
-      const { data: content } = await ghRequest(env, `/contents/${LEVELS_DIR}/${rel}?ref=${branch}`);
+      const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${Date.now()}`);
+      if (Array.isArray(tree && tree.tree)) {
+        tree.tree.forEach(function (x) {
+          if (x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 && x.path.endsWith('.json') && x.path.indexOf('_index.json') < 0) {
+            keys.push(x.path.slice(LEVELS_DIR.length + 1).replace(/\.json$/, ''));
+          }
+        });
+      }
+    } catch (_) {}
+  }
+  const seen = new Set();
+  for (const key of keys) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      const { data: content } = await ghRequest(env, `/contents/${LEVELS_DIR}/${key}.json?ref=${branch}`);
       const raw = Buffer.from(content.content, 'base64').toString('utf8');
       const lv = JSON.parse(raw);
-      const key = rel.replace(/\.json$/, '');
       levels.push({
         key, name: lv.name,
         totalPairs: lv.totalPairs,
@@ -246,6 +287,7 @@ export async function onRequest(context) {
         createdAt: new Date().toISOString(),
       };
       await putLevel(env, k, payload);
+      await appendIndex(env, k); // 把新关 key 加进索引,工作台列表就能立刻实时看到
       return json(200, { key: k, name });
     }
 
