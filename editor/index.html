@@ -748,6 +748,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.2 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 工作台列表仍漏掉最新存的关：/contents 目录列表接口对同 URL 返回陈旧快照(新存的高分关看不到)，cache:no-store 和 URL 时间戳都治不了(是 GitHub 侧问题)。改用一个新端点枚举：git trees API(基于 commit tree 实时反映)列文件，内容仍逐文件精确读取
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.1 · 2026-08-25</div>
         <div class="gh-desc">
           • 工作台新存的关列表看不到：GitHub「目录列表」接口(contents?ref=main)对同一 URL 返回陈旧缓存，单关读取实时、唯独列表旧(cache:no-store 对它无效)。给目录列表请求 URL 加时间戳破缓存参数(&_t=now)，每次新 URL→必然未命中→拉到最新
@@ -2838,7 +2844,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.1'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.2'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

@@ -77,45 +77,48 @@ async function ghRequest(env, path, opts) {
 
 async function getLevelList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
-  try {
-    // GitHub「目录列表」接口(/contents?ref=main)会为重复 URL 返回陈旧缓存、且 cache:no-store 对它无效。
-    // 追加时间戳破缓存参数：每次请求 URL 不同 → 必然缓存未命中 → 拉到最新。GitHub 忽略未知 query 参数。
-    const { data } = await ghRequest(env, `/contents/${LEVELS_DIR}?ref=${branch}&_t=${Date.now()}`);
-    if (!Array.isArray(data)) return [];
-    const files = data.filter(f => f.name.endsWith('.json') && f.type === 'file');
-    const levels = [];
-    for (const f of files) {
-      try {
-        const { data: content } = await ghRequest(env, `/contents/${LEVELS_DIR}/${f.name}?ref=${branch}`);
-        const raw = Buffer.from(content.content, 'base64').toString('utf8');
-        const lv = JSON.parse(raw);
-        levels.push({
-          key: f.name.replace(/\.json$/, ''),
-          name: lv.name,
-          totalPairs: lv.totalPairs,
-          tileCount: (lv.tiles || []).length,
-          darkCount: (lv.specialTiles || []).filter(s => s.type === 'dark').length,
-          score: lv._difficulty?.score ?? null,
-          hooks: lv._difficulty?.hooks ?? null,
-          darkHooks: lv._difficulty?.darkHooks ?? null,
-          hookDensity: lv._difficulty?.hookDensity ?? null,
-          darkHookDensity: lv._difficulty?.darkHookDensity ?? null,
-          totalPairs: lv.totalPairs,
-          clickRatio: lv._difficulty?.clickRatio ?? null,
-          maxLayer: lv._difficulty?.maxLayer ?? 0,
-          savedAt: lv.createdAt || null,
-          order: lv.order != null ? lv.order : null,
-          status: pickStatus(lv.status),
-          playTimeMs: lv.playTimeMs || null,
-        });
-      } catch (_) { /* skip bad files */ }
-    }
-    sortLevels(levels);
-    return levels;
-  } catch (e) {
-    if (e.status === 404) return []; // 目录不存在说明还没存过
-    throw e;
+  const levels = [];
+  // 用 git trees API 列文件：/contents 目录列表接口对同 URL 返回陈旧快照(新存的高分关看不到)，
+  // 且 cache:no-store / URL 时间戳都治不了它(是 GitHub 侧的问题)。
+  // git trees 基于 commit tree，实时反映；加 &_t 破任意 URL 缓存。
+  // 内容仍逐文件精确定位读取（单文件读取经验证是实时的）。
+  const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${Date.now()}`);
+  const blobs = Array.isArray(tree && tree.tree)
+    ? tree.tree.filter(function (x) {
+        return x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 && x.path.endsWith('.json');
+      })
+    : [];
+  const seen = new Set();
+  for (const b of blobs) {
+    const rel = b.path.slice(LEVELS_DIR.length + 1); // data/levels/<name.json>
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    try {
+      const { data: content } = await ghRequest(env, `/contents/${LEVELS_DIR}/${rel}?ref=${branch}`);
+      const raw = Buffer.from(content.content, 'base64').toString('utf8');
+      const lv = JSON.parse(raw);
+      const key = rel.replace(/\.json$/, '');
+      levels.push({
+        key, name: lv.name,
+        totalPairs: lv.totalPairs,
+        tileCount: (lv.tiles || []).length,
+        darkCount: (lv.specialTiles || []).filter(s => s.type === 'dark').length,
+        score: lv._difficulty?.score ?? null,
+        hooks: lv._difficulty?.hooks ?? null,
+        darkHooks: lv._difficulty?.darkHooks ?? null,
+        hookDensity: lv._difficulty?.hookDensity ?? null,
+        darkHookDensity: lv._difficulty?.darkHookDensity ?? null,
+        clickRatio: lv._difficulty?.clickRatio ?? null,
+        maxLayer: lv._difficulty?.maxLayer ?? 0,
+        savedAt: lv.createdAt || null,
+        order: lv.order != null ? lv.order : null,
+        status: pickStatus(lv.status),
+        playTimeMs: lv.playTimeMs || null,
+      });
+    } catch (_) { /* skip bad files */ }
   }
+  sortLevels(levels);
+  return levels;
 }
 
 function sortLevels(levels) {

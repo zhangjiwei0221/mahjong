@@ -1,12 +1,17 @@
 {
-  "version": "v4.9.1",
+  "version": "v4.9.2",
   "updated": "2026-08-25",
-  "notes": "工作台列表:GitHub目录列表加时间戳破缓存",
+  "notes": "工作台列表改用git trees API枚举,修掉/contents目录列表陈旧",
   "changelog": [
+    {
+      "version": "v4.9.2",
+      "date": "2026-08-25",
+      "notes": "工作台列表仍漏最新存的关:/contents 目录列表接口对同 URL 返回陈旧快照(最新创建的关看不到),cache:no-store 与 URL 时间戳都治不了(是 GitHub 侧问题)。改用 git trees API(基于 commit tree 实时反映)递归列文件,内容仍逐文件精确定位读取。"
+    },
     {
       "version": "v4.9.1",
       "date": "2026-08-25",
-      "notes": "工作台新存关列表看不到:GitHub「目录列表」接口(contents?ref=main)对同一 URL 返回陈旧缓存,单关读取实时、唯独列表旧;cache:no-store 对它无效(说明是 GitHub 侧缓存)。给目录列表请求 URL 加时间戳破缓存参数 &_t=Date.now(),每次新 URL→必然缓存未命中→拉到最新。"
+      "notes": "工作台新存关列表看不到:GitHub「目录列表」接口(contents?ref=main)对同一 URL 返回陈旧缓存,单关读取实时、唯独列表旧;cache:no-store 对它无效(说明是 GitHub 侧缓存)。给目录列表请求 URL 加时间戳破缓存参数 每次新 URL→必然缓存未命中→拉到最新。"
     },
     {
       "version": "v4.9.0",
