@@ -1,8 +1,13 @@
 {
-  "version": "v4.8.3",
+  "version": "v4.8.4",
   "updated": "2026-08-25",
-  "notes": "修复工作台跨标签看不到已保存关卡",
+  "notes": "工作台列表被边缘缓存,修复实时性",
   "changelog": [
+    {
+      "version": "v4.8.4",
+      "date": "2026-08-25",
+      "notes": "修复'保存到工作台后刷新看不到新关':GET /levels 被 Cloudflare 边缘缓存(每次返回完全相同旧列表),新存进 GitHub 的关列表读不到。给工作台 API 响应加 Cache-Control: no-store,列表实时反映 GitHub 最新。"
+    },
     {
       "version": "v4.8.3",
       "date": "2026-08-25",

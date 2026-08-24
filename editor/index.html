@@ -747,6 +747,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.8.4 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 修复"保存到工作台后刷新看不到新关"：工作台 API 响应被 Cloudflare 边缘缓存(GET /levels 一直返回旧列表)，新存进 GitHub 的关列表读不到。给 API 加 Cache-Control: no-store，列表实时反映。
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.8.3 · 2026-08-25</div>
         <div class="gh-desc">
           • 修复"保存到工作台后在工作台刷新看不到"：口令原来存 sessionStorage（每标签独立，编辑器与工作台跨标签不共享）→ 工作台 getPass 为空就静默不加载。改为 localStorage 跨标签共享，编辑器存的关拿到工作台任意标签自动带出。
@@ -2802,7 +2808,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.8.3'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.8.4'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
