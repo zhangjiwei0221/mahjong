@@ -1,8 +1,13 @@
 {
-  "version": "v4.9.0",
+  "version": "v4.9.1",
   "updated": "2026-08-25",
-  "notes": "导入支持「形状+Type ID」并保留牌面",
+  "notes": "工作台列表:GitHub目录列表加时间戳破缓存",
   "changelog": [
+    {
+      "version": "v4.9.1",
+      "date": "2026-08-25",
+      "notes": "工作台新存关列表看不到:GitHub「目录列表」接口(contents?ref=main)对同一 URL 返回陈旧缓存,单关读取实时、唯独列表旧;cache:no-store 对它无效(说明是 GitHub 侧缓存)。给目录列表请求 URL 加时间戳破缓存参数 &_t=Date.now(),每次新 URL→必然缓存未命中→拉到最新。"
+    },
     {
       "version": "v4.9.0",
       "date": "2026-08-25",

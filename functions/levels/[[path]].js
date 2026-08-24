@@ -78,7 +78,9 @@ async function ghRequest(env, path, opts) {
 async function getLevelList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   try {
-    const { data } = await ghRequest(env, `/contents/${LEVELS_DIR}?ref=${branch}`);
+    // GitHub「目录列表」接口(/contents?ref=main)会为重复 URL 返回陈旧缓存、且 cache:no-store 对它无效。
+    // 追加时间戳破缓存参数：每次请求 URL 不同 → 必然缓存未命中 → 拉到最新。GitHub 忽略未知 query 参数。
+    const { data } = await ghRequest(env, `/contents/${LEVELS_DIR}?ref=${branch}&_t=${Date.now()}`);
     if (!Array.isArray(data)) return [];
     const files = data.filter(f => f.name.endsWith('.json') && f.type === 'file');
     const levels = [];

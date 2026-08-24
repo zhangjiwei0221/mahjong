@@ -748,6 +748,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.1 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 工作台新存的关列表看不到：GitHub「目录列表」接口(contents?ref=main)对同一 URL 返回陈旧缓存，单关读取实时、唯独列表旧(cache:no-store 对它无效)。给目录列表请求 URL 加时间戳破缓存参数(&_t=now)，每次新 URL→必然未命中→拉到最新
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.0 · 2026-08-25</div>
         <div class="gh-desc">
           • 导入支持「形状 + Type ID」：导入 JSON 时保留每张普通牌的 typeId(牌面)，不再只导空壳形状
@@ -2832,7 +2838,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.0'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.1'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
