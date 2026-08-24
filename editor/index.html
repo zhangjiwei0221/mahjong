@@ -3355,7 +3355,7 @@ function batchGenerate() {
         level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig() }, genDarkOptions())), 'shape');
       } else {
         level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null) }, genDarkOptions())),
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
           'stack', layerCount
         );
       }
