@@ -1,0 +1,883 @@
+{
+  "key": "mt6mkzkx_mh47u7",
+  "name": "34",
+  "levelId": 1,
+  "totalPairs": 43,
+  "tiles": [
+    {
+      "id": 1,
+      "layer": 0,
+      "row": -8,
+      "col": -5,
+      "typeId": 2,
+      "isDark": true
+    },
+    {
+      "id": 2,
+      "layer": 0,
+      "row": -6,
+      "col": -5,
+      "typeId": 27,
+      "isDark": true
+    },
+    {
+      "id": 3,
+      "layer": 0,
+      "row": -4,
+      "col": -5,
+      "typeId": 14,
+      "isDark": false
+    },
+    {
+      "id": 4,
+      "layer": 0,
+      "row": -2,
+      "col": -5,
+      "typeId": 2,
+      "isDark": false
+    },
+    {
+      "id": 5,
+      "layer": 0,
+      "row": 0,
+      "col": -5,
+      "typeId": 12,
+      "isDark": false
+    },
+    {
+      "id": 6,
+      "layer": 0,
+      "row": 2,
+      "col": -5,
+      "typeId": 18,
+      "isDark": false
+    },
+    {
+      "id": 7,
+      "layer": 0,
+      "row": 4,
+      "col": -5,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 8,
+      "layer": 0,
+      "row": 6,
+      "col": -5,
+      "typeId": 14,
+      "isDark": false
+    },
+    {
+      "id": 9,
+      "layer": 0,
+      "row": -8,
+      "col": -3,
+      "typeId": 10,
+      "isDark": true
+    },
+    {
+      "id": 10,
+      "layer": 0,
+      "row": -6,
+      "col": -3,
+      "typeId": 1,
+      "isDark": true
+    },
+    {
+      "id": 11,
+      "layer": 0,
+      "row": -4,
+      "col": -3,
+      "typeId": 15,
+      "isDark": true
+    },
+    {
+      "id": 12,
+      "layer": 0,
+      "row": -2,
+      "col": -3,
+      "typeId": 21,
+      "isDark": true
+    },
+    {
+      "id": 13,
+      "layer": 0,
+      "row": 0,
+      "col": -3,
+      "typeId": 9,
+      "isDark": true
+    },
+    {
+      "id": 14,
+      "layer": 0,
+      "row": 2,
+      "col": -3,
+      "typeId": 27,
+      "isDark": false
+    },
+    {
+      "id": 15,
+      "layer": 0,
+      "row": 4,
+      "col": -3,
+      "typeId": 28,
+      "isDark": true
+    },
+    {
+      "id": 16,
+      "layer": 0,
+      "row": -8,
+      "col": -1,
+      "typeId": 9,
+      "isDark": false
+    },
+    {
+      "id": 17,
+      "layer": 0,
+      "row": -6,
+      "col": -1,
+      "typeId": 22,
+      "isDark": true
+    },
+    {
+      "id": 18,
+      "layer": 0,
+      "row": -4,
+      "col": -1,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 19,
+      "layer": 0,
+      "row": -2,
+      "col": -1,
+      "typeId": 22,
+      "isDark": false
+    },
+    {
+      "id": 20,
+      "layer": 0,
+      "row": 0,
+      "col": -1,
+      "typeId": 27,
+      "isDark": false
+    },
+    {
+      "id": 21,
+      "layer": 0,
+      "row": 2,
+      "col": -1,
+      "typeId": 9,
+      "isDark": false
+    },
+    {
+      "id": 22,
+      "layer": 0,
+      "row": 4,
+      "col": -1,
+      "typeId": 29,
+      "isDark": true
+    },
+    {
+      "id": 23,
+      "layer": 0,
+      "row": -8,
+      "col": 1,
+      "typeId": 27,
+      "isDark": false
+    },
+    {
+      "id": 24,
+      "layer": 0,
+      "row": -6,
+      "col": 1,
+      "typeId": 27,
+      "isDark": false
+    },
+    {
+      "id": 25,
+      "layer": 0,
+      "row": -4,
+      "col": 1,
+      "typeId": 34,
+      "isDark": true
+    },
+    {
+      "id": 26,
+      "layer": 0,
+      "row": -2,
+      "col": 1,
+      "typeId": 32,
+      "isDark": true
+    },
+    {
+      "id": 27,
+      "layer": 0,
+      "row": 0,
+      "col": 1,
+      "typeId": 32,
+      "isDark": false
+    },
+    {
+      "id": 28,
+      "layer": 0,
+      "row": 2,
+      "col": 1,
+      "typeId": 32,
+      "isDark": false
+    },
+    {
+      "id": 29,
+      "layer": 0,
+      "row": 4,
+      "col": 1,
+      "typeId": 4,
+      "isDark": true
+    },
+    {
+      "id": 30,
+      "layer": 0,
+      "row": -8,
+      "col": 3,
+      "typeId": 22,
+      "isDark": false
+    },
+    {
+      "id": 31,
+      "layer": 0,
+      "row": -6,
+      "col": 3,
+      "typeId": 26,
+      "isDark": true
+    },
+    {
+      "id": 32,
+      "layer": 0,
+      "row": -4,
+      "col": 3,
+      "typeId": 24,
+      "isDark": true
+    },
+    {
+      "id": 33,
+      "layer": 0,
+      "row": -2,
+      "col": 3,
+      "typeId": 12,
+      "isDark": true
+    },
+    {
+      "id": 34,
+      "layer": 0,
+      "row": 0,
+      "col": 3,
+      "typeId": 16,
+      "isDark": true
+    },
+    {
+      "id": 35,
+      "layer": 0,
+      "row": 2,
+      "col": 3,
+      "typeId": 22,
+      "isDark": false
+    },
+    {
+      "id": 36,
+      "layer": 0,
+      "row": 4,
+      "col": 3,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 37,
+      "layer": 0,
+      "row": -8,
+      "col": 5,
+      "typeId": 34,
+      "isDark": false
+    },
+    {
+      "id": 38,
+      "layer": 0,
+      "row": -6,
+      "col": 5,
+      "typeId": 31,
+      "isDark": true
+    },
+    {
+      "id": 39,
+      "layer": 0,
+      "row": -4,
+      "col": 5,
+      "typeId": 22,
+      "isDark": false
+    },
+    {
+      "id": 40,
+      "layer": 0,
+      "row": -2,
+      "col": 5,
+      "typeId": 16,
+      "isDark": false
+    },
+    {
+      "id": 41,
+      "layer": 0,
+      "row": 0,
+      "col": 5,
+      "typeId": 7,
+      "isDark": false
+    },
+    {
+      "id": 42,
+      "layer": 0,
+      "row": 2,
+      "col": 5,
+      "typeId": 29,
+      "isDark": false
+    },
+    {
+      "id": 43,
+      "layer": 0,
+      "row": 4,
+      "col": 5,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 44,
+      "layer": 0,
+      "row": 6,
+      "col": 5,
+      "typeId": 7,
+      "isDark": false
+    },
+    {
+      "id": 45,
+      "layer": 1,
+      "row": -7,
+      "col": -5,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 46,
+      "layer": 1,
+      "row": -7,
+      "col": -3,
+      "typeId": 5,
+      "isDark": true
+    },
+    {
+      "id": 47,
+      "layer": 1,
+      "row": -5,
+      "col": -3,
+      "typeId": 4,
+      "isDark": false
+    },
+    {
+      "id": 48,
+      "layer": 1,
+      "row": -3,
+      "col": -3,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 49,
+      "layer": 1,
+      "row": -1,
+      "col": -3,
+      "typeId": 15,
+      "isDark": false
+    },
+    {
+      "id": 50,
+      "layer": 1,
+      "row": 1,
+      "col": -3,
+      "typeId": 32,
+      "isDark": false
+    },
+    {
+      "id": 51,
+      "layer": 1,
+      "row": 3,
+      "col": -3,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 52,
+      "layer": 1,
+      "row": -7,
+      "col": -1,
+      "typeId": 21,
+      "isDark": false
+    },
+    {
+      "id": 53,
+      "layer": 1,
+      "row": -5,
+      "col": -1,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 54,
+      "layer": 1,
+      "row": -3,
+      "col": -1,
+      "typeId": 11,
+      "isDark": true
+    },
+    {
+      "id": 55,
+      "layer": 1,
+      "row": -1,
+      "col": -1,
+      "typeId": 31,
+      "isDark": false
+    },
+    {
+      "id": 56,
+      "layer": 1,
+      "row": 1,
+      "col": -1,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 57,
+      "layer": 1,
+      "row": 3,
+      "col": -1,
+      "typeId": 31,
+      "isDark": false
+    },
+    {
+      "id": 58,
+      "layer": 1,
+      "row": -7,
+      "col": 1,
+      "typeId": 26,
+      "isDark": false
+    },
+    {
+      "id": 59,
+      "layer": 1,
+      "row": -5,
+      "col": 1,
+      "typeId": 9,
+      "isDark": false
+    },
+    {
+      "id": 60,
+      "layer": 1,
+      "row": -3,
+      "col": 1,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 61,
+      "layer": 1,
+      "row": -1,
+      "col": 1,
+      "typeId": 24,
+      "isDark": false
+    },
+    {
+      "id": 62,
+      "layer": 1,
+      "row": 1,
+      "col": 1,
+      "typeId": 16,
+      "isDark": false
+    },
+    {
+      "id": 63,
+      "layer": 1,
+      "row": 3,
+      "col": 1,
+      "typeId": 1,
+      "isDark": false
+    },
+    {
+      "id": 64,
+      "layer": 1,
+      "row": -7,
+      "col": 3,
+      "typeId": 12,
+      "isDark": false
+    },
+    {
+      "id": 65,
+      "layer": 1,
+      "row": -5,
+      "col": 3,
+      "typeId": 22,
+      "isDark": false
+    },
+    {
+      "id": 66,
+      "layer": 1,
+      "row": -3,
+      "col": 3,
+      "typeId": 11,
+      "isDark": false
+    },
+    {
+      "id": 67,
+      "layer": 1,
+      "row": -1,
+      "col": 3,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 68,
+      "layer": 1,
+      "row": 1,
+      "col": 3,
+      "typeId": 5,
+      "isDark": false
+    },
+    {
+      "id": 69,
+      "layer": 1,
+      "row": 3,
+      "col": 3,
+      "typeId": 31,
+      "isDark": false
+    },
+    {
+      "id": 70,
+      "layer": 1,
+      "row": -7,
+      "col": 5,
+      "typeId": 28,
+      "isDark": false
+    },
+    {
+      "id": 71,
+      "layer": 2,
+      "row": -6,
+      "col": -3,
+      "typeId": 19,
+      "isDark": true
+    },
+    {
+      "id": 72,
+      "layer": 2,
+      "row": -3,
+      "col": -2,
+      "typeId": 34,
+      "isDark": false
+    },
+    {
+      "id": 73,
+      "layer": 2,
+      "row": 1,
+      "col": -2,
+      "typeId": 9,
+      "isDark": false
+    },
+    {
+      "id": 74,
+      "layer": 2,
+      "row": -6,
+      "col": -1,
+      "typeId": 27,
+      "isDark": false
+    },
+    {
+      "id": 75,
+      "layer": 2,
+      "row": -4,
+      "col": 0,
+      "typeId": 34,
+      "isDark": false
+    },
+    {
+      "id": 76,
+      "layer": 2,
+      "row": 0,
+      "col": 0,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 77,
+      "layer": 2,
+      "row": 3,
+      "col": 0,
+      "typeId": 2,
+      "isDark": false
+    },
+    {
+      "id": 78,
+      "layer": 2,
+      "row": -6,
+      "col": 1,
+      "typeId": 14,
+      "isDark": true
+    },
+    {
+      "id": 79,
+      "layer": 2,
+      "row": -3,
+      "col": 2,
+      "typeId": 10,
+      "isDark": false
+    },
+    {
+      "id": 80,
+      "layer": 2,
+      "row": 1,
+      "col": 2,
+      "typeId": 9,
+      "isDark": false
+    },
+    {
+      "id": 81,
+      "layer": 2,
+      "row": -6,
+      "col": 3,
+      "typeId": 19,
+      "isDark": false
+    },
+    {
+      "id": 82,
+      "layer": 3,
+      "row": -6,
+      "col": -2,
+      "typeId": 18,
+      "isDark": true
+    },
+    {
+      "id": 83,
+      "layer": 3,
+      "row": -6,
+      "col": 0,
+      "typeId": 12,
+      "isDark": false
+    },
+    {
+      "id": 84,
+      "layer": 3,
+      "row": -6,
+      "col": 2,
+      "typeId": 2,
+      "isDark": false
+    },
+    {
+      "id": 85,
+      "layer": 4,
+      "row": -6,
+      "col": -1,
+      "typeId": 16,
+      "isDark": false
+    },
+    {
+      "id": 86,
+      "layer": 4,
+      "row": -6,
+      "col": 1,
+      "typeId": 14,
+      "isDark": false
+    }
+  ],
+  "specialTiles": [
+    {
+      "id": 17,
+      "type": "dark",
+      "layer": 0,
+      "row": -6,
+      "col": -1
+    },
+    {
+      "id": 11,
+      "type": "dark",
+      "layer": 0,
+      "row": -4,
+      "col": -3
+    },
+    {
+      "id": 78,
+      "type": "dark",
+      "layer": 2,
+      "row": -6,
+      "col": 1
+    },
+    {
+      "id": 2,
+      "type": "dark",
+      "layer": 0,
+      "row": -6,
+      "col": -5
+    },
+    {
+      "id": 10,
+      "type": "dark",
+      "layer": 0,
+      "row": -6,
+      "col": -3
+    },
+    {
+      "id": 9,
+      "type": "dark",
+      "layer": 0,
+      "row": -8,
+      "col": -3
+    },
+    {
+      "id": 13,
+      "type": "dark",
+      "layer": 0,
+      "row": 0,
+      "col": -3
+    },
+    {
+      "id": 71,
+      "type": "dark",
+      "layer": 2,
+      "row": -6,
+      "col": -3
+    },
+    {
+      "id": 15,
+      "type": "dark",
+      "layer": 0,
+      "row": 4,
+      "col": -3
+    },
+    {
+      "id": 1,
+      "type": "dark",
+      "layer": 0,
+      "row": -8,
+      "col": -5
+    },
+    {
+      "id": 25,
+      "type": "dark",
+      "layer": 0,
+      "row": -4,
+      "col": 1
+    },
+    {
+      "id": 22,
+      "type": "dark",
+      "layer": 0,
+      "row": 4,
+      "col": -1
+    },
+    {
+      "id": 29,
+      "type": "dark",
+      "layer": 0,
+      "row": 4,
+      "col": 1
+    },
+    {
+      "id": 46,
+      "type": "dark",
+      "layer": 1,
+      "row": -7,
+      "col": -3
+    },
+    {
+      "id": 34,
+      "type": "dark",
+      "layer": 0,
+      "row": 0,
+      "col": 3
+    },
+    {
+      "id": 33,
+      "type": "dark",
+      "layer": 0,
+      "row": -2,
+      "col": 3
+    },
+    {
+      "id": 82,
+      "type": "dark",
+      "layer": 3,
+      "row": -6,
+      "col": -2
+    },
+    {
+      "id": 12,
+      "type": "dark",
+      "layer": 0,
+      "row": -2,
+      "col": -3
+    },
+    {
+      "id": 26,
+      "type": "dark",
+      "layer": 0,
+      "row": -2,
+      "col": 1
+    },
+    {
+      "id": 38,
+      "type": "dark",
+      "layer": 0,
+      "row": -6,
+      "col": 5
+    },
+    {
+      "id": 54,
+      "type": "dark",
+      "layer": 1,
+      "row": -3,
+      "col": -1
+    },
+    {
+      "id": 31,
+      "type": "dark",
+      "layer": 0,
+      "row": -6,
+      "col": 3
+    },
+    {
+      "id": 32,
+      "type": "dark",
+      "layer": 0,
+      "row": -4,
+      "col": 3
+    }
+  ],
+  "_difficulty": {
+    "score": 123,
+    "clickRatio": 0.314,
+    "clickable": 27,
+    "total": 86,
+    "maxLayer": 4,
+    "typeCount": 24,
+    "hooks": 35,
+    "darkHooks": 23,
+    "effHooks": 94,
+    "effDarkHooks": 59.08,
+    "totalPairs": 43,
+    "hookDensity": 0.814,
+    "darkHookDensity": 0.535,
+    "minSlots": 4,
+    "slotSolvable": true,
+    "queueCount": 0,
+    "hiddenQueueCount": 0,
+    "spitterQueuePressure": 0
+  },
+  "order": 34,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-24T02:37:05.697Z"
+}
