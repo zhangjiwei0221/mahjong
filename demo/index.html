@@ -873,6 +873,7 @@ function placeInSlot(tile, onDone) {
   // 旋转机制：被点击牌先飞入卡槽，其他牌播放旋转动画
   if (rotationConfig && tiles.some(t => {
     if (t.row == null || t.col == null || t.type === 'spitter') return false;
+    if (t.layer > 0) return false; // 只旋转第一层(L0)
     const dr = t.row - rotationConfig.centerRow;
     const dc = t.col - rotationConfig.centerCol;
     return Math.max(Math.abs(dr), Math.abs(dc)) > 0;
@@ -882,6 +883,7 @@ function placeInSlot(tile, onDone) {
     tiles.forEach(t => {
       if (t.id === tile.id) return; // 排除被点击的牌
       if (t.row == null || t.col == null || t.type === 'spitter') return;
+      if (t.layer > 0) return; // 只旋转第一层(L0),上层不随转
       const dr = t.row - rotationConfig.centerRow;
       const dc = t.col - rotationConfig.centerCol;
       const cheb = Math.max(Math.abs(dr), Math.abs(dc));
@@ -967,6 +969,7 @@ function rotateTiles() {
   const rotating = tiles.filter(t => {
     if (t.row == null || t.col == null) return false;
     if (t.type === 'spitter') return false;
+    if (t.layer > 0) return false; // 只旋转第一层(L0),上层不参与
     const dr = t.row - centerRow;
     const dc = t.col - centerCol;
     const chebyshev = Math.max(Math.abs(dr), Math.abs(dc));
