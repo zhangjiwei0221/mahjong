@@ -669,6 +669,7 @@
           <span>堆层数</span>
           <input type="number" id="stackCount" value="5" min="2" max="7">
         </div>
+        <div class="hint">这是起始值：生成时会按目标分数自动加减层数来凑分（最终层数可能≠预设）</div>
         <button class="sbtn primary block" onclick="generateStackFromCurrent()">🏗 按当前底座搭建后生成</button>
 
         <div class="card-sub">批量</div>
@@ -690,6 +691,10 @@
     </div>
     <div class="gen-help-pop" id="genHelpPop">
       <h4>生成参数说明</h4>
+      <div class="gh-item">
+        <div class="gh-title">堆层数 & 自动调层（按目标分数）</div>
+        <div class="gh-desc">你设的"堆层数"是起始值。生成时会按目标分数自动加减层数来凑分：目标分数低 → 自动降层（塔更"开"、可点率更高）；目标分数高 → 自动升层（牌埋更深、可点率更低）。所以最终层数可能 ≠ 你预设的层数，属正常，是"分数控制层数"。</div>
+      </div>
       <div class="gh-item">
         <div class="gh-title">钩子难度（已改为自动）</div>
         <div class="gh-desc">钩子 = 一对同花色里至少一张被埋(上压/左右夹)。堆层数越多 → 埋得越深 → 钩子越难。钩子%由底座深度自然决定，不用手动设，看生成结果的"均深"即可。</div>
@@ -746,6 +751,12 @@
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
         <h4 style="margin:0;">📜 变更日志</h4>
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.9.4 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 「生成关卡」问号里新增说明：堆层数是起始值，生成会按目标分数自动调层(低→降层/高→升层)，最终层数可能≠预设。堆层数输入下方也加了同款提示
+        </div>
       </div>
       <div class="gh-item">
         <div class="gh-title">v4.9.3 · 2026-08-25</div>
@@ -2850,7 +2861,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.3'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.4'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
