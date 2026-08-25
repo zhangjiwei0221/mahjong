@@ -1,0 +1,30 @@
+{
+  "key": "mt88jvro_ci22n1",
+  "name": "CLAUDE-E2E-REALTIME",
+  "levelId": 1,
+  "totalPairs": 1,
+  "tiles": [
+    {
+      "id": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 0,
+      "typeId": 5,
+      "isDark": false
+    },
+    {
+      "id": 2,
+      "layer": 0,
+      "row": 0,
+      "col": 2,
+      "typeId": 5,
+      "isDark": false
+    }
+  ],
+  "specialTiles": [],
+  "_difficulty": null,
+  "order": null,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-25T05:39:51.828Z"
+}
