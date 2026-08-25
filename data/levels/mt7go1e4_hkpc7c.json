@@ -988,8 +988,9 @@
     "hiddenQueueCount": 0,
     "spitterQueuePressure": 0
   },
-  "order": null,
+  "order": 58,
   "status": "wip",
   "playTimeMs": null,
-  "createdAt": "2026-08-24T16:39:16.492Z"
+  "createdAt": "2026-08-24T16:39:16.492Z",
+  "updatedAt": "2026-08-25T03:30:46.324Z"
 }
