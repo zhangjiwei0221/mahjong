@@ -1,0 +1,28 @@
+{
+  "key": "mt8t9oin_1dbf5v",
+  "name": "TMP-GHOST",
+  "levelId": 1,
+  "totalPairs": 1,
+  "tiles": [
+    {
+      "id": "g1",
+      "typeId": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 0
+    },
+    {
+      "id": "g2",
+      "typeId": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 2
+    }
+  ],
+  "specialTiles": [],
+  "_difficulty": null,
+  "order": null,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-25T15:19:47.807Z"
+}
