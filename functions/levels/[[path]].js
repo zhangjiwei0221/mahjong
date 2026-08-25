@@ -9,6 +9,10 @@
 
 const LEVELS_DIR = 'data/levels';
 
+// 破缓存: 每次调用都生成唯一 URL 片段。不用 Date.now()(函数环境内时钟可能冻结,
+// 导致 _t 恒定→URL 不变→CF 边缘对同一 URL 缓存旧响应,列表一直老)。随机串保证每次新 URL。
+const cb = () => Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+
 // 制作进度状态（前端已不用，字段保留兼容旧数据）
 const STATUS_LIST = ['wip', 'test', 'done'];
 function pickStatus(v) { return STATUS_LIST.includes(v) ? v : 'wip'; }
@@ -87,7 +91,7 @@ async function fetchRawLevel(env, key) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
   if (!repo) return null;
-  const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/${key}.json?_=${Date.now()}`;
+  const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/${key}.json?_=${cb()}`;
   try {
     const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
     if (!r.ok) return null;
@@ -103,7 +107,7 @@ async function readMetaList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
   if (!repo) return null;
-  const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/_index.json?_=${Date.now()}`;
+  const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/_index.json?_=${cb()}`;
   try {
     const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
     if (!r.ok) return null;
@@ -162,7 +166,7 @@ async function getLevelList(env) {
   if (!levels) {
     const keys = [];
     try {
-      const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${Date.now()}`);
+      const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${cb()}`);
       if (Array.isArray(tree && tree.tree)) {
         tree.tree.forEach(function (x) {
           if (x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 && x.path.endsWith('.json') && x.path.indexOf('_index.json') < 0) {
