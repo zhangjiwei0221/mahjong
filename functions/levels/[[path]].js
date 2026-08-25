@@ -75,13 +75,22 @@ async function ghRequest(env, path, opts) {
   return { data, status: r.status };
 }
 
-// 读 _index.json（单文件精确路径——经验证实时，不受"列目录陈旧"的坑影响）。返回 keys 数组或 null。
+// 读 _index.json
+// 根因(2026-08-25 实测定案): Pages Functions 对 api.github.com「首次 fetch 到的那个 URL」的
+// 子响应会在边缘缓存, cache:'no-store' 压不住(写请求不受影响,所以保存一直没问题;
+// 新的关卡 key 每次都是新 URL 自然缓存未命中→单关读取实时)。
+// 但 _index.json 是固定 URL → 被缓存成旧快照 → 列表永远停在旧版。
+// 解法: 改从 **raw.githubusercontent.com** 读(不同主机=不同缓存键), 且每次带 _t 时间戳
+// 破缓存(伪随机/bfCache 都不靠, 直接新 URL)。raw 会忽略查询串仍返回该文件最新字节。
 async function readIndex(env) {
   const branch = env.GITHUB_BRANCH || 'main';
+  const repo = env.GITHUB_REPO;
+  if (!repo) return null;
+  const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/_index.json?_=${Date.now()}`;
   try {
-    const { data } = await ghRequest(env, `/contents/${LEVELS_DIR}/_index.json?ref=${branch}`);
-    const raw = Buffer.from(data.content, 'base64').toString('utf8');
-    const idx = JSON.parse(raw);
+    const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
+    if (!r.ok) return null;
+    const idx = await r.json();
     return Array.isArray(idx.keys) ? idx.keys : null;
   } catch (_) { return null; }
 }

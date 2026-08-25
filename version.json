@@ -1,8 +1,13 @@
 {
-  "version": "v4.9.4",
+  "version": "v4.9.5",
   "updated": "2026-08-25",
-  "notes": "生成关卡问号里加'堆层数自动调层'说明",
+  "notes": "工作台列表改读 raw.githubusercontent 破边缘缓存,列表实时反映新存档",
   "changelog": [
+    {
+      "version": "v4.9.5",
+      "date": "2026-08-25",
+      "notes": "工作台列表仍停在旧关数:v4.9.3 的 index 也失败(实测 GitHub 直读 _index.json 是 69 关、部署的 /levels 只回 47)。实测定案:Pages Functions 对 api.github.com 子响应做边缘缓存,cache:no-store 压不住固定 URL,所以保存/单关读取实时、唯独列表(固定 URL)陈旧。改列表改从 raw.githubusercontent.com 读(不同主机+每次 _t 时间戳破缓存),列表实时反映新存关。"
+    },
     {
       "version": "v4.9.4",
       "date": "2026-08-25",

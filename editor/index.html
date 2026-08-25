@@ -753,6 +753,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.5 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 工作台「已保存关看不到」根治：实测定案是 Pages Functions 对 api.github.com 子请求做边缘缓存(cache:no-store 压不住固定 URL)，导致列表永远停在旧快照、保存/单关读取却实时。<br>
+          • 列表改读 raw.githubusercontent.com（不同主机 + 每次 _t 时间戳破缓存），保存后刷新工作台立刻能看到新关
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.4 · 2026-08-25</div>
         <div class="gh-desc">
           • 「生成关卡」问号里新增说明：堆层数是起始值，生成会按目标分数自动调层(低→降层/高→升层)，最终层数可能≠预设。堆层数输入下方也加了同款提示
@@ -2861,7 +2868,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.4'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.5'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
