@@ -1045,6 +1045,24 @@
       "darkHookDensity": 0.714
     },
     {
+      "key": "mt83oxpz_j26vwr",
+      "name": "57",
+      "order": null,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-25T03:23:49.559Z",
+      "totalPairs": 40,
+      "tileCount": 80,
+      "darkCount": 40,
+      "score": 144,
+      "clickRatio": 0.1,
+      "maxLayer": 4,
+      "hooks": 37,
+      "darkHooks": 30,
+      "hookDensity": 0.925,
+      "darkHookDensity": 0.75
+    },
+    {
       "key": "mt83o335_2gmjuh",
       "name": "57",
       "order": null,
