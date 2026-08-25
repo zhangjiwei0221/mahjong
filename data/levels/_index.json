@@ -1063,24 +1063,6 @@
       "darkHookDensity": null
     },
     {
-      "key": "mt88w3pe_8k834a",
-      "name": "第三关-E2E",
-      "order": null,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-25T05:49:21.986Z",
-      "totalPairs": 1,
-      "tileCount": 2,
-      "darkCount": 0,
-      "score": null,
-      "clickRatio": null,
-      "maxLayer": 0,
-      "hooks": null,
-      "darkHooks": null,
-      "hookDensity": null,
-      "darkHookDensity": null
-    },
-    {
       "key": "mt83qx0j_fbxtdl",
       "name": "57",
       "order": null,
