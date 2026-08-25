@@ -125,9 +125,13 @@ async function appendIndex(env, key) {
 async function getLevelList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const levels = [];
+  const diag = { readIndexSource: 'none', readIndexCount: 0 };
   let keys = await readIndex(env);
-  // _index.json 缺失/损坏 → 回退 git trees 枚举（可能陈旧，至少能列出已有的）
+  diag.readIndexCount = Array.isArray(keys) ? keys.length : 0;
+  diag.readIndexSource = Array.isArray(keys) ? 'raw' : 'missing';
+  // _index.json 缺失/损坏或 raw 读取失败 → 回退 git trees 枚举（可能陈旧，至少能列出已有的）
   if (!keys || keys.length === 0) {
+    diag.readIndexSource = 'trees-fallback';
     keys = [];
     try {
       const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${Date.now()}`);
@@ -138,7 +142,10 @@ async function getLevelList(env) {
           }
         });
       }
+      diag.readIndexCount = keys.length;
     } catch (_) {}
+  } else {
+    diag.readIndexSource = 'raw';
   }
   const seen = new Set();
   for (const key of keys) {
@@ -167,8 +174,11 @@ async function getLevelList(env) {
       });
     } catch (_) { /* skip bad files */ }
   }
+  // 诊断：用 diag 里 key 命中数/失败数，好判断 raw 读取或单关读取在哪一环丢数据
+  diag.readFailures = keys.length - levels.length;
+  diag.finalCount = levels.length;
   sortLevels(levels);
-  return levels;
+  return { levels, diag };
 }
 
 function sortLevels(levels) {
@@ -255,8 +265,8 @@ export async function onRequest(context) {
   try {
     // GET /levels —— 列出所有关卡（公开，无需口令）
     if (request.method === 'GET' && !key) {
-      const levels = await getLevelList(env);
-      return json(200, { levels });
+      const { levels, diag } = await getLevelList(env);
+      return json(200, { levels, _diag: diag });
     }
 
     // GET /levels/:key —— 单个完整关卡
