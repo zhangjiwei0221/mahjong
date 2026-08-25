@@ -83,7 +83,6 @@ async function ghRequest(env, path, opts) {
 // 解法: 改从 **raw.githubusercontent.com** 读(不同主机=不同缓存键), 且每次带 _t 时间戳
 // 破缓存(伪随机/bfCache 都不靠, 直接新 URL)。raw 会忽略查询串仍返回该文件最新字节。
 // 从 raw.githubusercontent.com 读文件(纯文本)。不同主机+每次 _t 破缓存。
-// 列表/content 都走这里,绕开 api.github.com 的边缘缓存(它对新近提交的关卡会回陈旧错误)。
 async function fetchRawLevel(env, key) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
@@ -91,10 +90,16 @@ async function fetchRawLevel(env, key) {
   const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/${key}.json?_=${Date.now()}`;
   try {
     const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      const e = new Error('rawHTTP ' + r.status);
+      e.status = r.status;
+      throw e;
+    }
     const text = await r.text();
     return JSON.parse(text);
-  } catch (_) { return null; }
+  } catch (e) {
+    throw e; // 让列表循环根据 e.status/msg 决定跳过还是报错,并记录
+  }
 }
 
 async function readIndex(env) {
@@ -166,8 +171,14 @@ async function getLevelList(env) {
   for (const key of keys) {
     if (seen.has(key)) continue;
     seen.add(key);
-    const lv = await fetchRawLevel(env, key);
-    if (!lv) { diag.skipped = diag.skipped || []; if (diag.skipped.length < 30) diag.skipped.push(key); continue; }
+    let lv = null, why = null;
+    try { lv = await fetchRawLevel(env, key); }
+    catch (e) { why = (e && (e.status !== undefined ? ('HTTP' + e.status) : (e.message || 'ERR'))); }
+    if (!lv) {
+      diag.skipped = diag.skipped || [];
+      if (diag.skipped.length < 30) diag.skipped.push(key + (why ? '#' + why : ''));
+      continue;
+    }
     levels.push({
       key, name: lv.name,
       totalPairs: lv.totalPairs,
