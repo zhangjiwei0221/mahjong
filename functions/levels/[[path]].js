@@ -202,7 +202,8 @@ async function getLevelList(env) {
           keys.push(x.path.slice(LEVELS_DIR.length + 1).replace(/\.json$/, ''));
         }
       });
-    } catch (_) {}
+    }
+  } catch (_) {}
     levels = keys.map(key => ({ key, name: key }));
   }
   sortLevels(levels);
