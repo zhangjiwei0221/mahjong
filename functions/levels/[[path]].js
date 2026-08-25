@@ -82,6 +82,21 @@ async function ghRequest(env, path, opts) {
 // 但 _index.json 是固定 URL → 被缓存成旧快照 → 列表永远停在旧版。
 // 解法: 改从 **raw.githubusercontent.com** 读(不同主机=不同缓存键), 且每次带 _t 时间戳
 // 破缓存(伪随机/bfCache 都不靠, 直接新 URL)。raw 会忽略查询串仍返回该文件最新字节。
+// 从 raw.githubusercontent.com 读文件(纯文本)。不同主机+每次 _t 破缓存。
+// 列表/content 都走这里,绕开 api.github.com 的边缘缓存(它对新近提交的关卡会回陈旧错误)。
+async function fetchRawLevel(env, key) {
+  const branch = env.GITHUB_BRANCH || 'main';
+  const repo = env.GITHUB_REPO;
+  if (!repo) return null;
+  const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/${key}.json?_=${Date.now()}`;
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
+    if (!r.ok) return null;
+    const text = await r.text();
+    return JSON.parse(text);
+  } catch (_) { return null; }
+}
+
 async function readIndex(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
@@ -151,28 +166,25 @@ async function getLevelList(env) {
   for (const key of keys) {
     if (seen.has(key)) continue;
     seen.add(key);
-    try {
-      const { data: content } = await ghRequest(env, `/contents/${LEVELS_DIR}/${key}.json?ref=${branch}`);
-      const raw = Buffer.from(content.content, 'base64').toString('utf8');
-      const lv = JSON.parse(raw);
-      levels.push({
-        key, name: lv.name,
-        totalPairs: lv.totalPairs,
-        tileCount: (lv.tiles || []).length,
-        darkCount: (lv.specialTiles || []).filter(s => s.type === 'dark').length,
-        score: lv._difficulty?.score ?? null,
-        hooks: lv._difficulty?.hooks ?? null,
-        darkHooks: lv._difficulty?.darkHooks ?? null,
-        hookDensity: lv._difficulty?.hookDensity ?? null,
-        darkHookDensity: lv._difficulty?.darkHookDensity ?? null,
-        clickRatio: lv._difficulty?.clickRatio ?? null,
-        maxLayer: lv._difficulty?.maxLayer ?? 0,
-        savedAt: lv.createdAt || null,
-        order: lv.order != null ? lv.order : null,
-        status: pickStatus(lv.status),
-        playTimeMs: lv.playTimeMs || null,
-      });
-    } catch (_) { /* skip bad files */ }
+    const lv = await fetchRawLevel(env, key);
+    if (!lv) { diag.skipped = diag.skipped || []; if (diag.skipped.length < 30) diag.skipped.push(key); continue; }
+    levels.push({
+      key, name: lv.name,
+      totalPairs: lv.totalPairs,
+      tileCount: (lv.tiles || []).length,
+      darkCount: (lv.specialTiles || []).filter(s => s.type === 'dark').length,
+      score: lv._difficulty?.score ?? null,
+      hooks: lv._difficulty?.hooks ?? null,
+      darkHooks: lv._difficulty?.darkHooks ?? null,
+      hookDensity: lv._difficulty?.hookDensity ?? null,
+      darkHookDensity: lv._difficulty?.darkHookDensity ?? null,
+      clickRatio: lv._difficulty?.clickRatio ?? null,
+      maxLayer: lv._difficulty?.maxLayer ?? 0,
+      savedAt: lv.createdAt || null,
+      order: lv.order != null ? lv.order : null,
+      status: pickStatus(lv.status),
+      playTimeMs: lv.playTimeMs || null,
+    });
   }
   // 诊断：用 diag 里 key 命中数/失败数，好判断 raw 读取或单关读取在哪一环丢数据
   diag.readFailures = keys.length - levels.length;
@@ -191,15 +203,8 @@ function sortLevels(levels) {
 }
 
 async function getLevel(env, key) {
-  const branch = env.GITHUB_BRANCH || 'main';
-  try {
-    const { data } = await ghRequest(env, `/contents/${LEVELS_DIR}/${encodeURIComponent(key)}.json?ref=${branch}`);
-    const raw = Buffer.from(data.content, 'base64').toString('utf8');
-    return JSON.parse(raw);
-  } catch (e) {
-    if (e.status === 404) return null;
-    throw e;
-  }
+  // 也走 raw(见 fetchRawLevel 注释:api.github /contents 对最新关卡可能回陈旧错误,单关读取也要实时)
+  return fetchRawLevel(env, key);
 }
 
 async function putLevel(env, key, levelObj) {
