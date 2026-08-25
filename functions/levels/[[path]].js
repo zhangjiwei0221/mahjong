@@ -204,8 +204,7 @@ async function getLevelList(env) {
       });
     }
   } catch (_) {}
-    levels = keys.map(key => ({ key, name: key }));
-  }
+  levels = keys.map(key => ({ key, name: key }));
   sortLevels(levels);
   return levels;
 }
