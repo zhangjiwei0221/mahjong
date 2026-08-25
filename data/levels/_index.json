@@ -1045,6 +1045,24 @@
       "darkHookDensity": 0.714
     },
     {
+      "key": "mt88jvro_ci22n1",
+      "name": "CLAUDE-E2E-REALTIME",
+      "order": null,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-25T05:39:51.828Z",
+      "totalPairs": 1,
+      "tileCount": 2,
+      "darkCount": 0,
+      "score": null,
+      "clickRatio": null,
+      "maxLayer": 0,
+      "hooks": null,
+      "darkHooks": null,
+      "hookDensity": null,
+      "darkHookDensity": null
+    },
+    {
       "key": "mt85k4fm_xye47t",
       "name": "CLAUDE-SAVE-TEST-$$",
       "order": null,
