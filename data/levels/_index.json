@@ -1045,6 +1045,24 @@
       "darkHookDensity": 0.714
     },
     {
+      "key": "mt8t77pb_affme1",
+      "name": "TMP-DELETE-TEST",
+      "order": null,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-25T15:17:52.703Z",
+      "totalPairs": 2,
+      "tileCount": 4,
+      "darkCount": 0,
+      "score": null,
+      "clickRatio": null,
+      "maxLayer": 0,
+      "hooks": null,
+      "darkHooks": null,
+      "hookDensity": null,
+      "darkHookDensity": null
+    },
+    {
       "key": "mt83qx0j_fbxtdl",
       "name": "57",
       "order": null,
