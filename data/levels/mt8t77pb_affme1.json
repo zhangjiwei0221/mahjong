@@ -1,0 +1,42 @@
+{
+  "key": "mt8t77pb_affme1",
+  "name": "TMP-DELETE-TEST",
+  "levelId": 1,
+  "totalPairs": 2,
+  "tiles": [
+    {
+      "id": "a1",
+      "typeId": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 0
+    },
+    {
+      "id": "a2",
+      "typeId": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 2
+    },
+    {
+      "id": "a3",
+      "typeId": 2,
+      "layer": 0,
+      "row": 0,
+      "col": 4
+    },
+    {
+      "id": "a4",
+      "typeId": 2,
+      "layer": 0,
+      "row": 0,
+      "col": 6
+    }
+  ],
+  "specialTiles": [],
+  "_difficulty": null,
+  "order": null,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-25T15:17:52.703Z"
+}
