@@ -1,0 +1,30 @@
+{
+  "key": "mt88w3pe_8k834a",
+  "name": "第三关-E2E",
+  "levelId": 1,
+  "totalPairs": 1,
+  "tiles": [
+    {
+      "id": 1,
+      "layer": 0,
+      "row": 0,
+      "col": 0,
+      "typeId": 9,
+      "isDark": false
+    },
+    {
+      "id": 2,
+      "layer": 0,
+      "row": 0,
+      "col": 2,
+      "typeId": 9,
+      "isDark": false
+    }
+  ],
+  "specialTiles": [],
+  "_difficulty": null,
+  "order": null,
+  "status": "wip",
+  "playTimeMs": null,
+  "createdAt": "2026-08-25T05:49:21.986Z"
+}
