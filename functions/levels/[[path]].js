@@ -103,6 +103,31 @@ async function fetchRawLevel(env, key) {
 // 列列表只需 1 次 fetch(受 Cloudflare Worker「单次调用最多 50 个子请求」限制,
 // 绝不能像旧版那样每个关卡一次 fetch——69 关=超出上限被砍剩 47)。
 // 走 raw(不同主机+每次 _t 破缓存),确保实时。
+// ===== Cloudflare KV 可靠列表 =====
+// 背景: Pages Functions 的 HTTP 子请求(无论 raw/api.github、加不加 cache 头/时间戳/随机串)
+// 都会被该运行时边缘缓存或返回陈旧响应(实测:直接 curl = 最新,函数内 fetch = 旧版),
+// 且单次调用有 50 子请求上限。KV 绑定读写不经 HTTP、无子请求、无缓存,是唯一可靠路径。
+// 若绑定了名为 LEVELS 的 KV 则优先用它;未绑定则回退 GitHub 索引(raw),功能不退化。
+const KV_LIST_KEY = 'levels-list';
+
+async function readKvList(env) {
+  try {
+    if (!env || !env.LEVELS) return null;
+    const v = await env.LEVELS.get(KV_LIST_KEY);
+    if (!v) return null;
+    const a = JSON.parse(v);
+    return Array.isArray(a) ? a : null;
+  } catch (_) { return null; }
+}
+
+async function writeKvList(env, arr) {
+  try {
+    if (!env || !env.LEVELS) return false;
+    await env.LEVELS.put(KV_LIST_KEY, JSON.stringify(arr));
+    return true;
+  } catch (_) { return false; }
+}
+
 async function readMetaList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
@@ -161,19 +186,22 @@ async function writeMetaList(env, metaArr) {
 
 async function getLevelList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
-  let levels = await readMetaList(env);
+  // 有 KV 绑定 → 直接读 KV(可靠、不陈旧)
+  let levels = await readKvList(env);
+  if (levels) { sortLevels(levels); return levels; }
+  // 无 KV/未播种 → 从 GitHub 索引读,并顺便播种 KV(下次直接读 KV)
+  levels = await readMetaList(env);
+  if (levels) { await writeKvList(env, levels); sortLevels(levels); return levels; }
   // _index.json 缺失/损坏/旧格式(keys而非levels) → 回退 git trees 枚举最小列表
-  if (!levels) {
-    const keys = [];
-    try {
-      const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${cb()}`);
-      if (Array.isArray(tree && tree.tree)) {
-        tree.tree.forEach(function (x) {
-          if (x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 && x.path.endsWith('.json') && x.path.indexOf('_index.json') < 0) {
-            keys.push(x.path.slice(LEVELS_DIR.length + 1).replace(/\.json$/, ''));
-          }
-        });
-      }
+  const keys = [];
+  try {
+    const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${cb()}`);
+    if (Array.isArray(tree && tree.tree)) {
+      tree.tree.forEach(function (x) {
+        if (x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 && x.path.endsWith('.json') && x.path.indexOf('_index.json') < 0) {
+          keys.push(x.path.slice(LEVELS_DIR.length + 1).replace(/\.json$/, ''));
+        }
+      });
     } catch (_) {}
     levels = keys.map(key => ({ key, name: key }));
   }
@@ -244,16 +272,29 @@ async function readBody(request) {
 }
 
 // 入口：/levels 与 /levels/:key
-// 保存/改名/排序后同步 _index.json：读现有元数据 → upsert 或按 key 删除 → 写回。
+// 保存/改名/排序后同步列表：读现有元数据 → upsert 或按 key 删除 → 写回。
+// 有 KV 绑定直接读写 KV(实时);否则写 GitHub _index.json。
 async function syncIndexMeta(env, entry, removeKey) {
-  let meta = await readMetaList(env) || [];
+  let meta = await readKvList(env);
+  if (meta) {
+    meta = applyChange(meta, entry, removeKey);
+    await writeKvList(env, meta);
+    return;
+  }
+  meta = await readMetaList(env) || [];
+  meta = applyChange(meta, entry, removeKey);
+  await writeMetaList(env, meta);
+  await writeKvList(env, meta);
+}
+
+function applyChange(meta, entry, removeKey) {
   if (removeKey) {
-    meta = meta.filter(m => m.key !== removeKey);
+    return meta.filter(m => m.key !== removeKey);
   } else if (entry) {
     const i = meta.findIndex(m => m.key === entry.key);
     if (i >= 0) meta[i] = entry; else meta.push(entry);
   }
-  await writeMetaList(env, meta);
+  return meta;
 }
 
 export async function onRequest(context) {
