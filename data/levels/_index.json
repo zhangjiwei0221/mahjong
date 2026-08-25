@@ -1045,6 +1045,24 @@
       "darkHookDensity": 0.714
     },
     {
+      "key": "mt8t9oin_1dbf5v",
+      "name": "TMP-GHOST",
+      "order": null,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-25T15:19:47.807Z",
+      "totalPairs": 1,
+      "tileCount": 2,
+      "darkCount": 0,
+      "score": null,
+      "clickRatio": null,
+      "maxLayer": 0,
+      "hooks": null,
+      "darkHooks": null,
+      "hookDensity": null,
+      "darkHookDensity": null
+    },
+    {
       "key": "mt83qx0j_fbxtdl",
       "name": "57",
       "order": null,
