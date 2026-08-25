@@ -377,13 +377,19 @@ export async function onRequest(context) {
       return json(200, { ok: true });
     }
 
-    // DELETE /levels/:key —— 删除
+    // DELETE /levels/:key —— 删除(幂等)
+    // 列表兜底路径读 raw 索引可能偶发陈旧,用户看到"幽灵关"——该关文件其实已被删(比如协作者删过)。
+    // 此时删文件会 404,但我们必须照样把索引条目清掉并返回成功,否则一删就报"删除失败"。
+    // 幂等:文件在→删掉;文件已不存在→仅清索引;都当作删除成功。
     if (request.method === 'DELETE' && key) {
       const passCheck = checkPass(request.headers, env);
       if (!passCheck.ok) return json(401, { error: passCheck.msg });
-      const ok = await deleteLevel(env, key);
-      if (ok) await syncIndexMeta(env, null, key);
-      return json(ok ? 200 : 404, { ok });
+      let okFile = false;
+      try { okFile = await deleteLevel(env, key); }
+      catch (e) { return json(500, { error: '删除失败: ' + (e.message || String(e)) }); }
+      // 无论文件是否已存在,都同步索引移除该 key(幽灵项也会被清掉)
+      await syncIndexMeta(env, null, key);
+      return json(200, { ok: true, ghost: !okFile });
     }
 
     return json(405, { error: '不支持的方法' });

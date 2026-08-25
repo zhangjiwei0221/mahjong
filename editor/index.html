@@ -753,6 +753,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.7 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 修复工作台「点击删除显示删除失败」：列表兜底路径读 raw 索引偶发陈旧，会显示「幽灵关」——其文件其实已被删（比如协作者删过）。旧逻辑删文件 404 就直接报失败。<br>
+          • 改为幂等删除：文件在→删除；文件已不存在→仅清索引条目；两者都返回成功，幽灵项随手清掉、不再误报「删除失败」
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.6 · 2026-08-25</div>
         <div class="gh-desc">
           • 工作台「保存后看不到新关」根治（你和你同学都中招）：实测真根因是 Cloudflare Worker 单次调用最多 50 个 fetch 子请求，旧实现列表逐个读关卡文件（69 关=70 次）超限被砍剩 47，最新存档永远不进列表。之前的缓存/破缓存修复都在治错症。<br>
@@ -2875,7 +2882,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.6'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.7'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
