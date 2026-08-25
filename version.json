@@ -1,13 +1,19 @@
 {
-  "version": "v4.9.5",
+  "version": "v4.9.6",
   "updated": "2026-08-25",
-  "notes": "工作台列表改读 raw.githubusercontent 破边缘缓存,列表实时反映新存档",
+  "notes": "工作台列表改读聚合索引(_index.json 带元数据),根治'保存后看不到'",
   "changelog": [
+    {
+      "version": "v4.9.6",
+      "date": "2026-08-25",
+      "notes": "工作台列表根治:实测定位到真根因——Cloudflare Worker 单次调用最多 50 个 fetch 子请求,旧实现的列表逐个读每个关卡文件(69 关=70 次)超限被砍剩 47,所以最新存档永远看不到、两人都中招(之前的缓存/破缓存修复都在治错症)。改为 _index.json 存全量元数据,列列表=1 次读取;保存/改名/排序/删除都会同步索引,保存后立即实时可见。"
+    },
     {
       "version": "v4.9.5",
       "date": "2026-08-25",
-      "notes": "工作台列表仍停在旧关数:v4.9.3 的 index 也失败(实测 GitHub 直读 _index.json 是 69 关、部署的 /levels 只回 47)。实测定案:Pages Functions 对 api.github.com 子响应做边缘缓存,cache:no-store 压不住固定 URL,所以保存/单关读取实时、唯独列表(固定 URL)陈旧。改列表改从 raw.githubusercontent.com 读(不同主机+每次 _t 时间戳破缓存),列表实时反映新存关。"
+      "notes": "工作台列表改读 raw.githubusercontent + 时间戳破缓存,尝试解决列表陈旧(后证明根因是 50 子请求上限,v4.9.6 才根治)"
     },
+
     {
       "version": "v4.9.4",
       "date": "2026-08-25",

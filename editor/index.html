@@ -753,6 +753,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.6 · 2026-08-25</div>
+        <div class="gh-desc">
+          • 工作台「保存后看不到新关」根治（你和你同学都中招）：实测真根因是 Cloudflare Worker 单次调用最多 50 个 fetch 子请求，旧实现列表逐个读关卡文件（69 关=70 次）超限被砍剩 47，最新存档永远不进列表。之前的缓存/破缓存修复都在治错症。<br>
+          • 改成 _index.json 存全量列表元数据：列列表=1 次读取不再超限；保存/改名/排序/删除都会同步索引，保存后立刻实时可见
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.5 · 2026-08-25</div>
         <div class="gh-desc">
           • 工作台「已保存关看不到」根治：实测定案是 Pages Functions 对 api.github.com 子请求做边缘缓存(cache:no-store 压不住固定 URL)，导致列表永远停在旧快照、保存/单关读取却实时。<br>
@@ -2868,7 +2875,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.5'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.6'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

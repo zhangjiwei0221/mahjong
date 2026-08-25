@@ -82,7 +82,7 @@ async function ghRequest(env, path, opts) {
 // 但 _index.json 是固定 URL → 被缓存成旧快照 → 列表永远停在旧版。
 // 解法: 改从 **raw.githubusercontent.com** 读(不同主机=不同缓存键), 且每次带 _t 时间戳
 // 破缓存(伪随机/bfCache 都不靠, 直接新 URL)。raw 会忽略查询串仍返回该文件最新字节。
-// 从 raw.githubusercontent.com 读文件(纯文本)。不同主机+每次 _t 破缓存。
+// 从 raw.githubusercontent.com 读单个关卡文件(纯文本)。单关读取走这里,避免 api.github 那些坑。
 async function fetchRawLevel(env, key) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
@@ -90,19 +90,16 @@ async function fetchRawLevel(env, key) {
   const url = `https://raw.githubusercontent.com/${repo}/${branch}/${LEVELS_DIR}/${key}.json?_=${Date.now()}`;
   try {
     const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
-    if (!r.ok) {
-      const e = new Error('rawHTTP ' + r.status);
-      e.status = r.status;
-      throw e;
-    }
-    const text = await r.text();
-    return JSON.parse(text);
-  } catch (e) {
-    throw e; // 让列表循环根据 e.status/msg 决定跳过还是报错,并记录
-  }
+    if (!r.ok) return null;
+    return JSON.parse(await r.text());
+  } catch (_) { return null; }
 }
 
-async function readIndex(env) {
+// 读 _index.json 里的元数据列表.列表元数据全存这一个文件里,所以
+// 列列表只需 1 次 fetch(受 Cloudflare Worker「单次调用最多 50 个子请求」限制,
+// 绝不能像旧版那样每个关卡一次 fetch——69 关=超出上限被砍剩 47)。
+// 走 raw(不同主机+每次 _t 破缓存),确保实时。
+async function readMetaList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
   const repo = env.GITHUB_REPO;
   if (!repo) return null;
@@ -111,30 +108,46 @@ async function readIndex(env) {
     const r = await fetch(url, { headers: { 'User-Agent': 'mahjong-workbench' }, cache: 'no-store' });
     if (!r.ok) return null;
     const idx = await r.json();
-    return Array.isArray(idx.keys) ? idx.keys : null;
+    return Array.isArray(idx.levels) ? idx.levels : null;
   } catch (_) { return null; }
 }
 
-// 向 _index.json 追加一个 key（读-改-写，带 sha；冲突重试）。失败只影响索引，不影响关卡本身已保存。
-async function appendIndex(env, key) {
+// 把关卡对象换算成列表要的元数据条目(与 readMetaList 返回的元素同形)
+function metaFromLevel(key, lv) {
+  const d = lv._difficulty || {};
+  return {
+    key,
+    name: lv.name || '',
+    order: pickOrder(lv.order),
+    status: pickStatus(lv.status),
+    playTimeMs: lv.playTimeMs || null,
+    savedAt: lv.createdAt || null,
+    totalPairs: lv.totalPairs != null ? lv.totalPairs : Math.floor((lv.tiles || []).length / 2),
+    tileCount: (lv.tiles || []).length,
+    darkCount: (lv.specialTiles || []).filter(s => s && s.type === 'dark').length,
+    score: d.score ?? null,
+    clickRatio: d.clickRatio ?? null,
+    maxLayer: d.maxLayer ?? 0,
+    hooks: d.hooks ?? null,
+    darkHooks: d.darkHooks ?? null,
+    hookDensity: d.hookDensity ?? null,
+    darkHookDensity: d.darkHookDensity ?? null,
+  };
+}
+
+// 把新的元数据列表写回 _index.json(读-改-写, 带 sha; 冲突重试)。1 次读 sha + 1 次 PUT。
+async function writeMetaList(env, metaArr) {
   const branch = env.GITHUB_BRANCH || 'main';
   const filePath = `${LEVELS_DIR}/_index.json`;
+  sortLevels(metaArr);
+  const content = Buffer.from(JSON.stringify({ levels: metaArr }, null, 2)).toString('base64');
   for (let att = 0; att < 3; att++) {
-    let sha = null, keys = [];
+    let sha = null;
     try {
       const { data } = await ghRequest(env, `/contents/${filePath}?ref=${branch}`);
       sha = data.sha;
-      const raw = Buffer.from(data.content, 'base64').toString('utf8');
-      const idx = JSON.parse(raw);
-      if (Array.isArray(idx.keys)) keys = idx.keys;
     } catch (e) { if (e.status !== 404) return false; } // 不存在 → 新建
-    if (keys.includes(key)) return true;
-    keys.push(key);
-    const body = {
-      message: `workbench: idx add ${key}`,
-      content: Buffer.from(JSON.stringify({ keys: keys.sort() }, null, 2)).toString('base64'),
-      branch,
-    };
+    const body = { message: `workbench: idx update (${metaArr.length})`, content, branch };
     if (sha) body.sha = sha;
     try { await ghRequest(env, `/contents/${filePath}`, { method: 'PUT', body }); return true; }
     catch (_) { if (att >= 2) return false; } // sha 冲突 → 重读重试
@@ -144,15 +157,10 @@ async function appendIndex(env, key) {
 
 async function getLevelList(env) {
   const branch = env.GITHUB_BRANCH || 'main';
-  const levels = [];
-  const diag = { readIndexSource: 'none', readIndexCount: 0 };
-  let keys = await readIndex(env);
-  diag.readIndexCount = Array.isArray(keys) ? keys.length : 0;
-  diag.readIndexSource = Array.isArray(keys) ? 'raw' : 'missing';
-  // _index.json 缺失/损坏或 raw 读取失败 → 回退 git trees 枚举（可能陈旧，至少能列出已有的）
-  if (!keys || keys.length === 0) {
-    diag.readIndexSource = 'trees-fallback';
-    keys = [];
+  let levels = await readMetaList(env);
+  // _index.json 缺失/损坏/旧格式(keys而非levels) → 回退 git trees 枚举最小列表
+  if (!levels) {
+    const keys = [];
     try {
       const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${Date.now()}`);
       if (Array.isArray(tree && tree.tree)) {
@@ -162,46 +170,11 @@ async function getLevelList(env) {
           }
         });
       }
-      diag.readIndexCount = keys.length;
     } catch (_) {}
-  } else {
-    diag.readIndexSource = 'raw';
+    levels = keys.map(key => ({ key, name: key }));
   }
-  const seen = new Set();
-  for (const key of keys) {
-    if (seen.has(key)) continue;
-    seen.add(key);
-    let lv = null, why = null;
-    try { lv = await fetchRawLevel(env, key); }
-    catch (e) { why = (e && (e.status !== undefined ? ('HTTP' + e.status) : (e.message || 'ERR'))); }
-    if (!lv) {
-      diag.skipped = diag.skipped || [];
-      if (diag.skipped.length < 30) diag.skipped.push(key + (why ? '#' + why : ''));
-      continue;
-    }
-    levels.push({
-      key, name: lv.name,
-      totalPairs: lv.totalPairs,
-      tileCount: (lv.tiles || []).length,
-      darkCount: (lv.specialTiles || []).filter(s => s.type === 'dark').length,
-      score: lv._difficulty?.score ?? null,
-      hooks: lv._difficulty?.hooks ?? null,
-      darkHooks: lv._difficulty?.darkHooks ?? null,
-      hookDensity: lv._difficulty?.hookDensity ?? null,
-      darkHookDensity: lv._difficulty?.darkHookDensity ?? null,
-      clickRatio: lv._difficulty?.clickRatio ?? null,
-      maxLayer: lv._difficulty?.maxLayer ?? 0,
-      savedAt: lv.createdAt || null,
-      order: lv.order != null ? lv.order : null,
-      status: pickStatus(lv.status),
-      playTimeMs: lv.playTimeMs || null,
-    });
-  }
-  // 诊断：用 diag 里 key 命中数/失败数，好判断 raw 读取或单关读取在哪一环丢数据
-  diag.readFailures = keys.length - levels.length;
-  diag.finalCount = levels.length;
   sortLevels(levels);
-  return { levels, diag };
+  return levels;
 }
 
 function sortLevels(levels) {
@@ -267,6 +240,18 @@ async function readBody(request) {
 }
 
 // 入口：/levels 与 /levels/:key
+// 保存/改名/排序后同步 _index.json：读现有元数据 → upsert 或按 key 删除 → 写回。
+async function syncIndexMeta(env, entry, removeKey) {
+  let meta = await readMetaList(env) || [];
+  if (removeKey) {
+    meta = meta.filter(m => m.key !== removeKey);
+  } else if (entry) {
+    const i = meta.findIndex(m => m.key === entry.key);
+    if (i >= 0) meta[i] = entry; else meta.push(entry);
+  }
+  await writeMetaList(env, meta);
+}
+
 export async function onRequest(context) {
   const { request, env, params } = context;
 
@@ -281,8 +266,8 @@ export async function onRequest(context) {
   try {
     // GET /levels —— 列出所有关卡（公开，无需口令）
     if (request.method === 'GET' && !key) {
-      const { levels, diag } = await getLevelList(env);
-      return json(200, { levels, _diag: diag });
+      const levels = await getLevelList(env);
+      return json(200, { levels });
     }
 
     // GET /levels/:key —— 单个完整关卡
@@ -322,7 +307,7 @@ export async function onRequest(context) {
         createdAt: new Date().toISOString(),
       };
       await putLevel(env, k, payload);
-      await appendIndex(env, k); // 把新关 key 加进索引,工作台列表就能立刻实时看到
+      await syncIndexMeta(env, metaFromLevel(k, payload)); // 列表元数据也走索引,工作台立刻实时看到
       return json(200, { key: k, name });
     }
 
@@ -343,6 +328,7 @@ export async function onRequest(context) {
         updatedAt: new Date().toISOString(),
       };
       await putLevel(env, key, merged);
+      await syncIndexMeta(env, metaFromLevel(key, merged)); // 排序/改名/试玩时长同步到列表
       return json(200, { ok: true });
     }
 
@@ -351,6 +337,7 @@ export async function onRequest(context) {
       const passCheck = checkPass(request.headers, env);
       if (!passCheck.ok) return json(401, { error: passCheck.msg });
       const ok = await deleteLevel(env, key);
+      if (ok) await syncIndexMeta(env, null, key);
       return json(ok ? 200 : 404, { ok });
     }
 
