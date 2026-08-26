@@ -937,6 +937,24 @@
       "darkHookDensity": 0.786
     },
     {
+      "key": "mt9iq8e3_oxop69",
+      "name": "55",
+      "order": 55,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-26T03:12:30.459Z",
+      "totalPairs": 50,
+      "tileCount": 100,
+      "darkCount": 50,
+      "score": 157,
+      "clickRatio": 0.19,
+      "maxLayer": 6,
+      "hooks": 43,
+      "darkHooks": 39,
+      "hookDensity": 0.86,
+      "darkHookDensity": 0.78
+    },
+    {
       "key": "mt83yqbj_y19024",
       "name": "57",
       "order": 57,
