@@ -19,24 +19,6 @@
       "darkHookDensity": 0
     },
     {
-      "key": "mt7nqa8i_o8lh7n",
-      "name": "2",
-      "order": 2,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-24T19:56:58.578Z",
-      "totalPairs": 24,
-      "tileCount": 48,
-      "darkCount": 0,
-      "score": 82,
-      "clickRatio": 0.208,
-      "maxLayer": 2,
-      "hooks": 22,
-      "darkHooks": 0,
-      "hookDensity": 0.917,
-      "darkHookDensity": 0
-    },
-    {
       "key": "mt7mgx10_qhug6o",
       "name": "2",
       "order": 2,
