@@ -91,24 +91,6 @@
       "darkHookDensity": 0.208
     },
     {
-      "key": "mt7i44zd_32napp",
-      "name": "2",
-      "order": 2,
-      "status": "wip",
-      "playTimeMs": 35768,
-      "savedAt": "2026-08-24T17:19:47.257Z",
-      "totalPairs": 26,
-      "tileCount": 52,
-      "darkCount": 0,
-      "score": 86,
-      "clickRatio": 0.115,
-      "maxLayer": 3,
-      "hooks": 24,
-      "darkHooks": 0,
-      "hookDensity": 0.923,
-      "darkHookDensity": 0
-    },
-    {
       "key": "mt2le8lp_cfozwg",
       "name": "11关，引入暗牌",
       "order": 11,
