@@ -756,6 +756,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.12 · 2026-08-28</div>
+        <div class="gh-desc">
+          • 修复按底座堆塔时边列(最左/最右列)上层常年没牌盖的问题:①选位顺序先随机再排序,不再固定从左往右(旧逻辑边列永远最后被考虑,~13 张配额经常轮不到);②第一层加"边列保底"先占 1 张再铺其余;③上层支撑从"只看正下方一层"放宽为"看所有下层"(桥式搭放,与最终校验对齐)<br>
+          • 实测(满6×8底座×50次):边列第二层覆盖 26%→100%,边列第三层+有牌 2%→100%,中间列不受影响,四种底座形状生成成功率 30/30
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.11 · 2026-08-28</div>
         <div class="gh-desc">
           • 编辑器「保存到工作台」序号框从单独第二行挪到第一行末尾，和口令、关卡名并列（一行式布局更紧凑）
@@ -2926,7 +2933,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.11'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.12'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

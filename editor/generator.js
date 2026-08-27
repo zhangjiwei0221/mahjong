@@ -104,10 +104,24 @@ function generateLayer(lowerArr, lowerKeys, style, count, mode = 'ordered', mirr
 
   // ordered：偏好行优先，其次行列有序密排（互锁喂上层）
   // random：打乱后随机挑（有机变化）
-  candidates.sort((a, b) => a.order - b.order);
-  if (mode === 'random') shuffle(candidates);
+  // 先 shuffle 再稳定排序：ordered 同优先级内不再固定从 row0 开始（旧插入序),
+  // 否则视觉边列(内部 row±5)永远排最后,~13 张配额经常轮不到 → 边列 L1 覆盖率仅 ~26%
+  shuffle(candidates);
+  if (mode === 'ordered') candidates.sort((a, b) => a.order - b.order);
 
   const selected = new Set();
+  // 边列保底(仅 L1/ordered):先在视觉最边列占 1 张(候选 row ≥ 最大row-1,含跨列半格位),
+  // 再铺其余——纯随机时边列 ~52% 整列落空(实测 L1 覆盖率仅 48%),整列全可点。
+  // mirror 展开会自动补对称侧;L2+ 不保底(桥式支撑已让它们 98% 覆盖边列)。
+  if (mode === 'ordered' && candidates.length > 0) {
+    const maxRow = Math.max(...candidates.map(c => c.row));
+    const edgePool = candidates.filter(c => c.row >= maxRow - 1);
+    if (edgePool.length > 0) {
+      shuffle(edgePool);
+      const e = edgePool[0];
+      selected.add(keyOf(e.row, e.col));
+    }
+  }
   for (const cand of candidates) {
     if (selected.size >= count) break;
     let tooClose = false;
@@ -178,8 +192,11 @@ function generateFromTemplate(template, options = {}) {
   }
   // 如果编辑器层数不够，继续往上堆
   for (let l = template.layers.length; l < generateLayerCount; l++) {
-    const lowerArr = newLayers[l - 1].cells;
-    const lowerKeys = new Set(lowerArr.map(c => keyOf(c.row, c.col)));
+    // 支撑看所有下层(桥式搭放,与 levelHasFullSupport 兜底一致,现实麻将也允许架在隔层上);
+    // 重叠检查(lowerKeys)仍只看正下层——同位直接叠放只有相邻层才算重叠
+    const lowerArr = [];
+    for (let k = 0; k < l; k++) lowerArr.push(...newLayers[k].cells);
+    const lowerKeys = new Set(newLayers[l - 1].cells.map(c => keyOf(c.row, c.col)));
     const count = calcCount(l, generateLayerCount);
     const mode = l === 1 ? 'ordered' : 'random';
     const selected = generateLayer(lowerArr, lowerKeys, style, count, mode, mirror);
@@ -257,11 +274,13 @@ function validateShape(shape, opts = {}) {
     });
   }
 
-  // 支撑
+  // 支撑:看所有下层(桥式搭放,与生成端 generateFromTemplate、兜底 levelHasFullSupport 三处一致)
   layerNums.forEach(l => {
     if (l === 0) return;
+    const allLower = [];
+    for (let k = 0; k < l; k++) allLower.push(...byLayer[k]);
     byLayer[l].forEach(t => {
-      if (!hasSupport(t.row, t.col, byLayer[l - 1])) {
+      if (!hasSupport(t.row, t.col, allLower)) {
         errors.push(`[支撑] L${l}(${t.row},${t.col})`);
       }
     });
