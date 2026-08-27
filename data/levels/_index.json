@@ -991,24 +991,6 @@
       "darkHookDensity": 0.714
     },
     {
-      "key": "mtb89xz2_uu3psy",
-      "name": "DELREPRO",
-      "order": null,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-27T07:55:26.654Z",
-      "totalPairs": 1,
-      "tileCount": 2,
-      "darkCount": 0,
-      "score": null,
-      "clickRatio": null,
-      "maxLayer": 0,
-      "hooks": null,
-      "darkHooks": null,
-      "hookDensity": null,
-      "darkHookDensity": null
-    },
-    {
       "key": "mt83qx0j_fbxtdl",
       "name": "57",
       "order": null,
