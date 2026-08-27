@@ -47,12 +47,14 @@ function hasSupport(row, col, lowerArr) {
 // 兜底：校验整关每张"可消麻将"(排除吐牌机本体,它不是可消的牌)是否被下方任意层托住(象限规则)。
 // validateShape 只在校对偶化/装配前的 shape；mirror 展开、偶化删牌、队列/回填重排都可能让上层牌悬空,
 // 用这份在【最终输出】上的检查兜底:但凡有一张悬空就判该塔形不可用(让上层循环重搭新塔形)。
+// 注意:这里必须用"只看正下方一层"的严格口径(与编辑器悬空判定 hasSupportAtLayer 一致)。
+// 曾经是"看所有下层"的宽松口径——隔层桥牌能过这关,却被编辑器判悬空报"支撑限制未通过"。
 function levelHasFullSupport(arr) {
   const playable = arr.filter(t => t.type !== 'spitter');
   for (let i = 0; i < playable.length; i++) {
     const t = playable[i];
     if (t.layer <= 0) continue;
-    const lower = playable.filter(o => o !== t && o.layer < t.layer);
+    const lower = playable.filter(o => o !== t && o.layer === t.layer - 1);
     if (!hasSupport(t.row, t.col, lower)) return false;
   }
   return true;
@@ -192,11 +194,11 @@ function generateFromTemplate(template, options = {}) {
   }
   // 如果编辑器层数不够，继续往上堆
   for (let l = template.layers.length; l < generateLayerCount; l++) {
-    // 支撑看所有下层(桥式搭放,与 levelHasFullSupport 兜底一致,现实麻将也允许架在隔层上);
-    // 重叠检查(lowerKeys)仍只看正下层——同位直接叠放只有相邻层才算重叠
-    const lowerArr = [];
-    for (let k = 0; k < l; k++) lowerArr.push(...newLayers[k].cells);
-    const lowerKeys = new Set(newLayers[l - 1].cells.map(c => keyOf(c.row, c.col)));
+    // 支撑只看正下方一层(与编辑器悬空判定 hasSupportAtLayer 同规则——
+    // 曾经试过放宽为"看所有下层"(桥式搭放),结果编辑器把隔层牌全判悬空报
+    // "支撑限制未通过",两端规则打架,已回退)
+    const lowerArr = newLayers[l - 1].cells;
+    const lowerKeys = new Set(lowerArr.map(c => keyOf(c.row, c.col)));
     const count = calcCount(l, generateLayerCount);
     const mode = l === 1 ? 'ordered' : 'random';
     const selected = generateLayer(lowerArr, lowerKeys, style, count, mode, mirror);
@@ -274,13 +276,11 @@ function validateShape(shape, opts = {}) {
     });
   }
 
-  // 支撑:看所有下层(桥式搭放,与生成端 generateFromTemplate、兜底 levelHasFullSupport 三处一致)
+  // 支撑:只看正下方一层(与编辑器悬空判定 hasSupportAtLayer 同规则,别放宽成桥式)
   layerNums.forEach(l => {
     if (l === 0) return;
-    const allLower = [];
-    for (let k = 0; k < l; k++) allLower.push(...byLayer[k]);
     byLayer[l].forEach(t => {
-      if (!hasSupport(t.row, t.col, allLower)) {
+      if (!hasSupport(t.row, t.col, byLayer[l - 1])) {
         errors.push(`[支撑] L${l}(${t.row},${t.col})`);
       }
     });

@@ -756,6 +756,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.13 · 2026-08-28</div>
+        <div class="gh-desc">
+          • 修复 v4.9.12 引入的「支撑限制未通过」悬空报错：该版本把生成端支撑放宽为"看所有下层"（桥式搭放），但编辑器悬空判定只看正下方一层，隔层桥牌回到编辑器全被判悬空。已回退桥式，生成端支撑统一回"只看正下方一层"；并把最终兜底校验 levelHasFullSupport 也收紧为同口径（原宽松口径会放过偶化删牌后的悬空）<br>
+          • 边列覆盖修复效果不受影响（靠选位公平化+边列保底实现）：实测满6×8底座×50次边列第二层视觉覆盖仍 100%，且 0 关含悬空
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.12 · 2026-08-28</div>
         <div class="gh-desc">
           • 修复按底座堆塔时边列(最左/最右列)上层常年没牌盖的问题:①选位顺序先随机再排序,不再固定从左往右(旧逻辑边列永远最后被考虑,~13 张配额经常轮不到);②第一层加"边列保底"先占 1 张再铺其余;③上层支撑从"只看正下方一层"放宽为"看所有下层"(桥式搭放,与最终校验对齐)<br>
@@ -2933,7 +2940,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.12'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.13'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
