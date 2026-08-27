@@ -883,6 +883,24 @@
       "darkHookDensity": 0.302
     },
     {
+      "key": "mtbw1z8u_8l1s7p",
+      "name": "194 旋转",
+      "order": 194,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-27T19:01:05.838Z",
+      "totalPairs": 38,
+      "tileCount": 76,
+      "darkCount": 11,
+      "score": 135,
+      "clickRatio": 0.145,
+      "maxLayer": 4,
+      "hooks": 36,
+      "darkHooks": 11,
+      "hookDensity": 0.947,
+      "darkHookDensity": 0.289
+    },
+    {
       "key": "mt83lmng_byvjsw",
       "name": "76",
       "order": null,
