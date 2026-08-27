@@ -314,7 +314,7 @@ async function connect() {
   setStatus('加载中…', '');
   try {
     const r = await api('');
-    levels = r.levels || [];
+    levels = filterDeleted(r.levels || []);
     renderTable();
     renderSummary();
     setStatus('已连接 · ' + levels.length + ' 关', 'ok');
@@ -520,15 +520,19 @@ function getLocalDeletedKeys() {
   catch (_) { return new Set(); }
 }
 
+// 本端已确认删除的 key 统一过滤:connect() 和 refresh() 都要走。
+// (之前只在 refresh() 过滤,而「连接 / 刷新」按钮和页面初次加载走的是 connect() →
+//  陈旧缓存的列表把刚删的关又显示回来,计数从 58 变 59。)
+function filterDeleted(list) {
+  const deleted = getLocalDeletedKeys();
+  return deleted.size ? list.filter(x => !deleted.has(x.key)) : list;
+}
+
 async function refresh() {
   if (!getPass()) return;
   try {
     const r = await api('');
-    let fetched = r.levels || [];
-    // 过滤掉本端已确认删除的 key(防陈旧缓存把"已删关"重新显示出来)
-    const deleted = getLocalDeletedKeys();
-    if (deleted.size) fetched = fetched.filter(x => !deleted.has(x.key));
-    levels = fetched;
+    levels = filterDeleted(r.levels || []);
     renderTable();
     renderSummary();
   } catch (e) {

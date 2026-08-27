@@ -141,6 +141,42 @@ async function readMetaList(env) {
   } catch (_) { return null; }
 }
 
+// ===== 索引对账(真值 = git 树里的实际文件清单) =====
+// 背景: _index.json 是"读→改→写"维护的,读可能拿到陈旧快照。两人并发操作时
+// (一人删/一人存),旧快照覆盖会把已删条目写回索引 → "幽灵关",计数越刷越多。
+// 对策: 读/写索引前对账一次 git trees(1 个子请求,文件清单 = 真值):
+//   ① 索引有、文件无 → 剔除(幽灵清理);② 文件有、索引无 → 补最小条目救回。
+// 宽限: 10 分钟内新存的关不剔(树读取也可能陈旧,不能错杀刚保存的)。
+const RECONCILE_GRACE_MS = 10 * 60 * 1000;
+
+async function listTreeLevelKeys(env) {
+  const branch = env.GITHUB_BRANCH || 'main';
+  try {
+    const { data: tree } = await ghRequest(env, `/git/trees/${branch}?recursive=1&_t=${cb()}`);
+    const keys = new Set();
+    if (Array.isArray(tree && tree.tree)) {
+      tree.tree.forEach(x => {
+        if (x.type === 'blob' && x.path && x.path.indexOf(LEVELS_DIR + '/') === 0 &&
+            x.path.endsWith('.json') && x.path.indexOf('_index.json') < 0) {
+          keys.add(x.path.slice(LEVELS_DIR.length + 1).replace(/\.json$/, ''));
+        }
+      });
+    }
+    return keys;
+  } catch (_) { return null; }
+}
+
+// meta 与树对账。树读不到 → 原样返回(不对账)。
+async function reconcileMeta(env, meta) {
+  const treeKeys = await listTreeLevelKeys(env);
+  if (!treeKeys) return meta;
+  const fresh = m => m.savedAt && (Date.now() - new Date(m.savedAt).getTime()) < RECONCILE_GRACE_MS;
+  const out = meta.filter(m => treeKeys.has(m.key) || fresh(m));
+  const have = new Set(out.map(m => m.key));
+  treeKeys.forEach(k => { if (!have.has(k)) out.push({ key: k, name: k, order: null, status: 'wip' }); });
+  return out;
+}
+
 // 把关卡对象换算成列表要的元数据条目(与 readMetaList 返回的元素同形)
 function metaFromLevel(key, lv) {
   const d = lv._difficulty || {};
@@ -191,7 +227,12 @@ async function getLevelList(env) {
   if (levels) { sortLevels(levels); return levels; }
   // 无 KV/未播种 → 从 GitHub 索引读,并顺便播种 KV(下次直接读 KV)
   levels = await readMetaList(env);
-  if (levels) { await writeKvList(env, levels); sortLevels(levels); return levels; }
+  if (levels) {
+    levels = await reconcileMeta(env, levels); // 对账:清幽灵 + 补丢失,防计数越刷越多/新存丢失
+    await writeKvList(env, levels);
+    sortLevels(levels);
+    return levels;
+  }
   // _index.json 缺失/损坏/旧格式(keys而非levels) → 回退 git trees 枚举最小列表
   const keys = [];
   try {
@@ -282,6 +323,7 @@ async function syncIndexMeta(env, entry, removeKey) {
     return;
   }
   meta = await readMetaList(env) || [];
+  meta = await reconcileMeta(env, meta); // 写前对账:不让幽灵条目被回写,也不丢文件在而索引丢的关
   meta = applyChange(meta, entry, removeKey);
   await writeMetaList(env, meta);
   await writeKvList(env, meta);
