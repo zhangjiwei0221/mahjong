@@ -163,24 +163,6 @@
       "darkHookDensity": 0.208
     },
     {
-      "key": "mt7ilehy_fbx0wm",
-      "name": "2",
-      "order": 2,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-24T17:33:12.742Z",
-      "totalPairs": 23,
-      "tileCount": 46,
-      "darkCount": 5,
-      "score": 83,
-      "clickRatio": 0.196,
-      "maxLayer": 2,
-      "hooks": 21,
-      "darkHooks": 5,
-      "hookDensity": 0.913,
-      "darkHookDensity": 0.217
-    },
-    {
       "key": "mt7i44zd_32napp",
       "name": "2",
       "order": 2,
