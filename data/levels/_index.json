@@ -937,6 +937,24 @@
       "darkHookDensity": 0.75
     },
     {
+      "key": "mt83y2c1_61klrz",
+      "name": "57",
+      "order": 57,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-25T03:30:55.441Z",
+      "totalPairs": 40,
+      "tileCount": 80,
+      "darkCount": 40,
+      "score": 144,
+      "clickRatio": 0.1,
+      "maxLayer": 4,
+      "hooks": 37,
+      "darkHooks": 30,
+      "hookDensity": 0.925,
+      "darkHookDensity": 0.75
+    },
+    {
       "key": "mt7go1e4_hkpc7c",
       "name": "58",
       "order": 58,
@@ -989,24 +1007,6 @@
       "darkHooks": 30,
       "hookDensity": 0.905,
       "darkHookDensity": 0.714
-    },
-    {
-      "key": "mt83qx0j_fbxtdl",
-      "name": "57",
-      "order": null,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-25T03:25:21.955Z",
-      "totalPairs": 40,
-      "tileCount": 80,
-      "darkCount": 40,
-      "score": 143,
-      "clickRatio": 0.138,
-      "maxLayer": 4,
-      "hooks": 37,
-      "darkHooks": 28,
-      "hookDensity": 0.925,
-      "darkHookDensity": 0.7
     },
     {
       "key": "mt83oxpz_j26vwr",
