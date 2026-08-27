@@ -591,6 +591,9 @@
             <span>行</span><input type="number" id="rotCenterRow" value="-2" style="width:50px;" oninput="draw()">
             <span>列</span><input type="number" id="rotCenterCol" value="0" style="width:50px;" oninput="draw()">
           </div>
+          <div class="field-row" style="justify-content:center; margin-top:6px;">
+            <button class="mini-btn" onclick="clearRotationCenter()">❌ 取消旋转</button>
+          </div>
           <div class="card-sub" style="margin-top:8px;">旋转半径（外圈圈数）</div>
           <div class="field-row" style="justify-content:center;">
             <input type="number" id="rotRadius" value="0" min="0" max="8" style="width:60px;" oninput="draw()">
@@ -751,6 +754,13 @@
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
         <h4 style="margin:0;">📜 变更日志</h4>
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.9.8 · 2026-08-26</div>
+        <div class="gh-desc">
+          • 修复旋转画笔「放上去拿不掉」：旋转面板加「❌ 取消旋转」按钮，一键重置中心行/列/半径到默认无旋转态、清 state.sentRotation（之前设了中心后没有任何 UI 能清掉）<br>
+          • 修复「🗑 清空」不清旋转：clearAll 同步重置旋转输入框 + state.sentRotation，否则旋转配置会跟着导出的关卡走
+        </div>
       </div>
       <div class="gh-item">
         <div class="gh-title">v4.9.7 · 2026-08-25</div>
@@ -2510,6 +2520,16 @@ function setRotationDir(dir) {
   });
 }
 
+// 取消旋转:把中心行/列/半径重置到默认无旋转态,并清掉已发送到 demo 的旋转配置
+function clearRotationCenter() {
+  document.getElementById('rotCenterRow').value = -2;
+  document.getElementById('rotCenterCol').value = 0;
+  document.getElementById('rotRadius').value = 0;
+  state.sentRotation = null;
+  draw();
+  updateUI();
+}
+
 // ========== 开关 ==========
 function bindChip(id, key, redraw) {
   state[key] = !state[key];
@@ -2703,6 +2723,11 @@ function clearAll(btn) {
     past = []; future = [];
     state.layers = [{ tiles: {} }, { tiles: {} }];
     state.currentLayer = 0;
+    // 清空画布时也重置旋转配置,否则旋转中心/半径/方向还会留着,跟着关卡走
+    document.getElementById('rotCenterRow').value = -2;
+    document.getElementById('rotCenterCol').value = 0;
+    document.getElementById('rotRadius').value = 0;
+    state.sentRotation = null;
     updateUI(); updateLegend(); draw(); updateUndoButtons();
     toast('已清空', 'ok');
   });
@@ -2882,7 +2907,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.7'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.8'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
