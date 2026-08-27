@@ -756,6 +756,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.9 · 2026-08-26</div>
+        <div class="gh-desc">
+          • 修复工作台「已删除」toast 出现但列表残留：实测后端 DELETE 其实成功（GitHub 真删了，git origin/main 的 _index.json 已不含该 key），但 Cloudflare 函数读 raw _index.json 被边缘缓存陈旧，refresh /levels 仍返回旧快照含被删 key<br>
+          • 前端加乐观移除（成功后立刻从 levels 数组删）+ localStorage 记被删 key，以后每次 refresh 过滤掉；等缓存过期这条 filter 自动失效、无副作用。底层彻底解仍需 LEVELS KV 绑定
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.8 · 2026-08-26</div>
         <div class="gh-desc">
           • 修复旋转画笔「放上去拿不掉」：旋转面板加「❌ 取消旋转」按钮，一键重置中心行/列/半径到默认无旋转态、清 state.sentRotation（之前设了中心后没有任何 UI 能清掉）<br>
@@ -2907,7 +2914,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.8'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.9'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

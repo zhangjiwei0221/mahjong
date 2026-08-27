@@ -495,6 +495,11 @@ async function deleteLevel(key) {
   if (!confirm('确定删除这个关卡？删除后无法恢复。')) return;
   try {
     await api('/' + encodeURIComponent(key), { method: 'DELETE' });
+    // 后端确实删了,但 Cloudflare 边缘读 _index.json 偶尔返回陈旧缓存 → 立刻 refresh 还会看到这条。
+    // 解决方案:本端乐观移除 + 记进 localStorage,以后每次 refresh 都过滤掉(等缓存过期后这条 filter 自然失效,无副作用)
+    addLocalDeletedKey(key);
+    levels = (levels || []).filter(x => x.key !== key);
+    renderTable(); renderSummary();
     toast('已删除', 'ok');
     await refresh();
   } catch (e) {
@@ -502,11 +507,28 @@ async function deleteLevel(key) {
   }
 }
 
+function addLocalDeletedKey(key) {
+  try {
+    const set = JSON.parse(localStorage.getItem('wb_deleted_keys') || '[]');
+    if (!set.includes(key)) set.push(key);
+    localStorage.setItem('wb_deleted_keys', JSON.stringify(set));
+  } catch (_) {}
+}
+
+function getLocalDeletedKeys() {
+  try { return new Set(JSON.parse(localStorage.getItem('wb_deleted_keys') || '[]')); }
+  catch (_) { return new Set(); }
+}
+
 async function refresh() {
   if (!getPass()) return;
   try {
     const r = await api('');
-    levels = r.levels || [];
+    let fetched = r.levels || [];
+    // 过滤掉本端已确认删除的 key(防陈旧缓存把"已删关"重新显示出来)
+    const deleted = getLocalDeletedKeys();
+    if (deleted.size) fetched = fetched.filter(x => !deleted.has(x.key));
+    levels = fetched;
     renderTable();
     renderSummary();
   } catch (e) {

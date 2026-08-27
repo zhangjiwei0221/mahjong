@@ -1,8 +1,13 @@
 {
-  "version": "v4.9.8",
+  "version": "v4.9.9",
   "updated": "2026-08-26",
-  "notes": "修复旋转画笔'放上去拿不掉'+ 清空画布不清旋转配置",
+  "notes": "工作台删除显示'已删除'但列表残留:前端乐观移除 + localStorage 过滤",
   "changelog": [
+    {
+      "version": "v4.9.9",
+      "date": "2026-08-26",
+      "notes": "修复工作台「已删除」toast 出现但列表残留:实测定位——后端 DELETE 实际成功(GitHub 真删了,git origin/main _index.json 不含被删 key),但 Cloudflare 函数读 raw _index.json 被边缘缓存陈旧,刷新 /levels 仍返回旧快照含被删 key。前端加乐观移除(立刻从 levels 数组删掉)+ localStorage 记被删 key,以后每次 refresh 过滤掉,等缓存过期后这条 filter 自动失效、无副作用。底层彻底解仍需 LEVELS KV 绑定。"
+    },
     {
       "version": "v4.9.8",
       "date": "2026-08-26",
