@@ -756,6 +756,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.9.11 · 2026-08-28</div>
+        <div class="gh-desc">
+          • 编辑器「保存到工作台」序号框从单独第二行挪到第一行末尾，和口令、关卡名并列（一行式布局更紧凑）
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.9.10 · 2026-08-28</div>
         <div class="gh-desc">
           • 修复工作台删除后「越刷越多」：①「连接 / 刷新」按钮和页面初次加载走 connect()，之前没过滤本端已删 key（只在 refresh 过滤）→ 陈旧缓存把刚删的关显示回来，计数 58 变 59；② 索引 _index.json 是读-改-写维护，两人并发（一人删/一人存）时旧快照覆盖会把已删条目写回索引成幽灵关。后端现在每次读/写索引前对账 git trees（1 子请求，文件清单=真值）：索引有文件无→剔幽灵；文件有索引无→补回丢失的保存。刚存 10 分钟内宽限不剔，防树读取陈旧错杀新关
@@ -1294,9 +1300,9 @@
       <div class="wb-save-row">
         <input type="password" id="wbPass" placeholder="共享口令">
         <input type="text" id="wbSaveName" placeholder="关卡名，如「第1关 · 初始」">
+        <label>第 <input type="number" id="wbNewOrder" min="0" max="999" placeholder="几" title="留空 = 未排号"> 关</label>
       </div>
       <div class="wb-save-row">
-        <label>第 <input type="number" id="wbNewOrder" min="0" max="999" placeholder="几" title="留空 = 未排号"> 关</label>
         <span class="wb-save-spacer"></span>
         <button class="mini-btn primary" onclick="saveCurrentLevelToWorkbench(this)">保存</button>
         <button class="mini-btn" onclick="toggleWbSaveBox(false)">收起</button>
@@ -2920,7 +2926,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.10'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.9.11'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
