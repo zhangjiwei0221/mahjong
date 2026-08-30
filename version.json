@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.1",
+  "version": "71ea232",
   "updated": "2026-08-30",
-  "notes": "圆盘半径加大为 1 张麻将边长(r=2 子格,demo 同步);编辑器圆盘画笔 snap hoverCell 到偶数,圆心严格对齐麻将位中心",
+  "notes": "圆盘坐标语义重定义:disc.row/col 改为子格坐标(任意整数),圆心可放在 4 张麻将交界的田字中心;编辑器 mousemove 取消 snap 偶数 + 边界拓宽;圆盘间重叠改为欧氏距离 ≤2 子格判定(临界相切允许),支持田字中心旁并列多个 disc;示例_圆盘.json 坐标同步迁移。",
   "changelog": [
+    {
+      "version": "v4.10.2",
+      "date": "2026-08-30",
+      "notes": "圆盘坐标语义重定义:disc.row/col 改为子格坐标(任意整数),圆心可放在 4 张麻将交界的田字中心(圆刚好盖住 4 张麻将的各一角)。①编辑器 mousemove 取消 snap 到偶数(原 snap 后圆心只能落在麻将位中心,无法放田字中心);边界拓宽到 col -6..6, row -9..7(支持子格负向偏移);drawDiscAt / drawDiscPreview 圆心直接用 col*CELL 不再 +1(原 +1 假设 col 是麻将位)。②圆盘间重叠判定从 3x3 box 任意子格交集(过严)改为欧氏距离 ≤2 子格(临界相切允许放),支持田字中心旁并列多个 disc。③demo:renderDiscs 圆心改用 (d.col-minCol)*cellPx+cellPx/2(子格中心),discOverlapsTile 改 ≤2 配合 3x3 占地区。④示例_圆盘.json 圆心坐标同步迁移到新语义(麻将位 col=-5 → 子格中心 col=-4),与 v4.10.1 demo 兼容。"
+    },
     {
       "version": "v4.10.1",
       "date": "2026-08-30",

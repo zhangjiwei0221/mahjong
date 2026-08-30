@@ -31,10 +31,10 @@
   ],
   "specialTiles": [],
   "discs": [
-    { "id": 9001, "gapLayer": 0, "row": -6, "col": -5 },
-    { "id": 9002, "gapLayer": 0, "row": -4, "col": -5 },
-    { "id": 9003, "gapLayer": 0, "row": -2, "col": -5 },
-    { "id": 9004, "gapLayer": 0, "row": 0, "col": -5 },
-    { "id": 9005, "gapLayer": 0, "row": 2, "col": -5 }
+    { "id": 9001, "gapLayer": 0, "row": -5, "col": -4 },
+    { "id": 9002, "gapLayer": 0, "row": -3, "col": -4 },
+    { "id": 9003, "gapLayer": 0, "row": -1, "col": -4 },
+    { "id": 9004, "gapLayer": 0, "row": 1, "col": -4 },
+    { "id": 9005, "gapLayer": 0, "row": 3, "col": -4 }
   ]
 }

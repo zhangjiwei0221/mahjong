@@ -774,6 +774,16 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.2 · 2026-08-30</div>
+        <div class="gh-desc">
+          • <b>圆盘坐标语义重定义</b>:disc.row/col 改为"子格坐标(任意整数)"而非"麻将位坐标(仅偶数)"。圆心可以落在 4 张麻将交界(田字中心),圆刚好盖住 4 张麻将的各一角<br>
+          • 编辑器:mousemove 取消 snap 到偶数;边界拓宽(col -6..6, row -9..7,支持子格负向偏移);drawDiscAt/drawDiscPreview 圆心直接用 col*CELL 不再 +1<br>
+          • 圆盘间重叠判定从 3x3 box 任意子格交集(过严)改为欧氏距离&le;2 子格(临界相切允许放),支持田字中心位旁并列多个 disc<br>
+          • demo:renderDiscs 圆心改用 (d.col-minCol)*cellPx+cellPx/2(子格中心),discOverlapsTile &le;2(配合 3x3 占地区)<br>
+          • 示例_圆盘.json 圆心坐标同步迁移到新语义(麻将位 (col=-5)→ 子格中心 col=-4)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.1 · 2026-08-30</div>
         <div class="gh-desc">
           • 圆盘半径加大：r = 2 子格 = 1 张麻将边长(原 r = 1 子格太小,直径只有麻将一半),demo SVG 同步。圆心仍对齐麻将位中心<br>
@@ -1889,10 +1899,10 @@ function draw() {
 function discVisualLayer(disc) { return disc.gapLayer + 0.5; }
 
 function drawDiscAt(disc, alpha) {
-  // 圆心:麻将位 (col,row) 的中心 = 子格 (col+1, row+1) 中心
-  const cx = BOARD_PAD + (disc.col + 1) * CELL;
-  const cy = worldTopPad() + BOARD_PAD + (disc.row + 1) * CELL;
-  // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格覆盖整张麻将 + 周围半格,视觉上一眼能识别)
+  // 圆心 = (col, row) 子格(任意整数,可放在麻将位中心,也可放在 4 麻将交界的"田字中心")
+  const cx = BOARD_PAD + disc.col * CELL;
+  const cy = worldTopPad() + BOARD_PAD + disc.row * CELL;
+  // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
   const r = 2 * CELL;
   const lw = 1.5 / view.scale;
   ctx.save();
@@ -1931,9 +1941,10 @@ function drawDiscPreview() {
   const overlapTile = discOverlapsAnyTile(row, col);
   const overlapDisc = discOverlapsOtherDisc(row, col, null);
   drawDiscAt({ gapLayer: state.discGap, row, col }, overlapTile || overlapDisc ? 0.25 : 0.45);
+  // hoverCell 是子格坐标(支持任意整数 = 田字中心等),虚线圆环直接画在该子格中心
   if (!overlapDisc) {
-    const cx = BOARD_PAD + (col + 1) * CELL;
-    const cy = worldTopPad() + BOARD_PAD + (row + 1) * CELL;
+    const cx = BOARD_PAD + col * CELL;
+    const cy = worldTopPad() + BOARD_PAD + row * CELL;
     const r = 2 * CELL;
     ctx.save();
     ctx.strokeStyle = 'rgba(60, 180, 100, 0.9)';
@@ -2319,14 +2330,11 @@ canvas.addEventListener('mousemove', e => {
   const pos = getMousePos(e);
   const cell = pixelToCell(pos.x, pos.y);
 
-  // 圆盘画笔下:必须对齐麻将位(row/col 都是偶数),圆心才落在麻将中心
-  if (state.brush === 'disc') {
-    cell.col = Math.round(cell.col / 2) * 2;
-    cell.row = Math.round(cell.row / 2) * 2;
-  }
+  // 圆盘画笔下:不 snap 到偶数 — 圆盘圆心可以放在任意子格(支持"田字中心"等 4 麻将交界位置)
+  // 圆心 = (col, row) 子格;占地区 = (col±1, row±1) → 跨 3x3 子格,覆盖周围 2x2 麻将位
 
   // 编辑器坐标边界：col -5..5（12 子格 = 6 麻将位）, row -8..6
-  if (cell.col < -5 || cell.col > 5 || cell.row < -8 || cell.row > 6) {
+  if (cell.col < -6 || cell.col > 6 || cell.row < -9 || cell.row > 7) {
     state.hoverCell = null;
     state.hoverTile = null;
   } else {
@@ -2711,11 +2719,13 @@ function setDiscGap(g) {
   draw();
 }
 
-// 圆盘占哪些子格(同麻将:2x2 子格,中心 (row,col))
+// 圆盘覆盖范围(以圆心为中心的 3x3 子格 = 半径 1 子格)
+// 视觉圆盘半径 = 2 子格,但子格级重叠判定用 3x3 box(±1)更接近圆形且便于判定
 function discOccupiesCells(row, col) {
   return new Set([
-    `${row},${col}`, `${row},${col+1}`,
-    `${row+1},${col}`, `${row+1},${col+1}`,
+    `${row-1},${col-1}`, `${row-1},${col}`, `${row-1},${col+1}`,
+    `${row  },${col-1}`, `${row  },${col}`, `${row  },${col+1}`,
+    `${row+1},${col-1}`, `${row+1},${col}`, `${row+1},${col+1}`,
   ]);
 }
 
@@ -2729,13 +2739,17 @@ function discOverlapsAnyTile(discRow, discCol) {
   return false;
 }
 
-// 圆盘之间是否重叠
+// 圆盘之间是否重叠(按视觉圆半径 2 子格,圆心距 < 4 子格才算重叠)
+// box(3x3)判定会误判相邻位置的"刚好相切",改用欧氏距离 + 视觉半径
+// 阈值 < 2 子格:圆心距 < 2r = 4 子格判重叠 = 圆真正相交(>0 公共区域)
+// 圆心距 ≥ 4 = 圆周最多相切,允许放(田字中心位/田字位可以相邻不同 disc)
 function discOverlapsOtherDisc(discRow, discCol, exceptId) {
-  const cells = discOccupiesCells(discRow, discCol);
+  const r = 2; // 半径阈值(子格):圆心距 ≤ 2 子格视为重叠(>0 公共面积)
   for (const d of state.discs) {
     if (d.id === exceptId) continue;
-    const dcells = discOccupiesCells(d.row, d.col);
-    for (const c of cells) if (dcells.has(c)) return true;
+    const dr = discRow - d.row;
+    const dc = discCol - d.col;
+    if (dr * dr + dc * dc < r * r) return true;
   }
   return false;
 }
@@ -3143,7 +3157,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.1'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.2'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

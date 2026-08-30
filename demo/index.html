@@ -558,9 +558,11 @@ function overlaps(a, b) {
   return Math.abs(a.row - b.row) < 2 && Math.abs(a.col - b.col) < 2;
 }
 
-// 圆盘(2x2 子格)与某张麻将(2x2 子格)是否在子格级重叠
+// 圆盘(占地区 3x3 子格,中心 (row,col))与某张麻将(占 2x2 子格)是否重叠
+// disc 占 [row-1, row+1] x [col-1, col+1];tile 占 [tile.row, tile.row+1] x [tile.col, tile.col+1]
+// 重叠条件:|disc.row - tile.row| ≤ 2 且 |disc.col - tile.col| ≤ 2
 function discOverlapsTile(disc, tile) {
-  return Math.abs(disc.row - tile.row) < 2 && Math.abs(disc.col - tile.col) < 2;
+  return Math.abs(disc.row - tile.row) <= 2 && Math.abs(disc.col - tile.col) <= 2;
 }
 
 // 圆盘上方有麻将:层严格大于 gapLayer 的麻将与圆盘子格重叠
@@ -807,10 +809,11 @@ function renderDiscs() {
     const offY = parseFloat(board.dataset.offsetY || '0');
     const minCol = parseFloat(board.dataset.minCol || '0');
     const minRow = parseFloat(board.dataset.minRow || '0');
-    // 圆盘中心 = 牌位左上角 + 1 子格 = (col - minCol) * cell + cell = (col - minCol + 1) * cell
-    const cx = offX + (d.col - minCol + 1) * cellPx;
-    const cy = offY + (d.row - minRow + 1) * cellPx;
-    // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格覆盖整张麻将 + 周围半格)
+    // 圆盘圆心 = (col, row) 子格中心(任意整数,可放在麻将位中心,也可放在 4 麻将交界)
+    // 子格中心 = 棋盘原点的 px + (col - minCol) * cellPx + cellPx/2
+    const cx = offX + (d.col - minCol) * cellPx + cellPx / 2;
+    const cy = offY + (d.row - minRow) * cellPx + cellPx / 2;
+    // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
     const r = 2 * cellPx;
     // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
     // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
