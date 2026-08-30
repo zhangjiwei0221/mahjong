@@ -953,24 +953,6 @@
       "darkHooks": 11,
       "hookDensity": 0.947,
       "darkHookDensity": 0.289
-    },
-    {
-      "key": "mt7giz4w_ml8sk7",
-      "name": "93",
-      "order": null,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-24T16:35:20.288Z",
-      "totalPairs": 51,
-      "tileCount": 102,
-      "darkCount": 46,
-      "score": 145,
-      "clickRatio": 0.088,
-      "maxLayer": 6,
-      "hooks": 49,
-      "darkHooks": 36,
-      "hookDensity": 0.961,
-      "darkHookDensity": 0.706
     }
   ]
 }
