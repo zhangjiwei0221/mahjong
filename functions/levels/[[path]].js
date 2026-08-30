@@ -366,6 +366,7 @@ export async function onRequest(context) {
         totalPairs: data.totalPairs,
         tiles: data.tiles,
         specialTiles: data.specialTiles || [],
+        discs: data.discs || [],
       };
       return json(200, clean);
     }
@@ -387,6 +388,7 @@ export async function onRequest(context) {
         totalPairs: body.totalPairs || Math.floor(body.tiles.length / 2),
         tiles: body.tiles,
         specialTiles: body.specialTiles || [],
+        discs: body.discs || [],
         _difficulty: body._difficulty || null,
         order: pickOrder(body.order),
         status: pickStatus(body.status),

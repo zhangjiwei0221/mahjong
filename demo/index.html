@@ -558,6 +558,56 @@ function overlaps(a, b) {
   return Math.abs(a.row - b.row) < 2 && Math.abs(a.col - b.col) < 2;
 }
 
+// 圆盘(2x2 子格)与某张麻将(2x2 子格)是否在子格级重叠
+function discOverlapsTile(disc, tile) {
+  return Math.abs(disc.row - tile.row) < 2 && Math.abs(disc.col - tile.col) < 2;
+}
+
+// 圆盘上方有麻将:层严格大于 gapLayer 的麻将与圆盘子格重叠
+function discHasUpperTiles(disc) {
+  const active = getActiveTiles();
+  return active.some(t => t.layer > disc.gapLayer && discOverlapsTile(disc, t));
+}
+
+// 扫描所有圆盘,把"上方已无麻将"的标记为开始淡出
+function sweepDiscsToFade() {
+  let any = false;
+  for (const d of currentDiscs) {
+    if (discAlpha.get(d.id) > 0) continue; // 已经在淡出/已消失
+    if (!discHasUpperTiles(d)) {
+      discAlpha.set(d.id, 0.05); // 触发淡出动画(>0 表示已开始)
+      any = true;
+    }
+  }
+  if (any) animateDiscFade();
+}
+
+// 圆盘淡出动画循环(150ms 线性渐隐,然后从列表中移除)
+// 用 setInterval 而非 RAF:RAF 在浏览器面板未激活 / 节流时可能暂停,setInterval 更稳定
+let discFadeTimer = null;
+function animateDiscFade() {
+  if (discFadeTimer) { clearInterval(discFadeTimer); discFadeTimer = null; }
+  discFadeTimer = setInterval(() => {
+    let stillAnimating = false;
+    for (const d of currentDiscs) {
+      let a = discAlpha.get(d.id) || 0;
+      if (a <= 0 || a >= 1) continue;
+      a = Math.min(1, a + 0.08);
+      discAlpha.set(d.id, a);
+      if (a < 1) stillAnimating = true;
+    }
+    render();
+    if (!stillAnimating) {
+      clearInterval(discFadeTimer); discFadeTimer = null;
+      // 全部淡出完成的清掉
+      currentDiscs = currentDiscs.filter(d => (discAlpha.get(d.id) || 0) < 1);
+      render();
+      // 圆盘全部消失 → 检查通关条件
+      checkWin();
+    }
+  }, 60); // 每帧 60ms,12 帧 ≈ 720ms 完成
+}
+
 // std 坐标：row=纵向(上下)，col=横向(左右)。左右夹住 = 同行(row 相等)、同列(col±2)。
 function isClickable(tile, allTiles) {
   // spitter 本体:仅要求不被上层牌压住,左右夹住不算(本身是装饰物,允许任意位置被点)
@@ -565,10 +615,20 @@ function isClickable(tile, allTiles) {
     for (const other of allTiles) {
       if (other.id !== tile.id && other.layer > tile.layer && overlaps(other, tile)) return false;
     }
+    // 圆盘也算上压
+    for (const d of currentDiscs) {
+      if (discAlpha.get(d.id) >= 1) continue; // 已消失
+      if (d.gapLayer >= tile.layer && discOverlapsTile(d, tile)) return false;
+    }
     return true;
   }
   for (const other of allTiles) {
     if (other.id !== tile.id && other.layer > tile.layer && overlaps(other, tile)) return false;
+  }
+  // 圆盘压住判定:圆盘插在 (gapLayer, gapLayer+1) 之间,对下层麻将(tile.layer <= gapLayer)是上压
+  for (const d of currentDiscs) {
+    if (discAlpha.get(d.id) >= 1) continue;
+    if (d.gapLayer >= tile.layer && discOverlapsTile(d, tile)) return false;
   }
   // spitter 本体或 queue 牌会盖住同层的普通牌（spitter 相当于一块"占位麻将"）
   const coveredBySpitter = allTiles.some(other =>
@@ -602,10 +662,10 @@ function render() {
   const boardW = board.parentElement.clientWidth;
   const boardH = board.parentElement.clientHeight;
 
-  if (active.length === 0) { board.innerHTML = ''; renderSlots(); updateProgress(); return; }
+  if (active.length === 0 && currentDiscs.length === 0) { board.innerHTML = ''; renderSlots(); updateProgress(); return; }
 
   // 固定用初始边界计算缩放：消除后棋盘大小不随剩余牌数变动
-  const bounds = baseBounds || computeBounds(active);
+  const bounds = baseBounds || (active.length ? computeBounds(active) : { minCol: 0, maxCol: 5, minRow: 0, maxRow: 7, maxLayer: 0 });
   const minCol = bounds.minCol, maxCol = bounds.maxCol;
   const minRow = bounds.minRow, maxRow = bounds.maxRow;
   const maxLayer = bounds.maxLayer;
@@ -645,6 +705,12 @@ function render() {
   const tileSize = 2 * cell;
   // 卡槽与麻将同尺寸：动画从棋盘飞到卡槽，位移自然
   document.getElementById('slots').style.setProperty('--slot-size', tileSize + 'px');
+  // 把 cell 像素值提供给 renderDiscs 用(圆盘尺寸 = 子格 × 2 = tileSize)
+  board.dataset.cellPx = cell;
+  board.dataset.offsetX = offsetX;
+  board.dataset.offsetY = offsetY;
+  board.dataset.minCol = minCol;
+  board.dataset.minRow = minRow;
 
   let html = '';
   // 从低层到高层画
@@ -697,7 +763,83 @@ function render() {
   justFlipped.clear();
   board.innerHTML = html;
   renderSlots();
+  renderDiscs();
   updateProgress();
+}
+
+// 圆盘渲染:用 div 绝对定位 + SVG circle 画圆 + 缝隙层标签;按 visualLayer 排序
+function renderDiscs() {
+  if (!currentDiscs.length) return;
+  const board = document.getElementById('board');
+  // 先清掉上次的 disc-layer(每次 render 重画)
+  const old = board.querySelector('.disc-layer');
+  if (old) old.remove();
+  const visibleDiscs = currentDiscs.filter(d => (discAlpha.get(d.id) || 0) < 1);
+  if (!visibleDiscs.length) return;
+  const boardRect = board.getBoundingClientRect();
+  // 按视觉层升序绘制(让高缝隙层在上)
+  visibleDiscs.sort((a, b) => (a.gapLayer + 0.5) - (b.gapLayer + 0.5));
+  // 用 SVG 单节点,避免 N 个 div
+  const svgNS = 'http://www.w3.org/2000/svg';
+  // 计算牌区域的尺寸(取第一张牌的尺寸作为基准)
+  const sample = board.querySelector('.card'); // 任一卡片引用
+  // 简化:用基础尺寸 2 子格(CELL=board宽/列数),从 CSS 变量或父盒算出
+  // 因为demo 用 px 定位牌,这里用 viewBox 比例而不是 px,保证缩放下也跟住
+  // 直接给绝对定位的 SVG 占满整个 board
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('class', 'disc-layer');
+  svg.style.position = 'absolute'; svg.style.left = '0'; svg.style.top = '0';
+  svg.style.width = '100%'; svg.style.height = '100%';
+  svg.style.pointerEvents = 'none';
+  // tile 最大 z ≈ 5*1000+id ≈ 6100,spitter 10000+id ≈ 10100;圆盘放最高位且 pointer-events:none,不挡点击
+  svg.style.zIndex = '50000';
+  svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  for (const d of visibleDiscs) {
+    const a = 1 - (discAlpha.get(d.id) || 0); // 1 完全可见,0 完全消失
+    if (a <= 0) continue;
+    // 圆盘中心 = 麻将位中心:占 2x2 子格 → 直径 = 子格 × 2
+    // 子格尺寸 = board 宽 / 棋盘子格列数(从内部宽度推)
+    // 这里用 last render 设置的全局:放在 dataset 上
+    const cellPx = parseFloat(board.dataset.cellPx || '0');
+    if (!cellPx) continue; // 没初始化
+    const offX = parseFloat(board.dataset.offsetX || '0');
+    const offY = parseFloat(board.dataset.offsetY || '0');
+    const minCol = parseFloat(board.dataset.minCol || '0');
+    const minRow = parseFloat(board.dataset.minRow || '0');
+    // 圆盘中心 = 牌位左上角 + 1 子格 = (col - minCol) * cell + cell = (col - minCol + 1) * cell
+    const cx = offX + (d.col - minCol + 1) * cellPx;
+    const cy = offY + (d.row - minRow + 1) * cellPx;
+    const r = cellPx;
+    // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
+    // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
+    // 为了视觉明显,放大 1.5 倍
+    const zOffset = (d.gapLayer + 0.5) * 0.3 * cellPx * 1.5;
+    const g = document.createElementNS(svgNS, 'g');
+    g.setAttribute('opacity', a);
+    g.setAttribute('transform', `translate(0, ${-zOffset})`);
+    const circle = document.createElementNS(svgNS, 'circle');
+    circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r);
+    circle.setAttribute('fill', 'rgba(150, 70, 180, 0.55)');
+    circle.setAttribute('stroke', 'rgba(110, 40, 150, 0.95)');
+    circle.setAttribute('stroke-width', '2');
+    g.appendChild(circle);
+    // 中心小圆 + 标签
+    const inner = document.createElementNS(svgNS, 'circle');
+    inner.setAttribute('cx', cx); inner.setAttribute('cy', cy); inner.setAttribute('r', r * 0.3);
+    inner.setAttribute('fill', 'rgba(255,255,255,0.85)');
+    g.appendChild(inner);
+    const text = document.createElementNS(svgNS, 'text');
+    text.setAttribute('x', cx); text.setAttribute('y', cy);
+    text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('fill', '#5a1f78');
+    text.setAttribute('font-size', r * 0.4);
+    text.setAttribute('font-weight', 'bold');
+    text.textContent = 'L' + d.gapLayer;
+    g.appendChild(text);
+    svg.appendChild(g);
+  }
+  board.appendChild(svg);
 }
 
 // hover 牌时不再 dim 下层牌（去掉半透明黑色特效，保持所有牌同等显示）
@@ -1028,7 +1170,10 @@ function rotateTiles() {
 
 function checkWin() {
   const active = getActiveTiles();
-  if (active.length === 0 && slots.every(s => s === null)) {
+  const allTilesCleared = active.length === 0 && slots.every(s => s === null);
+  const allDiscsCleared = currentDiscs.every(d => (discAlpha.get(d.id) || 0) >= 1);
+  // 通关条件:麻将全消 OR 圆盘全消(任一即可)
+  if (allTilesCleared || allDiscsCleared) {
     gameOver = true;
     // 试玩计时：回传给父窗口（编辑器）用于验证难度分
     let durationMs = 0;
@@ -1167,6 +1312,9 @@ function checkMatch() {
       // 清空 revealed 标记，下一帧不再重复播放
       spitterRevealedIds.clear();
       spitterRevealedDirs.clear();
+      // 圆盘解锁:任意麻将被消除后,检查上方有麻将盖住的圆盘,若其上方麻将全部清光 → 该圆盘开始淡出
+      sweepDiscsToFade();
+      render();
       checkWin();
     }, 320);
     return;
@@ -1204,6 +1352,10 @@ function hideMessage() {
 
 // ========== 关卡加载 ==========
 let currentSpecialTiles = [];
+// 圆盘:插在某两层之间的遮挡物。{id, gapLayer, row, col}。discsById 用于查找
+let currentDiscs = [];
+let discsById = new Map();
+let discAlpha = new Map(); // 圆盘淡出动画进度(0=完全,1=消失)
 // 吐牌机游戏状态（每关重置）
 const spitterReleasedCount = new Map(); // spitterId → 已释放队列牌数
 const spitterRevealedDirs = new Map();   // 队列牌 id → 吐牌机方向（用于方向性弹出动画）
@@ -1214,6 +1366,9 @@ let rotationState = 0;                   // 已旋转次数（用于动画）
 function loadLevel(json) {
   levelData = json;
   currentSpecialTiles = json.specialTiles || [];
+  currentDiscs = (json.discs || []).slice();
+  discsById = new Map(currentDiscs.map(d => [d.id, d]));
+  discAlpha = new Map(currentDiscs.map(d => [d.id, 0])); // 0=正常显示
   // 重置吐牌机状态
   spitterReleasedCount.clear();
   spitterRevealedDirs.clear();
@@ -1303,8 +1458,25 @@ window.addEventListener('message', e => {
 const SAMPLE_LEVEL = {"levelId":1,"totalPairs":49,"tiles":[{"id":1,"layer":0,"row":-8,"col":-5,"typeId":29,"isDark":false},{"id":2,"layer":0,"row":-6,"col":-5,"typeId":4,"isDark":false},{"id":3,"layer":0,"row":-4,"col":-5,"typeId":27,"isDark":false},{"id":4,"layer":0,"row":2,"col":-5,"typeId":18,"isDark":false},{"id":5,"layer":0,"row":4,"col":-5,"typeId":20,"isDark":false},{"id":6,"layer":0,"row":6,"col":-5,"typeId":30,"isDark":false},{"id":7,"layer":0,"row":-8,"col":-3,"typeId":1,"isDark":false},{"id":8,"layer":0,"row":-6,"col":-3,"typeId":27,"isDark":false},{"id":9,"layer":0,"row":-4,"col":-3,"typeId":16,"isDark":false},{"id":10,"layer":0,"row":-2,"col":-3,"typeId":10,"isDark":false},{"id":11,"layer":0,"row":0,"col":-3,"typeId":24,"isDark":false},{"id":12,"layer":0,"row":2,"col":-3,"typeId":4,"isDark":false},{"id":13,"layer":0,"row":4,"col":-3,"typeId":13,"isDark":false},{"id":14,"layer":0,"row":6,"col":-3,"typeId":16,"isDark":false},{"id":15,"layer":0,"row":-8,"col":-1,"typeId":16,"isDark":false},{"id":16,"layer":0,"row":-6,"col":-1,"typeId":17,"isDark":false},{"id":17,"layer":0,"row":-4,"col":-1,"typeId":16,"isDark":false},{"id":18,"layer":0,"row":-2,"col":-1,"typeId":4,"isDark":false},{"id":19,"layer":0,"row":0,"col":-1,"typeId":34,"isDark":false},{"id":20,"layer":0,"row":2,"col":-1,"typeId":27,"isDark":false},{"id":21,"layer":0,"row":4,"col":-1,"typeId":3,"isDark":false},{"id":22,"layer":0,"row":6,"col":-1,"typeId":3,"isDark":false},{"id":23,"layer":0,"row":-8,"col":1,"typeId":10,"isDark":false},{"id":24,"layer":0,"row":-6,"col":1,"typeId":9,"isDark":false},{"id":25,"layer":0,"row":-4,"col":1,"typeId":18,"isDark":false},{"id":26,"layer":0,"row":-2,"col":1,"typeId":17,"isDark":false},{"id":27,"layer":0,"row":0,"col":1,"typeId":16,"isDark":false},{"id":28,"layer":0,"row":2,"col":1,"typeId":9,"isDark":false},{"id":29,"layer":0,"row":4,"col":1,"typeId":10,"isDark":true},{"id":30,"layer":0,"row":6,"col":1,"typeId":22,"isDark":false},{"id":31,"layer":0,"row":-8,"col":3,"typeId":12,"isDark":false},{"id":32,"layer":0,"row":-6,"col":3,"typeId":20,"isDark":true},{"id":33,"layer":0,"row":-4,"col":3,"typeId":25,"isDark":true},{"id":34,"layer":0,"row":-2,"col":3,"typeId":20,"isDark":false},{"id":35,"layer":0,"row":0,"col":3,"typeId":28,"isDark":true},{"id":36,"layer":0,"row":2,"col":3,"typeId":12,"isDark":false},{"id":37,"layer":0,"row":4,"col":3,"typeId":12,"isDark":false},{"id":38,"layer":0,"row":6,"col":3,"typeId":1,"isDark":false},{"id":39,"layer":0,"row":-8,"col":5,"typeId":14,"isDark":false},{"id":40,"layer":0,"row":-6,"col":5,"typeId":12,"isDark":false},{"id":41,"layer":0,"row":-4,"col":5,"typeId":21,"isDark":false},{"id":42,"layer":0,"row":2,"col":5,"typeId":3,"isDark":false},{"id":43,"layer":0,"row":4,"col":5,"typeId":3,"isDark":false},{"id":44,"layer":0,"row":6,"col":5,"typeId":29,"isDark":false},{"id":45,"layer":1,"row":-7,"col":-5,"typeId":10,"isDark":false},{"id":46,"layer":1,"row":-5,"col":-5,"typeId":3,"isDark":false},{"id":47,"layer":1,"row":-7,"col":-3,"typeId":29,"isDark":false},{"id":48,"layer":1,"row":-5,"col":-3,"typeId":23,"isDark":false},{"id":49,"layer":1,"row":-3,"col":-3,"typeId":12,"isDark":false},{"id":50,"layer":1,"row":-1,"col":-3,"typeId":6,"isDark":false},{"id":51,"layer":1,"row":1,"col":-3,"typeId":29,"isDark":false},{"id":52,"layer":1,"row":3,"col":-3,"typeId":12,"isDark":false},{"id":53,"layer":1,"row":5,"col":-3,"typeId":24,"isDark":false},{"id":54,"layer":1,"row":-7,"col":-1,"typeId":4,"isDark":false},{"id":55,"layer":1,"row":-5,"col":-1,"typeId":28,"isDark":false},{"id":56,"layer":1,"row":-3,"col":-1,"typeId":24,"isDark":true},{"id":57,"layer":1,"row":-1,"col":-1,"typeId":32,"isDark":false},{"id":58,"layer":1,"row":1,"col":-1,"typeId":23,"isDark":false},{"id":59,"layer":1,"row":3,"col":-1,"typeId":5,"isDark":true},{"id":60,"layer":1,"row":5,"col":-1,"typeId":25,"isDark":false},{"id":61,"layer":1,"row":-7,"col":1,"typeId":34,"isDark":false},{"id":62,"layer":1,"row":-5,"col":1,"typeId":22,"isDark":false},{"id":63,"layer":1,"row":-3,"col":1,"typeId":17,"isDark":false},{"id":64,"layer":1,"row":-1,"col":1,"typeId":27,"isDark":false},{"id":65,"layer":1,"row":1,"col":1,"typeId":17,"isDark":true},{"id":66,"layer":1,"row":3,"col":1,"typeId":32,"isDark":false},{"id":67,"layer":1,"row":5,"col":1,"typeId":5,"isDark":false},{"id":68,"layer":1,"row":-7,"col":3,"typeId":14,"isDark":false},{"id":69,"layer":1,"row":-5,"col":3,"typeId":20,"isDark":false},{"id":70,"layer":1,"row":-3,"col":3,"typeId":10,"isDark":false},{"id":71,"layer":1,"row":-1,"col":3,"typeId":18,"isDark":false},{"id":72,"layer":1,"row":1,"col":3,"typeId":10,"isDark":false},{"id":73,"layer":1,"row":3,"col":3,"typeId":6,"isDark":false},{"id":74,"layer":1,"row":5,"col":3,"typeId":28,"isDark":false},{"id":75,"layer":1,"row":-7,"col":5,"typeId":28,"isDark":false},{"id":76,"layer":1,"row":-5,"col":5,"typeId":22,"isDark":true},{"id":77,"layer":2,"row":-7,"col":-4,"typeId":3,"isDark":false},{"id":78,"layer":2,"row":4,"col":-3,"typeId":32,"isDark":false},{"id":79,"layer":2,"row":-7,"col":-2,"typeId":22,"isDark":false},{"id":80,"layer":2,"row":-3,"col":-2,"typeId":24,"isDark":false},{"id":81,"layer":2,"row":0,"col":-2,"typeId":34,"isDark":false},{"id":82,"layer":2,"row":2,"col":-1,"typeId":34,"isDark":false},{"id":83,"layer":2,"row":-6,"col":0,"typeId":13,"isDark":true},{"id":84,"layer":2,"row":-4,"col":0,"typeId":24,"isDark":false},{"id":85,"layer":2,"row":0,"col":0,"typeId":17,"isDark":false},{"id":86,"layer":2,"row":4,"col":0,"typeId":16,"isDark":false},{"id":87,"layer":2,"row":2,"col":1,"typeId":24,"isDark":false},{"id":88,"layer":2,"row":-7,"col":2,"typeId":20,"isDark":false},{"id":89,"layer":2,"row":-3,"col":2,"typeId":20,"isDark":false},{"id":90,"layer":2,"row":0,"col":2,"typeId":23,"isDark":false},{"id":91,"layer":2,"row":4,"col":3,"typeId":34,"isDark":false},{"id":92,"layer":2,"row":-7,"col":4,"typeId":21,"isDark":true},{"id":93,"layer":3,"row":-7,"col":-3,"typeId":34,"isDark":false},{"id":94,"layer":3,"row":-5,"col":0,"typeId":32,"isDark":false},{"id":95,"layer":3,"row":1,"col":0,"typeId":30,"isDark":true},{"id":96,"layer":3,"row":3,"col":0,"typeId":23,"isDark":false},{"id":97,"layer":3,"row":-7,"col":3,"typeId":17,"isDark":false},{"id":98,"layer":4,"row":2,"col":0,"typeId":18,"isDark":false}],"specialTiles":[{"id":83,"type":"dark","layer":2,"row":-6,"col":0},{"id":92,"type":"dark","layer":2,"row":-7,"col":4},{"id":95,"type":"dark","layer":3,"row":1,"col":0},{"id":35,"type":"dark","layer":0,"row":0,"col":3},{"id":59,"type":"dark","layer":1,"row":3,"col":-1},{"id":32,"type":"dark","layer":0,"row":-6,"col":3},{"id":65,"type":"dark","layer":1,"row":1,"col":1},{"id":33,"type":"dark","layer":0,"row":-4,"col":3},{"id":29,"type":"dark","layer":0,"row":4,"col":1},{"id":56,"type":"dark","layer":1,"row":-3,"col":-1},{"id":76,"type":"dark","layer":1,"row":-5,"col":5}]};
 
 // ========== 启动 ==========
-function init() {
+async function init() {
   buildTypeImgMap();   // 会话内随机分配一次：同一局内重来/导入不换牌面，重开页面重新洗牌
+  // 支持 ?sample=<name> 加载 demo/示例关卡/对应文件。文件名映射：URL 别名 → 文件名
+  // 例 ?sample=disc → 示例_圆盘.json
+  const SAMPLE_FILE_MAP = { normal: '示例_普通', dark: '示例_暗牌', disc: '示例_圆盘' };
+  const params = new URLSearchParams(location.search);
+  const sample = params.get('sample');
+  if (sample) {
+    const file = SAMPLE_FILE_MAP[sample] || ('示例_' + sample);
+    try {
+      const r = await fetch('示例关卡/' + file + '.json?_=' + Date.now(), { cache: 'no-store' });
+      if (r.ok) {
+        const json = await r.json();
+        loadLevel(json);
+        return;
+      }
+      console.warn('[init] 示例关卡加载失败,使用默认关卡:', file, r.status);
+    } catch (e) { console.warn('[init] 示例关卡异常:', e); }
+  }
   loadLevel(SAMPLE_LEVEL);
 }
 

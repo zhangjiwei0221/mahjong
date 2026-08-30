@@ -565,6 +565,7 @@
           <div class="brush-btn active" data-brush="normal" onclick="setBrush('normal')">🀫 普通</div>
           <div class="brush-btn" data-brush="dark" onclick="setBrush('dark')">🂠 暗牌</div>
           <div class="brush-btn" data-brush="spitter" onclick="setBrush('spitter')">⚙ 吐牌</div>
+          <div class="brush-btn" data-brush="disc" onclick="setBrush('disc')">🟣 圆盘</div>
           <div class="brush-btn" data-brush="rotation" onclick="setBrush('rotation')">🎡 旋转</div>
         </div>
         <div id="spitterPanel" style="display:none; margin-top:10px;">
@@ -583,6 +584,23 @@
           <div class="field-row" style="justify-content:center; margin-top:8px;">
             <span>吐牌次数</span>
             <input type="number" id="spitterCount" value="2" min="1" max="99">
+          </div>
+        </div>
+        <div id="discPanel" style="display:none; margin-top:10px;">
+          <div class="card-sub">插入到哪两层之间</div>
+          <div class="field-row" style="justify-content:center;">
+            <select id="discGapSelect" onchange="setDiscGap(parseInt(this.value,10))" style="padding:4px 8px; border:1px solid var(--line); border-radius:6px; background:#fbf8f2;">
+              <option value="0">L0 与 L1 之间</option>
+              <option value="1">L1 与 L2 之间</option>
+              <option value="2">L2 与 L3 之间</option>
+              <option value="3">L3 与 L4 之间</option>
+              <option value="4">L4 与 L5 之间</option>
+            </select>
+          </div>
+          <div class="card-sub" style="margin-top:8px;">圆盘半径 = 1 张麻将</div>
+          <div class="card-sub" style="margin-top:4px; color:var(--sub); font-size:11px;">
+            • 选中圆盘画笔后，点棋盘放置；点已有的圆盘可删除<br>
+            • 圆盘盖住下方麻将，被麻将盖住时需先消除上方麻将
           </div>
         </div>
         <div id="rotationPanel" style="display:none; margin-top:10px;">
@@ -754,6 +772,15 @@
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
         <h4 style="margin:0;">📜 变更日志</h4>
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
+      </div>
+      <div class="gh-item">
+        <div class="gh-title">v4.10.0 · 2026-08-30</div>
+        <div class="gh-desc">
+          • <b>新增圆盘机制</b>：圆盘插入在两层麻将之间（如 L0/L1 之间），半径 = 1 张麻将长度，半透明紫色圆+中心白点+L 标签显示。①圆盘覆盖麻将 → 该麻将不可点；②圆盘被麻将覆盖 → 该麻将被消除时圆盘淡出消失；③所有圆盘消失 → 通关（与「麻将全清」任一即可）。手动放置，不通过生成器；不参与配对计算、不占层编号<br>
+          • <b>编辑器圆盘画笔</b>：画笔面板新增「🟣 圆盘」按钮；选择后弹出"插入到第 N/N+1 层之间"下拉（L0/L1 ~ L4/L5 五档）；选哪个缝哪个缝以上的层半透明显示预览；点画布 = 放置，再点同位置 = 删除；不支持跨层悬空（与所在层麻将重叠时画笔拒绝放置）；圆盘作为独立数组 discs 与 layers 并列存入 JSON<br>
+          • <b>Demo 渲染</b>：新增 demo/示例关卡/示例_圆盘.json（5 圆盘示例关）；URL 加 ?sample=disc 直接加载；圆盘用 SVG 单节点批量绘制（避免 N 个 div），定位与牌的 3D 偏移同步；点击消除上方麻将后 setInterval 链触发淡出动画；淡出完成自动 checkWin<br>
+          • <b>工作台后端</b>：GET/POST 关卡接口新增 discs 字段透传；保存到工作台时随 discs 一起写；列表元数据不含 discs（仅关卡 JSON 持有，不影响列表展示）
+        </div>
       </div>
       <div class="gh-item">
         <div class="gh-title">v4.9.13 · 2026-08-28</div>
@@ -1393,6 +1420,7 @@ let state = {
   layers: [],
   currentLayer: 0,
   brush: 'normal',
+  discGap: 0,                          // 圆盘画笔:插到哪两个层之间(0=插在 L0 上方 = L0/L1 之间)
   spitterDir: 'up',
   rotationDir: 'clockwise',
   sentRotation: null,                // 已发送到 demo 的旋转配置（用于 overlay 显示，与 demo 实际保持一致）
@@ -1403,6 +1431,8 @@ let state = {
   showGrid: true,
   showCoord: false,
   showTypeId: false, // 显示普通牌的牌面 Type ID(导入时保留)
+  discs: [],                           // 圆盘数组 [{id, gapLayer, row, col}],gapLayer=N 表示插在 LN 与 LN+1 之间
+  selectedDiscId: null,                // 选中圆盘(高亮 covers)
   painting: false,
   paintMode: null,
   strokeSnapshot: null, // 笔画开始前的 layers 快照（用于撤销）
@@ -1532,7 +1562,14 @@ function pixelToCell(px, py) {
 const HISTORY_LIMIT = 100;
 let past = [], future = [];
 
-function serializeLayers() { return JSON.stringify(state.layers); }
+function serializeState() { return JSON.stringify({ layers: state.layers, discs: state.discs }); }
+
+// 全局圆盘 id 计数器(避免和 tile id 撞号;tile id 1 起,圆盘 id 9000+)
+let _discIdCounter = 9000;
+function nextDiscId() {
+  while (state.discs.some(d => d.id === _discIdCounter)) _discIdCounter++;
+  return _discIdCounter++;
+}
 
 function pushHistory(beforeSnapshot) {
   past.push(beforeSnapshot);
@@ -1542,8 +1579,11 @@ function pushHistory(beforeSnapshot) {
   scheduleAutosave();
 }
 
-function restoreLayers(json) {
-  state.layers = JSON.parse(json);
+function restoreState(json) {
+  const obj = JSON.parse(json);
+  state.layers = obj.layers || [{ tiles: {} }, { tiles: {} }];
+  state.discs = obj.discs || [];
+  state.selectedDiscId = null;
   if (state.currentLayer >= state.layers.length) state.currentLayer = state.layers.length - 1;
   if (state.currentLayer < 0) state.currentLayer = 0;
   updateUI(); updateLegend(); draw();
@@ -1551,16 +1591,16 @@ function restoreLayers(json) {
 
 function undo() {
   if (!past.length) return;
-  future.push(serializeLayers());
-  restoreLayers(past.pop());
+  future.push(serializeState());
+  restoreState(past.pop());
   updateUndoButtons();
   scheduleAutosave();
 }
 
 function redo() {
   if (!future.length) return;
-  past.push(serializeLayers());
-  restoreLayers(future.pop());
+  past.push(serializeState());
+  restoreState(future.pop());
   updateUndoButtons();
   scheduleAutosave();
 }
@@ -1784,6 +1824,10 @@ function draw() {
   layersToDraw.forEach((layer, i) => {
     const layerIdx = startLayer + i;
     const isCurrent = layerIdx === state.currentLayer;
+    // 圆盘画笔:gapLayer 以上的层整体半透明(凸显"圆盘会夹在这")
+    const fadedByDisc = state.brush === 'disc' && layerIdx >= state.discGap + 1;
+    ctx.save();
+    if (fadedByDisc) ctx.globalAlpha = 0.35;
     Object.keys(layer.tiles).forEach(key => {
       const tile = layer.tiles[key];
       const [r, c0] = key.split(',').map(Number);
@@ -1815,7 +1859,14 @@ function draw() {
         }
       });
     });
+    ctx.restore(); // 对应 fadedByDisc 的 ctx.save()
   });
+
+  // 圆盘画笔激活时:对上层(>= gapLayer+1 的所有层)做半透明处理,凸显"圆盘会插在这里"
+  // 圆盘(夹层叠在麻将之间)
+  drawDiscs();
+  // 圆盘画笔下:鼠标光标处画圆盘预览
+  if (state.brush === 'disc' && state.hoverCell) drawDiscPreview();
 
   // 旋转画笔激活时：画旋转中心 + 外圈预览
   if (state.brush === 'rotation') drawRotationOverlay();
@@ -1823,6 +1874,65 @@ function draw() {
   if (state.hoverCell) drawHover();
 
   updateStatusbar();
+}
+
+// ===== 圆盘绘制 =====
+// 圆盘占一个麻将位(2x2 子格)。视觉:紫红色填充圆 + 边界圈,半径 = 1 张麻将(2 子格半径)
+// visualLayer = gapLayer + 0.5(让 z-order 自然落在 LN 和 LN+1 之间,与奇数层偏移语义一致)
+function discVisualLayer(disc) { return disc.gapLayer + 0.5; }
+
+function drawDiscAt(disc, alpha) {
+  const cx = BOARD_PAD + (disc.col + 1) * CELL;
+  const cy = worldTopPad() + BOARD_PAD + (disc.row + 1) * CELL;
+  const r = CELL; // 直径 = 2 子格 = 一张麻将
+  const lw = 1.5 / view.scale;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // 紫色填充圆
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  grad.addColorStop(0, 'rgba(180, 90, 200, 0.55)');
+  grad.addColorStop(1, 'rgba(120, 50, 160, 0.45)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  // 边线
+  ctx.strokeStyle = 'rgba(140, 60, 180, 0.95)';
+  ctx.lineWidth = lw * 2;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  // 中心小圆 + 缝隙层标签
+  ctx.fillStyle = 'rgba(255,255,255,0.85)';
+  ctx.beginPath(); ctx.arc(cx, cy, CELL * 0.25, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#5a1f78';
+  ctx.font = `bold ${Math.round(CELL * 0.32)}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('L' + disc.gapLayer, cx, cy);
+  ctx.restore();
+}
+
+function drawDiscs() {
+  if (!state.discs.length) return;
+  // 按 visualLayer 升序绘制(让高的 disc 盖住低的 disc,符合 z-order 习惯)
+  const sorted = state.discs.slice().sort((a, b) => discVisualLayer(a) - discVisualLayer(b));
+  for (const d of sorted) {
+    drawDiscAt(d, state.selectedDiscId === d.id ? 1.0 : 0.85);
+  }
+}
+
+function drawDiscPreview() {
+  const { col, row } = state.hoverCell;
+  const overlapTile = discOverlapsAnyTile(row, col);
+  const overlapDisc = discOverlapsOtherDisc(row, col, null);
+  drawDiscAt({ gapLayer: state.discGap, row, col }, overlapTile || overlapDisc ? 0.25 : 0.45);
+  if (!overlapTile && !overlapDisc) {
+    const cx = BOARD_PAD + (col + 1) * CELL;
+    const cy = worldTopPad() + BOARD_PAD + (row + 1) * CELL;
+    const r = CELL;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(60, 180, 100, 0.9)';
+    ctx.lineWidth = 2 / view.scale;
+    ctx.setLineDash([6 / view.scale, 4 / view.scale]);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
 }
 
 // 旋转画笔激活时的视觉反馈：旋转中心 + 旋转圈 + 高亮会旋转的牌
@@ -2103,6 +2213,45 @@ canvas.addEventListener('mousedown', e => {
   }
   if (e.button !== 0 && e.button !== 2) return;
   if (!state.hoverCell) return;
+
+  // 圆盘画笔:点已有圆盘 → 删除/选中;点空白 → 放置(右键删除最近圆盘)
+  // 不进入 painting 笔画,每次点击独立事件
+  if (state.brush === 'disc') {
+    const { col, row } = state.hoverCell;
+    // 检查点中是否已有圆盘(2x2 子格范围)
+    const hit = state.discs.find(d => {
+      const cells = discOccupiesCells(d.row, d.col);
+      return cells.has(`${row},${col}`);
+    });
+    const before = serializeState();
+    if (hit) {
+      // 单击已有圆盘 → 删除
+      state.discs = state.discs.filter(d => d.id !== hit.id);
+      if (state.selectedDiscId === hit.id) state.selectedDiscId = null;
+      pushHistory(before);
+      draw(); updateUI();
+      return;
+    } else if (e.button === 0) {
+      // 放置:防重叠
+      if (discOverlapsAnyTile(row, col)) {
+        toast('该位置与麻将重叠,无法放置', 'err');
+        return;
+      }
+      if (discOverlapsOtherDisc(row, col, null)) {
+        toast('该位置与已有圆盘重叠', 'err');
+        return;
+      }
+      state.discs.push({
+        id: nextDiscId(),
+        gapLayer: state.discGap,
+        row, col,
+      });
+      pushHistory(before);
+      draw(); updateUI();
+      return;
+    }
+    return;
+  }
   if (!state.hoverCell.valid && state.snapToSupport && state.currentLayer > 0) return;
 
   // 吐牌机画笔:再次点击已存在的吐牌机 → 直接消除(像普通牌那样,点已存在的就擦除)
@@ -2110,13 +2259,13 @@ canvas.addEventListener('mousedown', e => {
   const layer0 = state.layers[state.currentLayer];
   const key0 = `${state.hoverCell.row},${state.hoverCell.col}`;
   if (state.brush === 'spitter' && layer0.tiles[key0] && layer0.tiles[key0].type === 'spitter') {
-    const before = serializeLayers();
+    const before = serializeState();
     const sp = layer0.tiles[key0];
     const offset = { up: [-2, 0], down: [2, 0], left: [0, -2], right: [0, 2] }[sp.dir || 'up'] || [-2, 0];
     const tKey = `${state.hoverCell.row + offset[0]},${state.hoverCell.col + offset[1]}`;
     if (layer0.stacks[tKey]) delete layer0.stacks[tKey];
     delete layer0.tiles[key0];
-    if (before !== serializeLayers()) pushHistory(before);
+    if (before !== serializeState()) pushHistory(before);
     draw(); updateUI();
     return;
   }
@@ -2131,7 +2280,7 @@ canvas.addEventListener('mousedown', e => {
   }
 
   state.painting = true;
-  state.strokeSnapshot = serializeLayers(); // 笔画前快照，mouseup 时入历史
+  state.strokeSnapshot = serializeState(); // 笔画前快照，mouseup 时入历史
   const layer = state.layers[state.currentLayer];
   const { col, row } = state.hoverCell;
   const key = `${row},${col}`;
@@ -2203,7 +2352,7 @@ window.addEventListener('mouseup', e => {
   if (state.painting) {
     state.painting = false;
     // 笔画结束：有实际变化才入历史
-    if (state.strokeSnapshot !== null && state.strokeSnapshot !== serializeLayers()) {
+    if (state.strokeSnapshot !== null && state.strokeSnapshot !== serializeState()) {
       pushHistory(state.strokeSnapshot);
     }
     state.strokeSnapshot = null;
@@ -2460,7 +2609,7 @@ window.addEventListener('keydown', e => {
   }
   if ((e.key === 'Delete' || e.key === 'Backspace') && state.hoverTile) {
     // 删除悬停的牌（作用于悬停牌所在层？统一作用于当前层同位+镜像）
-    const before = serializeLayers();
+    const before = serializeState();
     const layer = state.layers[state.currentLayer];
     if (state.hoverCell) {
       const key = `${state.hoverCell.row},${state.hoverCell.col}`;
@@ -2474,7 +2623,7 @@ window.addEventListener('keydown', e => {
       }
       delete layer.tiles[key];
       if (state.symmetric && mkey !== key) delete layer.tiles[mkey];
-      if (before !== serializeLayers()) {
+      if (before !== serializeState()) {
         pushHistory(before);
         draw(); updateUI();
       }
@@ -2500,7 +2649,7 @@ window.addEventListener('keyup', e => {
 
 // ========== 层操作 ==========
 function addLayer() {
-  const before = serializeLayers();
+  const before = serializeState();
   state.layers.push({ tiles: {} });
   state.currentLayer = state.layers.length - 1;
   pushHistory(before);
@@ -2508,7 +2657,7 @@ function addLayer() {
 }
 
 function duplicateLayer() {
-  const before = serializeLayers();
+  const before = serializeState();
   const src = state.layers[state.currentLayer];
   const copy = { tiles: JSON.parse(JSON.stringify(src.tiles)) };
   state.layers.splice(state.currentLayer + 1, 0, copy);
@@ -2521,7 +2670,7 @@ function duplicateLayer() {
 function deleteLayer(btn) {
   if (state.layers.length <= 1) { toast('至少保留一层', 'err'); return; }
   armConfirm(btn, '再次点击确认删除', () => {
-    const before = serializeLayers();
+    const before = serializeState();
     state.layers.splice(state.currentLayer, 1);
     if (state.currentLayer >= state.layers.length) state.currentLayer = state.layers.length - 1;
     pushHistory(before);
@@ -2537,6 +2686,49 @@ function setBrush(brush) {
   });
   document.getElementById('spitterPanel').style.display = brush === 'spitter' ? 'block' : 'none';
   document.getElementById('rotationPanel').style.display = brush === 'rotation' ? 'block' : 'none';
+  document.getElementById('discPanel').style.display = brush === 'disc' ? 'block' : 'none';
+  if (brush !== 'disc') state.selectedDiscId = null; // 切走画笔时取消选中高亮
+  draw();
+}
+
+function setDiscGap(g) {
+  state.discGap = g;
+  draw();
+}
+
+// 圆盘占哪些子格(同麻将:2x2 子格,中心 (row,col))
+function discOccupiesCells(row, col) {
+  return new Set([
+    `${row},${col}`, `${row},${col+1}`,
+    `${row+1},${col}`, `${row+1},${col+1}`,
+  ]);
+}
+
+// 圆盘占用范围半径(1 子格,实际 2x2 子格)
+function discRadiusCells() { return 1; }
+
+// 在指定缝隙层,圆盘与所有麻将的 2x2 footprint 是否重叠(放置时防重叠)
+function discOverlapsAnyTile(discRow, discCol) {
+  const cells = discOccupiesCells(discRow, discCol);
+  for (let l = 0; l < state.layers.length; l++) {
+    const layer = state.layers[l];
+    for (const key of Object.keys(layer.tiles)) {
+      const tcells = tileOccupiesCells(key);
+      for (const c of cells) if (tcells.has(c)) return true;
+    }
+  }
+  return false;
+}
+
+// 圆盘之间是否重叠
+function discOverlapsOtherDisc(discRow, discCol, exceptId) {
+  const cells = discOccupiesCells(discRow, discCol);
+  for (const d of state.discs) {
+    if (d.id === exceptId) continue;
+    const dcells = discOccupiesCells(d.row, d.col);
+    for (const c of cells) if (dcells.has(c)) return true;
+  }
+  return false;
 }
 
 function setSpitterDir(dir) {
@@ -2689,9 +2881,10 @@ function loadFromEditorJSON(json) {
     }
   });
 
-  const before = serializeLayers();
+  const before = serializeState();
   const nums = Object.keys(layerMap).map(Number).sort((a, b) => a - b);
   state.layers = nums.map(n => layerMap[n]);
+  state.discs = (json.discs || []).map(d => ({ id: d.id || nextDiscId(), gapLayer: d.gapLayer, row: d.row, col: d.col }));
   state.currentLayer = 0;
   pushHistory(before);
   updateUI(); updateLegend(); draw();
@@ -2726,6 +2919,7 @@ function exportJSON() {
     levelId: 1,
     totalPairs: Math.floor(tiles.length / 2),
     tiles, specialTiles,
+    discs: state.discs.map(d => ({ id: d.id, gapLayer: d.gapLayer, row: d.row, col: d.col })),
   };
 
   const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
@@ -2936,11 +3130,11 @@ function buildEditorShape() {
   const posToId = {};
   tiles.forEach((t, i) => { t.id = i + 1; posToId[`${t.layer},${t.row},${t.col}`] = t.id; });
   specialTiles.forEach(s => { s.id = posToId[`${s.layer},${s.row},${s.col}`] || 0; });
-  return { tiles, specialTiles, spitters };
+  return { tiles, specialTiles, spitters, discs: state.discs.map(d => ({ id: d.id, gapLayer: d.gapLayer, row: d.row, col: d.col })) };
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.9.13'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.0'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
@@ -3274,6 +3468,7 @@ function sendLevelToPreview(level) {
     tiles: level.tiles,
     specialTiles: level.specialTiles,
     rotation: level.rotation || null, // 保留旋转配置
+    discs: level.discs || state.discs || [], // 圆盘(从 editor 状态直接带过去)
   };
   // 如果关卡带 rotation，编辑器自动切到旋转画笔并显示范围预警
   if (clean.rotation) {
@@ -3380,6 +3575,7 @@ function saveCurrentLevelToWorkbench(btn) {
       name,
       tiles: currentLevel.tiles,
       specialTiles: currentLevel.specialTiles,
+      discs: currentLevel.discs || state.discs || [], // 圆盘
       totalPairs: currentLevel.totalPairs,
       _difficulty: currentLevel._difficulty,
       order,

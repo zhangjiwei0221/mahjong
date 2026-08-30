@@ -1,0 +1,40 @@
+{
+  "levelId": 100,
+  "totalPairs": 13,
+  "tiles": [
+    { "id": 1, "layer": 0, "row": -8, "col": -5, "typeId": 1, "isDark": false },
+    { "id": 2, "layer": 0, "row": -8, "col": -3, "typeId": 2, "isDark": false },
+    { "id": 3, "layer": 0, "row": -8, "col": -1, "typeId": 3, "isDark": false },
+    { "id": 4, "layer": 0, "row": -8, "col": 1, "typeId": 4, "isDark": false },
+    { "id": 5, "layer": 0, "row": -6, "col": -5, "typeId": 5, "isDark": false },
+    { "id": 6, "layer": 0, "row": -6, "col": -3, "typeId": 6, "isDark": false },
+    { "id": 7, "layer": 0, "row": -6, "col": -1, "typeId": 7, "isDark": false },
+    { "id": 8, "layer": 0, "row": -6, "col": 1, "typeId": 8, "isDark": false },
+    { "id": 9, "layer": 0, "row": -4, "col": -5, "typeId": 9, "isDark": false },
+    { "id": 10, "layer": 0, "row": -4, "col": -3, "typeId": 10, "isDark": false },
+    { "id": 11, "layer": 0, "row": -4, "col": -1, "typeId": 11, "isDark": false },
+    { "id": 12, "layer": 0, "row": -4, "col": 1, "typeId": 12, "isDark": false },
+    { "id": 13, "layer": 0, "row": -2, "col": -5, "typeId": 13, "isDark": false },
+    { "id": 14, "layer": 0, "row": -2, "col": -3, "typeId": 14, "isDark": false },
+    { "id": 15, "layer": 0, "row": -2, "col": -1, "typeId": 15, "isDark": false },
+    { "id": 16, "layer": 0, "row": -2, "col": 1, "typeId": 16, "isDark": false },
+    { "id": 17, "layer": 0, "row": 0, "col": -5, "typeId": 17, "isDark": false },
+    { "id": 18, "layer": 0, "row": 0, "col": -3, "typeId": 18, "isDark": false },
+    { "id": 19, "layer": 0, "row": 0, "col": -1, "typeId": 19, "isDark": false },
+    { "id": 20, "layer": 0, "row": 0, "col": 1, "typeId": 20, "isDark": false },
+    { "id": 21, "layer": 1, "row": -6, "col": -5, "typeId": 1, "isDark": false },
+    { "id": 22, "layer": 1, "row": -4, "col": -5, "typeId": 2, "isDark": false },
+    { "id": 23, "layer": 1, "row": -2, "col": -5, "typeId": 3, "isDark": false },
+    { "id": 24, "layer": 1, "row": 0, "col": -5, "typeId": 4, "isDark": false },
+    { "id": 25, "layer": 1, "row": 2, "col": -5, "typeId": 5, "isDark": false },
+    { "id": 26, "layer": 1, "row": 2, "col": -3, "typeId": 1, "isDark": false }
+  ],
+  "specialTiles": [],
+  "discs": [
+    { "id": 9001, "gapLayer": 0, "row": -6, "col": -5 },
+    { "id": 9002, "gapLayer": 0, "row": -4, "col": -5 },
+    { "id": 9003, "gapLayer": 0, "row": -2, "col": -5 },
+    { "id": 9004, "gapLayer": 0, "row": 0, "col": -5 },
+    { "id": 9005, "gapLayer": 0, "row": 2, "col": -5 }
+  ]
+}
