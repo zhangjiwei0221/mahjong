@@ -415,6 +415,24 @@
       "darkHookDensity": 0.298
     },
     {
+      "key": "mtf9wljo_6qvet5",
+      "name": "31旋转",
+      "order": 31,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-30T03:52:07.956Z",
+      "totalPairs": 49,
+      "tileCount": 98,
+      "darkCount": 49,
+      "score": 126,
+      "clickRatio": 0.235,
+      "maxLayer": 6,
+      "hooks": 42,
+      "darkHooks": 37,
+      "hookDensity": 0.857,
+      "darkHookDensity": 0.755
+    },
+    {
       "key": "mt6miznh_r74m46",
       "name": "32",
       "order": 32,
