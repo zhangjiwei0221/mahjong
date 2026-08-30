@@ -774,6 +774,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.3 · 2026-08-30</div>
+        <div class="gh-desc">
+          • 修复 v4.10.2 圆盘画笔圆心偏向鼠标左上方:pixelToCell 在 disc 画笔下从 cell 起点(floor+1e-6)改为 cell 中心(floor+0.5),圆心 hoverCell 落在最近子格中心,鼠标怎么移圆盘都跟着。普通画笔仍用 cell 起点(2x2 麻将 footprint 从起点铺开)
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.2 · 2026-08-30</div>
         <div class="gh-desc">
           • <b>圆盘坐标语义重定义</b>:disc.row/col 改为"子格坐标(任意整数)"而非"麻将位坐标(仅偶数)"。圆心可以落在 4 张麻将交界(田字中心),圆刚好盖住 4 张麻将的各一角<br>
@@ -3160,7 +3166,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.2'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.3'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

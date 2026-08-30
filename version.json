@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.2",
+  "version": "v4.10.3",
   "updated": "2026-08-30",
-  "notes": "圆盘坐标语义重定义:disc.row/col 改为子格坐标(任意整数),圆心可放在 4 张麻将交界的田字中心;编辑器 mousemove 取消 snap 偶数 + 边界拓宽;圆盘间重叠改为欧氏距离 ≤2 子格判定(临界相切允许),支持田字中心旁并列多个 disc;示例_圆盘.json 坐标同步迁移。",
+  "notes": "圆盘画笔圆心精确跟随鼠标:pixelToCell 在 disc 画笔下从 cell 起点(floor+1e-6)改为 cell 中心(floor+0.5),圆心 hoverCell 落在最近子格中心,鼠标怎么移圆盘都跟着。普通画笔仍用 cell 起点(2x2 麻将 footprint 从起点铺开)。",
   "changelog": [
+    {
+      "version": "v4.10.3",
+      "date": "2026-08-30",
+      "notes": "修复 v4.10.2 圆盘画笔圆心偏向鼠标左上方:pixelToCell 在 disc 画笔下从 cell 起点(floor+1e-6)改为 cell 中心(floor+0.5),圆心 hoverCell 落在最近子格中心,鼠标怎么移圆盘都跟着。普通画笔仍用 cell 起点(2x2 麻将 footprint 从起点铺开)。"
+    },
     {
       "version": "v4.10.2",
       "date": "2026-08-30",
