@@ -810,7 +810,8 @@ function renderDiscs() {
     // 圆盘中心 = 牌位左上角 + 1 子格 = (col - minCol) * cell + cell = (col - minCol + 1) * cell
     const cx = offX + (d.col - minCol + 1) * cellPx;
     const cy = offY + (d.row - minRow + 1) * cellPx;
-    const r = cellPx;
+    // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格覆盖整张麻将 + 周围半格)
+    const r = 2 * cellPx;
     // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
     // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
     // 为了视觉明显,放大 1.5 倍

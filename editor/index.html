@@ -774,6 +774,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.1 · 2026-08-30</div>
+        <div class="gh-desc">
+          • 圆盘半径加大：r = 2 子格 = 1 张麻将边长(原 r = 1 子格太小,直径只有麻将一半),demo SVG 同步。圆心仍对齐麻将位中心<br>
+          • 编辑器圆盘画笔 snap hoverCell 到偶数(麻将位坐标):原 mousemove 直接传子格坐标,鼠标在子格奇数位置时圆心会偏离麻将位。snap 后圆心严格落在麻将位中心
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.0 · 2026-08-30</div>
         <div class="gh-desc">
           • <b>新增圆盘机制</b>：圆盘插入在两层麻将之间（如 L0/L1 之间），半径 = 1 张麻将长度，半透明紫色圆+中心白点+L 标签显示。①圆盘覆盖麻将 → 该麻将不可点；②圆盘被麻将覆盖 → 该麻将被消除时圆盘淡出消失；③所有圆盘消失 → 通关（与「麻将全清」任一即可）。手动放置，不通过生成器；不参与配对计算、不占层编号<br>
@@ -1882,9 +1889,11 @@ function draw() {
 function discVisualLayer(disc) { return disc.gapLayer + 0.5; }
 
 function drawDiscAt(disc, alpha) {
+  // 圆心:麻将位 (col,row) 的中心 = 子格 (col+1, row+1) 中心
   const cx = BOARD_PAD + (disc.col + 1) * CELL;
   const cy = worldTopPad() + BOARD_PAD + (disc.row + 1) * CELL;
-  const r = CELL; // 直径 = 2 子格 = 一张麻将
+  // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格覆盖整张麻将 + 周围半格,视觉上一眼能识别)
+  const r = 2 * CELL;
   const lw = 1.5 / view.scale;
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -2309,6 +2318,12 @@ canvas.addEventListener('mousemove', e => {
 
   const pos = getMousePos(e);
   const cell = pixelToCell(pos.x, pos.y);
+
+  // 圆盘画笔下:必须对齐麻将位(row/col 都是偶数),圆心才落在麻将中心
+  if (state.brush === 'disc') {
+    cell.col = Math.round(cell.col / 2) * 2;
+    cell.row = Math.round(cell.row / 2) * 2;
+  }
 
   // 编辑器坐标边界：col -5..5（12 子格 = 6 麻将位）, row -8..6
   if (cell.col < -5 || cell.col > 5 || cell.row < -8 || cell.row > 6) {
@@ -3134,7 +3149,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.0'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.1'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
