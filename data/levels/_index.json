@@ -775,6 +775,24 @@
       "darkHookDensity": 0.786
     },
     {
+      "key": "mtfae1tt_s7q3x0",
+      "name": "51旋转",
+      "order": 51,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-30T04:05:42.209Z",
+      "totalPairs": 43,
+      "tileCount": 86,
+      "darkCount": 43,
+      "score": 133,
+      "clickRatio": 0.244,
+      "maxLayer": 5,
+      "hooks": 36,
+      "darkHooks": 29,
+      "hookDensity": 0.837,
+      "darkHookDensity": 0.674
+    },
+    {
       "key": "mt9iq8e3_oxop69",
       "name": "55",
       "order": 55,
@@ -935,24 +953,6 @@
       "darkHooks": 11,
       "hookDensity": 0.947,
       "darkHookDensity": 0.289
-    },
-    {
-      "key": "mt7gjmyv_xy2wq6",
-      "name": "78",
-      "order": null,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-24T16:35:51.175Z",
-      "totalPairs": 42,
-      "tileCount": 84,
-      "darkCount": 38,
-      "score": 142,
-      "clickRatio": 0.167,
-      "maxLayer": 4,
-      "hooks": 40,
-      "darkHooks": 31,
-      "hookDensity": 0.952,
-      "darkHookDensity": 0.738
     },
     {
       "key": "mt7giz4w_ml8sk7",
