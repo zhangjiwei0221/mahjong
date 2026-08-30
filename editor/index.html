@@ -1569,9 +1569,12 @@ function pixelToCell(px, py) {
   const wx = (px - view.ox) / view.scale;
   const wy = (py - view.oy) / view.scale;
   const bx = BOARD_PAD, by = worldTopPad() + BOARD_PAD;
+  // 普通画笔用 cell 起点(麻将位 2x2 footprint 从起点铺开)
+  // disc 画笔用 cell 中心(圆心精确对齐鼠标),加 +0.5 后 floor
+  const isDisc = state.brush === 'disc';
   return {
-    col: Math.floor((wx - bx) / CELL + 1e-6) - DISPLAY_OFFSET_COL,
-    row: Math.floor((wy - by) / CELL + 1e-6) - DISPLAY_OFFSET_ROW,
+    col: Math.floor((wx - bx) / CELL + (isDisc ? 0.5 : 1e-6)) - DISPLAY_OFFSET_COL,
+    row: Math.floor((wy - by) / CELL + (isDisc ? 0.5 : 1e-6)) - DISPLAY_OFFSET_ROW,
   };
 }
 
