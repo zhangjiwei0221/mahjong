@@ -1931,10 +1931,10 @@ function drawDiscPreview() {
   const overlapTile = discOverlapsAnyTile(row, col);
   const overlapDisc = discOverlapsOtherDisc(row, col, null);
   drawDiscAt({ gapLayer: state.discGap, row, col }, overlapTile || overlapDisc ? 0.25 : 0.45);
-  if (!overlapTile && !overlapDisc) {
+  if (!overlapDisc) {
     const cx = BOARD_PAD + (col + 1) * CELL;
     const cy = worldTopPad() + BOARD_PAD + (row + 1) * CELL;
-    const r = CELL;
+    const r = 2 * CELL;
     ctx.save();
     ctx.strokeStyle = 'rgba(60, 180, 100, 0.9)';
     ctx.lineWidth = 2 / view.scale;
@@ -2723,15 +2723,9 @@ function discOccupiesCells(row, col) {
 function discRadiusCells() { return 1; }
 
 // 在指定缝隙层,圆盘与所有麻将的 2x2 footprint 是否重叠(放置时防重叠)
+// 圆盘机制本来就设计为"盖住麻将 / 被麻将盖住(钥匙)",所以任何层麻将重叠都允许
+// 此函数保留为空集合,只保留接口语义;真正的防重叠在 discOverlapsOtherDisc
 function discOverlapsAnyTile(discRow, discCol) {
-  const cells = discOccupiesCells(discRow, discCol);
-  for (let l = 0; l < state.layers.length; l++) {
-    const layer = state.layers[l];
-    for (const key of Object.keys(layer.tiles)) {
-      const tcells = tileOccupiesCells(key);
-      for (const c of cells) if (tcells.has(c)) return true;
-    }
-  }
   return false;
 }
 
