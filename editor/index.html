@@ -1909,8 +1909,9 @@ function discVisualLayer(disc) { return disc.gapLayer + 0.5; }
 
 function drawDiscAt(disc, alpha) {
   // 圆心 = (col, row) 子格(任意整数,可放在麻将位中心,也可放在 4 麻将交界的"田字中心")
-  const cx = BOARD_PAD + disc.col * CELL;
-  const cy = worldTopPad() + BOARD_PAD + disc.row * CELL;
+  // 与 tile 一致:渲染用 dCol = col + DISPLAY_OFFSET_COL(棋盘原点 = 内部 col=-5 = 显示 col=0)
+  const cx = BOARD_PAD + (disc.col + DISPLAY_OFFSET_COL) * CELL;
+  const cy = worldTopPad() + BOARD_PAD + (disc.row + DISPLAY_OFFSET_ROW) * CELL;
   // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
   const r = 2 * CELL;
   const lw = 1.5 / view.scale;
@@ -1952,8 +1953,8 @@ function drawDiscPreview() {
   drawDiscAt({ gapLayer: state.discGap, row, col }, overlapTile || overlapDisc ? 0.25 : 0.45);
   // hoverCell 是子格坐标(支持任意整数 = 田字中心等),虚线圆环直接画在该子格中心
   if (!overlapDisc) {
-    const cx = BOARD_PAD + col * CELL;
-    const cy = worldTopPad() + BOARD_PAD + row * CELL;
+    const cx = BOARD_PAD + (col + DISPLAY_OFFSET_COL) * CELL;
+    const cy = worldTopPad() + BOARD_PAD + (row + DISPLAY_OFFSET_ROW) * CELL;
     const r = 2 * CELL;
     ctx.save();
     ctx.strokeStyle = 'rgba(60, 180, 100, 0.9)';
