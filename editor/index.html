@@ -774,6 +774,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.4 · 2026-08-30</div>
+        <div class="gh-desc">
+          • 修复 v4.10.2 引入的"圆盘画在棋盘外"bug:v4.10.2 把 disc.col 从麻将位改为子格坐标时,drawDiscAt 用了 <code>BOARD_PAD + disc.col*CELL</code>,漏了 <code>+DISPLAY_OFFSET_COL</code>。结果 hoverCell.col=5 圆盘画在 cx=6+5*40=206(棋盘外左),而 tile col=5 画在 cx=6+(5+5)*40=406(棋盘右),两者错位 200px=5 子格 — 鼠标在棋盘右下方时圆盘显示在棋盘外左上,看起来像"圆盘在鼠标左上方"。修正:与 tile 渲染一致,圆心 = <code>BOARD_PAD + (disc.col+DISPLAY_OFFSET_COL)*CELL</code>;drawDiscPreview 虚线圆环同步修正
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.3 · 2026-08-30</div>
         <div class="gh-desc">
           • 修复 v4.10.2 圆盘画笔圆心偏向鼠标左上方:pixelToCell 在 disc 画笔下从 cell 起点(floor+1e-6)改为 cell 中心(floor+0.5),圆心 hoverCell 落在最近子格中心,鼠标怎么移圆盘都跟着。普通画笔仍用 cell 起点(2x2 麻将 footprint 从起点铺开)
@@ -3167,7 +3173,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.3'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.4'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

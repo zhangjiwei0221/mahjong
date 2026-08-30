@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.3",
+  "version": "v4.10.4",
   "updated": "2026-08-30",
-  "notes": "圆盘画笔圆心精确跟随鼠标:pixelToCell 在 disc 画笔下从 cell 起点(floor+1e-6)改为 cell 中心(floor+0.5),圆心 hoverCell 落在最近子格中心,鼠标怎么移圆盘都跟着。普通画笔仍用 cell 起点(2x2 麻将 footprint 从起点铺开)。",
+  "notes": "圆盘渲染坐标补 DISPLAY_OFFSET:drawDiscAt/drawDiscPreview 用 (col+DISPLAY_OFFSET_COL)*CELL,与 tile 渲染一致。修 v4.10.2 引入的'圆盘画在棋盘外'bug(圆盘与同位置 tile 错位 200px=5 子格)。",
   "changelog": [
+    {
+      "version": "v4.10.4",
+      "date": "2026-08-30",
+      "notes": "修复 v4.10.2 引入的\"圆盘画在棋盘外\"bug:v4.10.2 把 disc.col 从麻将位改为子格坐标时,drawDiscAt 用了 BOARD_PAD + disc.col*CELL,漏了 +DISPLAY_OFFSET_COL。结果 hoverCell.col=5 圆盘画在 cx=6+5*40=206(棋盘外左),而 tile col=5 画在 cx=6+(5+5)*40=406(棋盘右),两者错位 200px=5 子格 — 鼠标在棋盘右下方时圆盘显示在棋盘外左上,看起来像\"圆盘在鼠标左上方\"。修正:与 tile 渲染一致,圆心 = BOARD_PAD + (disc.col+DISPLAY_OFFSET_COL)*CELL;drawDiscPreview 虚线圆环同步修正。"
+    },
     {
       "version": "v4.10.3",
       "date": "2026-08-30",
