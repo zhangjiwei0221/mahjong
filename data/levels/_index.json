@@ -775,6 +775,24 @@
       "darkHookDensity": 0.786
     },
     {
+      "key": "mtfae1tt_s7q3x0",
+      "name": "51旋转",
+      "order": 51,
+      "status": "wip",
+      "playTimeMs": null,
+      "savedAt": "2026-08-30T04:05:42.209Z",
+      "totalPairs": 43,
+      "tileCount": 86,
+      "darkCount": 43,
+      "score": 133,
+      "clickRatio": 0.244,
+      "maxLayer": 5,
+      "hooks": 36,
+      "darkHooks": 29,
+      "hookDensity": 0.837,
+      "darkHookDensity": 0.674
+    },
+    {
       "key": "mt9iq8e3_oxop69",
       "name": "55",
       "order": 55,
