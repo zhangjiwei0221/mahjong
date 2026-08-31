@@ -847,24 +847,6 @@
       "darkHookDensity": 0.8
     },
     {
-      "key": "mt7goadv_z57mkh",
-      "name": "77",
-      "order": 77,
-      "status": "wip",
-      "playTimeMs": null,
-      "savedAt": "2026-08-24T16:39:28.147Z",
-      "totalPairs": 48,
-      "tileCount": 96,
-      "darkCount": 43,
-      "score": 150,
-      "clickRatio": 0.156,
-      "maxLayer": 5,
-      "hooks": 44,
-      "darkHooks": 34,
-      "hookDensity": 0.917,
-      "darkHookDensity": 0.708
-    },
-    {
       "key": "mtbvoewg_pp8j1r",
       "name": "190",
       "order": 190,
