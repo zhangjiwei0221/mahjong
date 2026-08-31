@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.6.4",
+  "version": "v4.10.6.5",
   "updated": "2026-09-01",
-  "notes": "v4.10.6.4 修复 v4.10.6.3 圆盘点田字中心偏上偏左 19px:pixelToCell 加 opts.float 参数,圆盘画笔返回浮点子格坐标,与 drawDiscAt +CELL/2 公式对齐后任意 click 位置 round-trip 精确。",
+  "notes": "v4.10.6.5 回滚 v4.10.6.4 浮点圆心 snap,改回整数 snap(像摆麻将,1 cell 1 跳)。pixelToCell 去掉 opts.float 分支统一 floor;渲染侧 drawDiscAt 维持 +CELL/2。",
   "changelog": [
+    {
+      "version": "v4.10.6.5",
+      "date": "2026-09-01",
+      "notes": "回滚 v4.10.6.4 浮点圆心 snap,改回整数 snap。用户反馈\"不需要这样,像摆麻将一样按 1 个 cell 为单位的移动\":disc hover 应在 cell 边界处跳 1 cell(离散步进,像 tile brush 一样),而不是连续浮点圆心。修正:pixelToCell 去掉 opts.float 分支,统一用 floor((wx-bx)/CELL + 1e-6) - OFFSET 整数 snap(与 tile/spitter/rotation 行为一致);mousemove 不再传 {float}。渲染侧 drawDiscAt 维持 +CELL/2(cell 中心,与 demo 对齐)。代价:cell 边界 click 会让 disc 跳到最近 cell 中心(典型 19 px 步进,跟 tile brush 的 2x2 footprint 跳格一致),用户接受这个 \"1 cell 步进\" 行为。"
+    },
     {
       "version": "v4.10.6.4",
       "date": "2026-09-01",

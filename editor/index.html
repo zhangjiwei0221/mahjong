@@ -774,6 +774,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.6.5 · 2026-09-01</div>
+        <div class="gh-desc">
+          • 回滚 v4.10.6.4 浮点圆心 snap,改回整数 snap。用户反馈"不需要这样,像摆麻将一样按 1 个 cell 为单位的移动":disc hover 应在 cell 边界处跳 1 cell(离散步进,像 tile brush 一样),而不是连续浮点圆心。修正:<code>pixelToCell</code> 去掉 <code>opts.float</code> 分支,统一用 <code>floor((wx-bx)/CELL + 1e-6) - OFFSET</code> 整数 snap(与 tile/spitter/rotation 行为一致);mousemove 不再传 <code>{float}</code>。渲染侧 <code>drawDiscAt</code> 维持 <code>+CELL/2</code>(cell 中心,与 demo 对齐)。代价:cell 边界 click 会让 disc 跳到最近 cell 中心(典型 19 px 步进,跟 tile brush 的 2x2 footprint 跳格一致),用户接受这个 "1 cell 步进" 行为
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.6.4 · 2026-09-01</div>
         <div class="gh-desc">
           • 修复 v4.10.6.3 引入的"圆盘放不到正中间,偏上偏左"bug。v4.10.6.3 把 disc 渲染改为 cell-center(+CELL/2)与 demo 对齐,但 <code>pixelToCell</code> 仍是 floor 整数 — 用户点田字中心(w=86,h=104 这种 cell 边界位置)时返回 col=-4(下界 cell),圆盘画在 cell -4 中心(w=66,h=84),偏离点击位置 19 px 偏上偏左。修法:pixelToCell 加 <code>opts.float</code> 参数,圆盘画笔下返回浮点子格坐标 <code>(wx-bx)/CELL - 0.5 - OFFSET</code> — 与 drawDiscAt 的 +CELL/2 公式对齐后,任意 click 位置 round-trip 精确到 0(浮点精度内)。验证:田字中心 click (86,104) → hoverCell (-3.5,-6.5) → drawDiscAt at (86,104) 误差 0 ✓;编辑器-demo 公式对比 8 种 col(整数/半整数)全部对齐 ✓;普通画笔/tile/spitter/rotation 仍用 floor 整数起点(2x2 麻将 footprint 行为不变) ✓
@@ -1612,23 +1618,15 @@ function mirrorCol(col, layer) {
   return -col;
 }
 
-function pixelToCell(px, py, opts = {}) {
+function pixelToCell(px, py) {
   // CSS 像素 → 世界坐标 → 编辑器坐标
   const wx = (px - view.ox) / view.scale;
   const wy = (py - view.oy) / view.scale;
   const bx = BOARD_PAD, by = worldTopPad() + BOARD_PAD;
-  // 圆盘画笔下用浮点子格坐标(支持田字中心):
-  //   drawDiscAt 用 cx = BOARD_PAD + (col+OFFSET_COL)*CELL + CELL/2
-  //   要让 disc 落在 click 位置 → col = (wx-bx)/CELL - 0.5 - OFFSET_COL
-  //   此时 wx = BOARD_PAD + col*CELL + 0.5*CELL + OFFSET_COL*CELL = click 位置 ✓
-  // 普通画笔(麻将 2x2 子格 footprint 从 cell 起点铺开)用 floor → 整数起点
-  if (opts.float) {
-    return {
-      col: (wx - bx) / CELL - 0.5 - DISPLAY_OFFSET_COL,
-      row: (wy - by) / CELL - 0.5 - DISPLAY_OFFSET_ROW,
-    };
-  }
-  // 普通画笔/tile/spitter/rotation 用 cell 起点(floor + 1e-6 修正浮点边界)
+  // 圆盘画笔跟普通画笔一样:floor 取整数 cell(1 cell 单位 snap,像摆麻将)
+  // drawDiscAt 渲染时用 +CELL/2 偏移 → 圆心落在 cell 中心
+  //   col=N → cx = BOARD_PAD + (N+OFFSET_COL)*CELL + CELL/2
+  //   click 在 cell N 区域 → col = N → 圆心在 cell N center ✓
   const eps = 1e-6;
   return {
     col: Math.floor((wx - bx) / CELL + eps) - DISPLAY_OFFSET_COL,
@@ -2391,10 +2389,11 @@ canvas.addEventListener('mousemove', e => {
   }
 
   const pos = getMousePos(e);
-  const cell = pixelToCell(pos.x, pos.y, { float: state.brush === 'disc' });
+  const cell = pixelToCell(pos.x, pos.y);
 
-  // 圆盘画笔下:不 snap 到偶数 — 圆盘圆心可以放在任意子格(支持"田字中心"等 4 麻将交界位置)
+  // 圆盘画笔:floor 取整数 cell(1 cell 单位 snap,像摆麻将)
   // 圆心 = (col, row) 子格;占地区 = (col±1, row±1) → 跨 3x3 子格,覆盖周围 2x2 麻将位
+  // 鼠标移到 cell N 边界时 disc 跳到 cell N(下次鼠标再过去跳 cell N+1),离散步进像摆麻将
 
   // 编辑器坐标边界：col -5..5（12 子格 = 6 麻将位）, row -8..6
   if (cell.col < -6 || cell.col > 6 || cell.row < -9 || cell.row > 7) {
@@ -3220,7 +3219,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.6.4'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.6.5'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
