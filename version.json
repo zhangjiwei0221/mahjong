@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.6.3",
+  "version": "v4.10.6.4",
   "updated": "2026-09-01",
-  "notes": "v4.10.6.3 修复编辑器圆盘位置与 demo 不一致(相差半格):drawDiscAt/drawDiscPreview 圆心加 +CELL/2 与 demo cell-center 公式对齐;pixelToCell 同步去掉 disc 画笔的 +0.5 偏移。",
+  "notes": "v4.10.6.4 修复 v4.10.6.3 圆盘点田字中心偏上偏左 19px:pixelToCell 加 opts.float 参数,圆盘画笔返回浮点子格坐标,与 drawDiscAt +CELL/2 公式对齐后任意 click 位置 round-trip 精确。",
   "changelog": [
+    {
+      "version": "v4.10.6.4",
+      "date": "2026-09-01",
+      "notes": "修复 v4.10.6.3 引入的\"圆盘放不到正中间,偏上偏左\"bug。v4.10.6.3 把 disc 渲染改为 cell-center(+CELL/2)与 demo 对齐,但 pixelToCell 仍是 floor 整数,用户点田字中心(cell 边界位置)时返回下界 cell,圆盘画在该 cell 中心,偏离点击位置 19px。修法:pixelToCell 加 opts.float 参数,圆盘画笔下返回浮点子格坐标,与 drawDiscAt 的 +CELL/2 公式对齐后任意 click 位置 round-trip 精确到 0(浮点精度内)。验证:田字中心 click (86,104) → hoverCell (-3.5,-6.5) → drawDiscAt at (86,104) 误差 0;编辑器-demo 公式对比 8 种 col 全部对齐;普通画笔/tile/spitter/rotation 仍用 floor 整数起点(2x2 麻将 footprint 行为不变)。"
+    },
     {
       "version": "v4.10.6.3",
       "date": "2026-09-01",
