@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.4",
+  "version": "v4.10.5",
   "updated": "2026-08-30",
-  "notes": "圆盘渲染坐标补 DISPLAY_OFFSET:drawDiscAt/drawDiscPreview 用 (col+DISPLAY_OFFSET_COL)*CELL,与 tile 渲染一致。修 v4.10.2 引入的'圆盘画在棋盘外'bug(圆盘与同位置 tile 错位 200px=5 子格)。",
+  "notes": "修复工作台预览试玩'消除一对直接获胜'bug:checkWin 通关条件从 OR 改为 AND(麻将全消 AND 圆盘全消失两个必须同时满足),有 disc 的关卡必须等 disc 淡出完成才通关。",
   "changelog": [
+    {
+      "version": "v4.10.5",
+      "date": "2026-08-30",
+      "notes": "修复工作台预览试玩\"消除一对直接获胜\"bug:checkWin 的通关条件原为\"麻将全消 OR 圆盘全消\"(任一即胜利),消除一对后场上无牌 → allTilesCleared=true → 立刻通关,完全不看 disc 是否还在。修正为\"麻将全消 AND 圆盘全消失\"(两个必须同时满足),有 disc 的关卡必须等 disc 淡出完成才能通关;同时保留 currentDiscs.length===0 兜底(避免空 disc 关卡卡住)。Preview 实测:mini 关卡(2 牌 + 1 disc)消除一对后 msg 不显示,等 disc 淡出完成才通关。"
+    },
     {
       "version": "v4.10.4",
       "date": "2026-08-30",
