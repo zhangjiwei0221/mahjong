@@ -1175,9 +1175,10 @@ function rotateTiles() {
 function checkWin() {
   const active = getActiveTiles();
   const allTilesCleared = active.length === 0 && slots.every(s => s === null);
-  const allDiscsCleared = currentDiscs.every(d => (discAlpha.get(d.id) || 0) >= 1);
-  // 通关条件:麻将全消 OR 圆盘全消(任一即可)
-  if (allTilesCleared || allDiscsCleared) {
+  // 圆盘全部"消失完毕":currentDiscs 已裁到空 或 所有 disc 都 alpha≥1 完成淡出
+  const allDiscsCleared = currentDiscs.length === 0 || currentDiscs.every(d => (discAlpha.get(d.id) || 0) >= 1);
+  // 通关条件:麻将全消 AND 圆盘全消失(两个必须同时满足,任一未完成都不能算赢)
+  if (allTilesCleared && allDiscsCleared) {
     gameOver = true;
     // 试玩计时：回传给父窗口（编辑器）用于验证难度分
     let durationMs = 0;
