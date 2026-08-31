@@ -662,6 +662,9 @@ function render() {
   const board = document.getElementById('board');
   const active = getActiveTiles();
   const boardW = board.parentElement.clientWidth;
+  // board 未 layout(clientWidth=0)时,cell 会算成负数,SVG circle radius 负数 → 不渲染 + tile width 负数 → 视觉错位。
+  // 等下一帧 layout 完成再重渲。requestAnimationFrame 不会无限循环(只要 layout 最终完成)
+  if (boardW === 0) { requestAnimationFrame(render); return; }
   const boardH = board.parentElement.clientHeight;
 
   if (active.length === 0 && currentDiscs.length === 0) { board.innerHTML = ''; renderSlots(); updateProgress(); return; }
@@ -818,7 +821,7 @@ function renderDiscs() {
     // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
     // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
     // 为了视觉明显,放大 1.5 倍
-    const zOffset = (d.gapLayer + 0.5) * 0.3 * cellPx * 1.5;
+    const zOffset = (d.gapLayer + 1) * 0.3 * cellPx * 1.5;
     const g = document.createElementNS(svgNS, 'g');
     g.setAttribute('opacity', a);
     g.setAttribute('transform', `translate(0, ${-zOffset})`);
@@ -1268,6 +1271,10 @@ function returnSlot(idx) {
 }
 
 function checkMatch() {
+  // 每次 tile 进卡槽都先扫一遍 disc:单张进槽(无配对)也可能让上方最后一张麻将
+  // 从 active 移出,导致 disc 上方已无麻将,此时也应开始淡出(此前只在配对消除时 sweep,
+  // 单张进槽后即使 disc 上方已空也不淡出,会卡在场上不消失)。
+  sweepDiscsToFade();
   const counts = {};
   for (const t of slots) {
     if (t) counts[t.typeId] = (counts[t.typeId] || 0) + 1;
@@ -1407,6 +1414,8 @@ function loadLevel(json) {
   const hasDark = json.tiles.some(t => t.isDark);
   document.getElementById('level-name').textContent = '关卡 ' + (json.levelId || '?') + (hasDark ? ' · 含暗牌' : '');
   render();
+  // 加载时若 disc 上方已无麻将,立即触发淡出(此前 sweepDiscsToFade 只在消除时才调,空 disc 会卡在场上不消失)
+  sweepDiscsToFade();
 }
 
 function restartLevel() {

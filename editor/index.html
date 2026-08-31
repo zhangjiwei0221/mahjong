@@ -774,6 +774,13 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.6 · 2026-08-31</div>
+        <div class="gh-desc">
+          • 修复工作台预览"每次打开都要等好久才出麻将"问题。<code>closePreview()</code> 原本会 <code>frame.removeAttribute('src')</code> 卸载 demo iframe 并把 <code>demoReady=false</code>,导致每次"关闭→重开"预览都要重新加载整个 <code>/demo/index.html</code>(HTML+CSS+JS 全重),体验非常卡。修正:closePreview 仅隐藏 modal,保留 iframe 与 demoReady 状态;后续预览走 <code>previewLevel</code> 的 <code>else</code> 分支 <code>if (demoReady) sendLevelToDemo(level)</code>,直接 postMessage 发关卡,二次预览实测 0ms 秒开。后台循环 CPU 开销 &lt;1%,换取预览秒开
+          <br>• 修复编辑器生成关卡"圆盘数据丢失"问题。<code>buildEditorShape()</code> 已正确返回 <code>discs</code> 数组,但 <code>tryGen / generateStackFromCurrent / batchGenerate</code> 三处调用都只解构了 <code>{ tiles, specialTiles }</code>、漏了 discs,传给 <code>fillEditorShape / generateStackFromShape</code> 时也没传 discs;生成器内部也未读取/写出 discs。后果:用户用编辑器画了圆盘,点"按当前形状生成"或"按堆塔生成"或"批量生成",输出的关卡 JSON 完全不含 discs 字段——demo 加载后看不到圆盘,圆盘机制完全失效。修正:三处解构均加 <code>discs</code>;生成器三个函数 (<code>fillEditorShape / generateAndFill / generateStackFromShape</code>) 都新增 <code>options.discs</code> 解析并写入返回 level 的 <code>discs</code> 字段,与手画导出链路(<code>level = { ..., discs }</code>)保持一致。验证:画 2 disc 走 <code>fillEditorShape</code> 实测返回 <code>level.discs.length===2</code> ✓
+          <br>• 修复圆盘机制三个 demo 端 bug:<b>①空圆盘不消失</b>。<code>loadLevel</code> 末尾未调 <code>sweepDiscsToFade()</code>,导致用户画了 disc 但上方未放 tile 的关卡加载后,圆盘一直显示不消失(原 sweep 只在消除一张牌后才触发)。修正:loadLevel 末尾调一次 sweep,空 disc 立即开始淡出。<b>②圆盘视觉被上层 tile 盖住</b>。<code>zOffset = (gapLayer+0.5)*0.3*cell*1.5</code> 在 gapLayer=0 时仅向上偏 9px,而 L1 tile 的 layerOffset 是 12px——L1 tile 视觉位置更高,看起来"压在圆盘上"。修正:<code>zOffset = (gapLayer+1)*0.3*cell*1.5</code>,gapLayer=0 时偏 18px,大于 L1 tile 的 12px,圆盘视觉在最上层 tile 之上,符合"盖子"语义。<b>③render 时 board 未 layout 导致 cell 负数</b>。loadLevel 同步调 render,若此时 <code>board.parentElement.clientWidth===0</code> 则 cell 算成负数,SVG circle radius 负数 → 不渲染;tile div width 负数 → CSS fallback 视觉错位。修正:render 顶部若 boardW===0 则 <code>requestAnimationFrame(render)</code> 等下一帧 layout 完成再画。验证:reload 示例关卡 cellPx 从 -7.22 → 40,圆盘 r 从 -14.45 → 80 ✓<br>• 修复圆盘 disc 上方最后一张 tile 进卡槽后该 disc 仍不淡出的 bug。单张 tile 进槽没配对时,<code>checkMatch</code> 不会进入 <code>MATCHED</code> 分支、也就不会调 <code>sweepDiscsToFade</code>,导致该 tile 上方的 disc 永远卡在场上不消失(典型场景:9 张 L0 九宫格 + 1 disc 居中 + 1 张 L1 tile 盖 disc,点 L1 进卡槽)。修正:在 <code>checkMatch()</code> 开头加一次 <code>sweepDiscsToFade()</code>,无论是否配对都先扫一遍 disc——单张进槽让上方最后一张 tile 从 active 移除的场景也能正确触发 disc 淡出。验证:用户场景下点 L1 tile 后 disc alpha 从 0 → 0.13(瞬间)→ 0.29(1.5s 后),确认淡出动画启动 ✓
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.5 · 2026-08-30</div>
         <div class="gh-desc">
           • 修复工作台预览试玩"消除一对直接获胜"bug。checkWin 的通关条件原为"麻将全消 <b>OR</b> 圆盘全消"(任一即胜利),消除一对后场上无牌 → allTilesCleared=true → 立刻通关,完全不看 disc 是否还在。修正为"麻将全消 <b>AND</b> 圆盘全消失"(两个必须同时满足),有 disc 的关卡必须等 disc 淡出完成才能通关;同时保留 currentDiscs.length===0 兜底(避免空 disc 关卡卡住)。Preview 实测:mini 关卡(2 牌 + 1 disc)消除一对后 msg 不显示,等 disc 淡出完成才通关 ✓
@@ -3179,7 +3186,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.5'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.6'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
@@ -3346,7 +3353,7 @@ function desiredCR(scoreLo, scoreHi) {
 
 function generateCurrentShape() {
   try {
-    const { tiles, specialTiles } = buildEditorShape();
+    const { tiles, specialTiles, discs } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     // 总牌数偶数校验已移到 fillEditorShape 内部（含 spitter/队列牌的细粒度校验更准确）
     const target = getStructTarget();
@@ -3358,7 +3365,7 @@ function generateCurrentShape() {
     let closest = null;
     setTimeout(function tryGen() {
       try {
-        const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig() }, genDarkOptions())), 'shape');
+        const level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig(), discs }, genDarkOptions())), 'shape');
         attempts++;
         const score = level._difficulty.score;
         const structHit = matchStructTarget(level._difficulty, target);
@@ -3402,7 +3409,7 @@ function generateCurrentShape() {
 
 function generateStackFromCurrent() {
   try {
-    const { tiles, specialTiles, spitters } = buildEditorShape();
+    const { tiles, specialTiles, spitters, discs } = buildEditorShape();
     if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
     const target = getStructTarget();
     const { scoreLo, scoreHi } = currentScoreRange();
@@ -3421,7 +3428,7 @@ function generateStackFromCurrent() {
     setTimeout(function tryGen() {
       try {
         const level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount: curLayer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount: curLayer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig(), discs }, genDarkOptions())),
           'stack', curLayer
         );
         attempts++;
@@ -3692,8 +3699,8 @@ function probeScoreRange() {
 
 // ========== 批量生成（模式 = 当前形状 / 底座堆塔，分数范围过滤） ==========
 function batchGenerate() {
-  let tiles, specialTiles, spitters;
-  try { ({ tiles, specialTiles, spitters } = buildEditorShape()); }
+  let tiles, specialTiles, spitters, discs;
+  try { ({ tiles, specialTiles, spitters, discs } = buildEditorShape()); }
   catch (e) { setGenStatus('<span class="bad">失败: ' + e.message + '</span>'); return; }
   if (tiles.length < 4) { setGenStatus('<span class="bad">至少 4 张牌</span>'); return; }
 
@@ -3739,10 +3746,10 @@ function batchGenerate() {
     try {
       let level;
       if (mode === 'shape') {
-        level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig() }, genDarkOptions())), 'shape');
+        level = attachGenParams(GEN.fillEditorShape(tiles, specialTiles, Object.assign({ rotation: getRotationConfig(), discs }, genDarkOptions())), 'shape');
       } else {
         level = attachGenParams(
-          GEN.generateStackFromShape(tiles, Object.assign({ layerCount: curLayer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig() }, genDarkOptions())),
+          GEN.generateStackFromShape(tiles, Object.assign({ layerCount: curLayer, spitters, queueTiles: tiles.filter(t => t.spitterOrder != null), rotation: getRotationConfig(), discs }, genDarkOptions())),
           'stack', curLayer
         );
       }

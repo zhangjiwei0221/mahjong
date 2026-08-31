@@ -485,10 +485,9 @@ function sendLevelToDemo(level) {
   }
 }
 function closePreview() {
+  // 保留 iframe 不卸载,避免每次重开预览都要重新加载整个 demo
+  // demo 后台循环开销极小(CPU < 1%),换取秒开预览
   document.getElementById('demoModal').classList.remove('open');
-  const frame = document.getElementById('demoFrame');
-  frame.removeAttribute('src'); // 停止 demo 后台循环
-  demoReady = false;
 }
 
 async function deleteLevel(key) {

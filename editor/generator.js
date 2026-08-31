@@ -826,6 +826,7 @@ function computeMinSlots(tiles) {
   // ========= 高层辅助 =========
   function fillEditorShape(editorTiles, editorSpecial, options) {
     options = options || {};
+    const editorDiscs = options.discs || []; // 圆盘:用户画笔放置,与 tiles 并列导出
     const darkMode = options.darkMode !== false;
     const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
     const darkRatio = options.darkRatio;
@@ -972,11 +973,12 @@ function computeMinSlots(tiles) {
       .map(function (t) { return { id: t.id, type: 'dark', layer: t.layer, row: t.row, col: t.col }; });
     const darkIds = new Set(finalTiles.filter(function (t) { return t.isDark; }).map(function (t) { return t.id; }));
     const diff = evaluateDifficulty({ tiles: finalTiles }, darkIds, darkWeight);
-    return { levelId: 1, totalPairs: Math.floor(finalTiles.length / 2), tiles: finalTiles, specialTiles: specialTiles, rotation: rotation, _difficulty: diff };
+    return { levelId: 1, totalPairs: Math.floor(finalTiles.length / 2), tiles: finalTiles, specialTiles: specialTiles, rotation: rotation, discs: editorDiscs, _difficulty: diff };
   }
 
   function generateAndFill(options) {
     options = options || {};
+    const editorDiscs = options.discs || []; // 圆盘:用户画笔放置,与 tiles 并列导出
     const darkMode = options.darkMode !== false;
     const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
     const darkRatio = options.darkRatio;
@@ -1023,6 +1025,7 @@ function computeMinSlots(tiles) {
     const darkIds = new Set((filled.specialTiles || []).map(function (s) { return s.id; }));
     const diff = evaluateDifficulty(filled, darkIds, darkWeight);
     filled._difficulty = diff;
+    filled.discs = editorDiscs;
     return filled;
   }
 
@@ -1038,6 +1041,7 @@ function computeMinSlots(tiles) {
   // ===== 堆塔生成：以用户画的形状为底，自动往上堆层 + 填色 =====
   function generateStackFromShape(editorTiles, options) {
     options = options || {};
+    const editorDiscs = options.discs || []; // 圆盘:用户画笔放置,与 tiles 并列导出
     const darkMode = options.darkMode !== false;
     const darkCoverage = options.darkCoverage != null ? options.darkCoverage : 1;
     const darkRatio = options.darkRatio;
@@ -1214,6 +1218,7 @@ function computeMinSlots(tiles) {
     const darkIds = new Set((filled.specialTiles || []).map(function (s) { return s.id; }));
     const diff = evaluateDifficulty(filled, darkIds, darkWeight);
     filled._difficulty = diff;
+    filled.discs = editorDiscs;
     return filled;
   }
 
