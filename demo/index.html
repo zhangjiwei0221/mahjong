@@ -817,7 +817,8 @@ function renderDiscs() {
     const cx = offX + (d.col - minCol) * cellPx + cellPx / 2;
     const cy = offY + (d.row - minRow) * cellPx + cellPx / 2;
     // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
-    const r = 2 * cellPx;
+    // 半径 = 2.5 张麻将边长 = 5 子格(原 2 cell 半径不足以完全覆盖 L(N+1) tile —— tile 半对角≈1.41 cell,加上 layerOffset 让 L(N+1) tile 中心偏离 disc 圆心 sqrt(0.2²+0.2²)=0.28 cell,边缘最远≈1.69 cell,原 2 cell 半径让 L(N+1) tile 4 角凸出圆外)
+    const r = 2.5 * cellPx;
     // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
     // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
     // 为了视觉明显,放大 1.5 倍

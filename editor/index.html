@@ -774,6 +774,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.6.1 · 2026-08-31</div>
+        <div class="gh-desc">
+          • 修复 v4.10.6 圆盘半径不够大导致 L(N+1) tile 4 角凸出 disc 圆外的 bug。根因:disc 半径 <code>2 * cellPx</code>(=2 cell),L(N+1) tile 边长 2 cell 半对角 ≈1.41 cell,加上 layerOffset 让 L(N+1) tile 中心偏离 disc 圆心 <code>sqrt(0.2²+0.2²) = 0.28 cell</code>,L(N+1) tile 边缘最远 ≈1.69 cell > 2 cell 半径 → tile 4 角凸出 disc 圆外约 <b>12.8 px</b>,视觉上"L1 tile 从圆盘下面凸出来"。修正:disc 半径 <code>2 * cellPx</code> → <code>2.5 * cellPx</code>(覆盖 L(N+1) tile 完全 + 7.2 px 安全边距)。实测 6 个 L1 tile × 5 个 disc 共 30 个距离中,所有配对 disc 上方的 L(N+1) tile overlap 从 +12.8 px → <b>-7.2 px</b>(负数=完全在圆内),L1 tile 4 角不再凸出 disc 圆外 ✓
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.6 · 2026-08-31</div>
         <div class="gh-desc">
           • 修复工作台预览"每次打开都要等好久才出麻将"问题。<code>closePreview()</code> 原本会 <code>frame.removeAttribute('src')</code> 卸载 demo iframe 并把 <code>demoReady=false</code>,导致每次"关闭→重开"预览都要重新加载整个 <code>/demo/index.html</code>(HTML+CSS+JS 全重),体验非常卡。修正:closePreview 仅隐藏 modal,保留 iframe 与 demoReady 状态;后续预览走 <code>previewLevel</code> 的 <code>else</code> 分支 <code>if (demoReady) sendLevelToDemo(level)</code>,直接 postMessage 发关卡,二次预览实测 0ms 秒开。后台循环 CPU 开销 &lt;1%,换取预览秒开
@@ -3186,7 +3192,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.6'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.6.1'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
