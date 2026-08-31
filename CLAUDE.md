@@ -178,6 +178,10 @@ git push origin main
 
 ## 六、当前进度(2026-08-31)
 
+### v4.10.6.2 已推送(本地)
+
+圆盘 z-index 分层:按 gapLayer 分组,每组一个 SVG,z-index=(gapLayer+1)*1000 → L(N+1) tile(z ≥ (N+1)*1000+1)压在 disc 之上(tile 视觉压 disc),L(N) tile(z < (N+1)*1000)在 disc 之下(disc 盖 L(N))。修复 v4.10.6.1 的方向错误(此前 single SVG z=50000 永远在最上,L(N+1) tile 被圆盘压住,视觉上 L1 tile 在圆盘后面)。disc 半径同步回到 2 cell。
+
 ### v4.10.6.1 已推送(b40280d)
 
 五组圆盘机制修复:

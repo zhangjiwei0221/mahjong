@@ -776,78 +776,80 @@ function render() {
 function renderDiscs() {
   if (!currentDiscs.length) return;
   const board = document.getElementById('board');
-  // 先清掉上次的 disc-layer(每次 render 重画)
-  const old = board.querySelector('.disc-layer');
-  if (old) old.remove();
+  // 清掉上次的 disc-layer(每次 render 重画,可能多个)
+  const oldLayers = board.querySelectorAll('.disc-layer');
+  oldLayers.forEach(el => el.remove());
   const visibleDiscs = currentDiscs.filter(d => (discAlpha.get(d.id) || 0) < 1);
   if (!visibleDiscs.length) return;
   const boardRect = board.getBoundingClientRect();
-  // 按视觉层升序绘制(让高缝隙层在上)
-  visibleDiscs.sort((a, b) => (a.gapLayer + 0.5) - (b.gapLayer + 0.5));
-  // 用 SVG 单节点,避免 N 个 div
-  const svgNS = 'http://www.w3.org/2000/svg';
-  // 计算牌区域的尺寸(取第一张牌的尺寸作为基准)
-  const sample = board.querySelector('.card'); // 任一卡片引用
-  // 简化:用基础尺寸 2 子格(CELL=board宽/列数),从 CSS 变量或父盒算出
-  // 因为demo 用 px 定位牌,这里用 viewBox 比例而不是 px,保证缩放下也跟住
-  // 直接给绝对定位的 SVG 占满整个 board
-  const svg = document.createElementNS(svgNS, 'svg');
-  svg.setAttribute('class', 'disc-layer');
-  svg.style.position = 'absolute'; svg.style.left = '0'; svg.style.top = '0';
-  svg.style.width = '100%'; svg.style.height = '100%';
-  svg.style.pointerEvents = 'none';
-  // tile 最大 z ≈ 5*1000+id ≈ 6100,spitter 10000+id ≈ 10100;圆盘放最高位且 pointer-events:none,不挡点击
-  svg.style.zIndex = '50000';
-  svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
-  svg.setAttribute('preserveAspectRatio', 'none');
+  // 按 gapLayer 分组;每组一个 SVG,各自 z-index = (gap+1)*1000
+  // → L(N+1) tile(z ≥ (N+1)*1000+1)压在 disc(z=(N+1)*1000)之上 → tile 视觉压 disc
+  // → L(N) tile(z < (N+1)*1000)在 disc 之下 → disc 盖 L(N) tile
+  const byGap = new Map();
   for (const d of visibleDiscs) {
-    const a = 1 - (discAlpha.get(d.id) || 0); // 1 完全可见,0 完全消失
-    if (a <= 0) continue;
-    // 圆盘中心 = 麻将位中心:占 2x2 子格 → 直径 = 子格 × 2
-    // 子格尺寸 = board 宽 / 棋盘子格列数(从内部宽度推)
-    // 这里用 last render 设置的全局:放在 dataset 上
-    const cellPx = parseFloat(board.dataset.cellPx || '0');
-    if (!cellPx) continue; // 没初始化
-    const offX = parseFloat(board.dataset.offsetX || '0');
-    const offY = parseFloat(board.dataset.offsetY || '0');
-    const minCol = parseFloat(board.dataset.minCol || '0');
-    const minRow = parseFloat(board.dataset.minRow || '0');
-    // 圆盘圆心 = (col, row) 子格中心(任意整数,可放在麻将位中心,也可放在 4 麻将交界)
-    // 子格中心 = 棋盘原点的 px + (col - minCol) * cellPx + cellPx/2
-    const cx = offX + (d.col - minCol) * cellPx + cellPx / 2;
-    const cy = offY + (d.row - minRow) * cellPx + cellPx / 2;
-    // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
-    // 半径 = 2.5 张麻将边长 = 5 子格(原 2 cell 半径不足以完全覆盖 L(N+1) tile —— tile 半对角≈1.41 cell,加上 layerOffset 让 L(N+1) tile 中心偏离 disc 圆心 sqrt(0.2²+0.2²)=0.28 cell,边缘最远≈1.69 cell,原 2 cell 半径让 L(N+1) tile 4 角凸出圆外)
-    const r = 2.5 * cellPx;
-    // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
-    // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
-    // 为了视觉明显,放大 1.5 倍
-    const zOffset = (d.gapLayer + 1) * 0.3 * cellPx * 1.5;
-    const g = document.createElementNS(svgNS, 'g');
-    g.setAttribute('opacity', a);
-    g.setAttribute('transform', `translate(0, ${-zOffset})`);
-    const circle = document.createElementNS(svgNS, 'circle');
-    circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r);
-    circle.setAttribute('fill', 'rgba(150, 70, 180, 0.55)');
-    circle.setAttribute('stroke', 'rgba(110, 40, 150, 0.95)');
-    circle.setAttribute('stroke-width', '2');
-    g.appendChild(circle);
-    // 中心小圆 + 标签
-    const inner = document.createElementNS(svgNS, 'circle');
-    inner.setAttribute('cx', cx); inner.setAttribute('cy', cy); inner.setAttribute('r', r * 0.3);
-    inner.setAttribute('fill', 'rgba(255,255,255,0.85)');
-    g.appendChild(inner);
-    const text = document.createElementNS(svgNS, 'text');
-    text.setAttribute('x', cx); text.setAttribute('y', cy);
-    text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central');
-    text.setAttribute('fill', '#5a1f78');
-    text.setAttribute('font-size', r * 0.4);
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = 'L' + d.gapLayer;
-    g.appendChild(text);
-    svg.appendChild(g);
+    if (!byGap.has(d.gapLayer)) byGap.set(d.gapLayer, []);
+    byGap.get(d.gapLayer).push(d);
   }
-  board.appendChild(svg);
+  const svgNS = 'http://www.w3.org/2000/svg';
+  for (const [gap, discs] of byGap) {
+    const z = (gap + 1) * 1000;
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'disc-layer');
+    svg.style.position = 'absolute'; svg.style.left = '0'; svg.style.top = '0';
+    svg.style.width = '100%'; svg.style.height = '100%';
+    svg.style.pointerEvents = 'none';
+    svg.style.zIndex = String(z);
+    svg.setAttribute('viewBox', `0 0 ${boardRect.width} ${boardRect.height}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+    for (const d of discs) {
+      const a = 1 - (discAlpha.get(d.id) || 0); // 1 完全可见,0 完全消失
+      if (a <= 0) continue;
+      // 圆盘中心 = 麻将位中心:占 2x2 子格 → 直径 = 子格 × 2
+      // 子格尺寸 = board 宽 / 棋盘子格列数(从内部宽度推)
+      // 这里用 last render 设置的全局:放在 dataset 上
+      const cellPx = parseFloat(board.dataset.cellPx || '0');
+      if (!cellPx) continue; // 没初始化
+      const offX = parseFloat(board.dataset.offsetX || '0');
+      const offY = parseFloat(board.dataset.offsetY || '0');
+      const minCol = parseFloat(board.dataset.minCol || '0');
+      const minRow = parseFloat(board.dataset.minRow || '0');
+      // 圆盘圆心 = (col, row) 子格中心(任意整数,可放在麻将位中心,也可放在 4 麻将交界)
+      // 子格中心 = 棋盘原点的 px + (col - minCol) * cellPx + cellPx/2
+      const cx = offX + (d.col - minCol) * cellPx + cellPx / 2;
+      const cy = offY + (d.row - minRow) * cellPx + cellPx / 2;
+      // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
+      // 圆盘在 LN 与 LN+1 之间,L(N+1) tile 视觉上压着圆盘(tile 边长 2 cell,L(N+1) tile 中心因 layerOffset 偏离约 0.28 cell,边缘最远到 disc 圆心约 1.69 cell),所以 2 cell 半径刚好让 L(N+1) tile 主体压在 disc 上、disc 边缘凸出 tile 外作为可见的"垫片"
+      const r = 2 * cellPx;
+      // layer 偏移:与牌一致——每层往上偏 layerOffset * cell(0.3 * cell)
+      // 圆盘在 LN 与 LN+1 之间,视觉层 = LN + 0.5 → 偏移 = (gapLayer + 0.5) * layerOffset * cell
+      // 为了视觉明显,放大 1.5 倍
+      const zOffset = (d.gapLayer + 1) * 0.3 * cellPx * 1.5;
+      const g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('opacity', a);
+      g.setAttribute('transform', `translate(0, ${-zOffset})`);
+      const circle = document.createElementNS(svgNS, 'circle');
+      circle.setAttribute('cx', cx); circle.setAttribute('cy', cy); circle.setAttribute('r', r);
+      circle.setAttribute('fill', 'rgba(150, 70, 180, 0.55)');
+      circle.setAttribute('stroke', 'rgba(110, 40, 150, 0.95)');
+      circle.setAttribute('stroke-width', '2');
+      g.appendChild(circle);
+      // 中心小圆 + 标签
+      const inner = document.createElementNS(svgNS, 'circle');
+      inner.setAttribute('cx', cx); inner.setAttribute('cy', cy); inner.setAttribute('r', r * 0.3);
+      inner.setAttribute('fill', 'rgba(255,255,255,0.85)');
+      g.appendChild(inner);
+      const text = document.createElementNS(svgNS, 'text');
+      text.setAttribute('x', cx); text.setAttribute('y', cy);
+      text.setAttribute('text-anchor', 'middle'); text.setAttribute('dominant-baseline', 'central');
+      text.setAttribute('fill', '#5a1f78');
+      text.setAttribute('font-size', r * 0.4);
+      text.setAttribute('font-weight', 'bold');
+      text.textContent = 'L' + d.gapLayer;
+      g.appendChild(text);
+      svg.appendChild(g);
+    }
+    board.appendChild(svg);
+  }
 }
 
 // hover 牌时不再 dim 下层牌（去掉半透明黑色特效，保持所有牌同等显示）

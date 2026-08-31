@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.6.1",
+  "version": "v4.10.6.2",
   "updated": "2026-08-31",
-  "notes": "v4.10.6 五组修复:①工作台预览秒开(closePreview 不再卸载 demo iframe);②编辑器生成关卡保留圆盘数据(discs 全链路打通);③圆盘机制三个 demo bug(空 disc 立即消失/视觉盖住上层 tile/render 时 board 未 layout 保护);④圆盘 disc 上方最后一张 tile 进卡槽后该 disc 仍不淡出(checkMatch 开头加 sweepDiscsToFade,无论是否配对都扫一遍);⑤圆盘半径 2 cell → 2.5 cell 修复 L1 tile 4 角凸出 disc 圆外(L1 tile 边长 2 cell 半对角≈1.41 cell + layerOffset 让 tile 中心偏离 disc 圆心 sqrt(0.2²+0.2²)=0.28 cell,边缘最远≈1.69 cell > 2 cell 半径 → 4 角凸出 disc 圆外约 12.8 px)。",
+  "notes": "v4.10.6.2 圆盘 z-index 分层:按 gapLayer 分组每组一个 SVG,z-index=(gapLayer+1)*1000 → L(N+1) tile(z ≥ (N+1)*1000+1)压在 disc 之上(tile 视觉压 disc),L(N) tile(z < (N+1)*1000)在 disc 之下(disc 盖 L(N))。修复 v4.10.6.1 的方向错误(此前 single SVG z=50000 永远在最上,L(N+1) tile 被圆盘压住,视觉上 L1 tile 在圆盘后面)。disc 半径同步回到 2 cell(因现在 L(N+1) tile 自然压在 disc 上方,disc 不需要再加大以完全覆盖 tile)。",
   "changelog": [
+    {
+      "version": "v4.10.6.2",
+      "date": "2026-08-31",
+      "notes": "圆盘 z-index 改为按 gapLayer 分层:每个 gapLayer 一个 SVG,z-index=(gapLayer+1)*1000(tile 用 layer*1000+id,所以 L(N+1) tile 的 z 总 ≥ (N+1)*1000+1 > disc 的 z=(N+1)*1000;L(N) tile 的 z ≤ N*1000 < (N+1)*1000)。修复 v4.10.6.1 的方向错误——v4.10.6.1 用单个 SVG z=50000,disc 永远在最上层,导致 L(N+1) tile 被圆盘压在下面,视觉上\"L1 tile 从圆盘后面凸出来\"(实际是 tile 在 disc 后面,被 disc 遮挡)。新方案:L(N+1) tile 视觉上压着 disc(tile z > disc z),L(N) tile 视觉上被 disc 覆盖(disc z > tile z),符合\"圆盘是两层之间的盖子\"语义。同时 disc 半径从 v4.10.6.1 的 2.5 cell 回到 2 cell——因为现在 L(N+1) tile 自然压 disc 边缘,disc 不需要再加大以完全覆盖 L(N+1) tile。验证:DOM 实测 tile z=1~20(L0 tile id 1~20,均 < 1000 → 在 disc 下),tile z=1021~1026(L1 tile,均 > 1000 → 在 disc 上),与设计一致。"
+    },
     {
       "version": "v4.10.6.1",
       "date": "2026-08-31",

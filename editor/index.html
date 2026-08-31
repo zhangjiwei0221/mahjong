@@ -774,6 +774,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.6.2 · 2026-08-31</div>
+        <div class="gh-desc">
+          • 修复 v4.10.6.1 圆盘 z-index 方向错误:v4.10.6.1 用单个 SVG <code>z-index=50000</code> 永远在最上层,导致 <b>L(N+1) tile 被圆盘压在下面</b>(视觉上"L1 tile 从圆盘后面凸出来")。修正:renderDiscs 改为按 <code>gapLayer</code> 分组、每组一个 SVG,各自 z-index = <code>(gapLayer+1)*1000</code>(tile 用 <code>layer*1000+id</code>,所以 L(N+1) tile 的 z 总 ≥ <code>(N+1)*1000+1</code> &gt; disc 的 z=<code>(N+1)*1000</code>;L(N) tile 的 z ≤ <code>N*1000</code> &lt; <code>(N+1)*1000</code>)。新方案:<b>L(N+1) tile 视觉上压着 disc</b>(tile z &gt; disc z),<b>L(N) tile 视觉上被 disc 覆盖</b>(disc z &gt; tile z),符合"圆盘是两层之间的盖子"语义。同时 disc 半径从 v4.10.6.1 的 <code>2.5 cell</code> 回到 <code>2 cell</code>——因为现在 L(N+1) tile 自然压在 disc 上方,disc 不需要再加大以完全覆盖 L(N+1) tile。验证:DOM 实测 <code>tile z=1~20</code>(L0 tile id 1~20,均 &lt; 1000 → 在 disc 下),<code>tile z=1021~1026</code>(L1 tile,均 &gt; 1000 → 在 disc 上),<code>disc-layer z=1000</code> ✓
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.6.1 · 2026-08-31</div>
         <div class="gh-desc">
           • 修复 v4.10.6 圆盘半径不够大导致 L(N+1) tile 4 角凸出 disc 圆外的 bug。根因:disc 半径 <code>2 * cellPx</code>(=2 cell),L(N+1) tile 边长 2 cell 半对角 ≈1.41 cell,加上 layerOffset 让 L(N+1) tile 中心偏离 disc 圆心 <code>sqrt(0.2²+0.2²) = 0.28 cell</code>,L(N+1) tile 边缘最远 ≈1.69 cell > 2 cell 半径 → tile 4 角凸出 disc 圆外约 <b>12.8 px</b>,视觉上"L1 tile 从圆盘下面凸出来"。修正:disc 半径 <code>2 * cellPx</code> → <code>2.5 * cellPx</code>(覆盖 L(N+1) tile 完全 + 7.2 px 安全边距)。实测 6 个 L1 tile × 5 个 disc 共 30 个距离中,所有配对 disc 上方的 L(N+1) tile overlap 从 +12.8 px → <b>-7.2 px</b>(负数=完全在圆内),L1 tile 4 角不再凸出 disc 圆外 ✓
@@ -3192,7 +3198,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.6.1'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.6.2'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {
