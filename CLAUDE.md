@@ -178,17 +178,18 @@ git push origin main
 
 ## 六、当前进度(2026-08-31)
 
-### v4.10.6 已推送(d57d819)
+### v4.10.6.1 已推送(b40280d)
 
-四组圆盘机制修复:
+五组圆盘机制修复:
 1. 工作台预览秒开(`closePreview` 保留 iframe,二次预览 0ms)
 2. 编辑器生成关卡保留圆盘数据(`discs` 全链路打通:三处解构 + 生成器三个函数)
 3. 圆盘机制三个 demo bug:空 disc 立即消失 / 视觉盖住上层 tile / render 时 board 未 layout 保护
 4. 圆盘 disc 上方最后一张 tile 进卡槽后该 disc 不淡出(`checkMatch` 开头加 `sweepDiscsToFade`,无论是否配对都扫一遍)
+5. 圆盘半径 2 cell → 2.5 cell 修复 L1 tile 4 角凸出 disc 圆外
 
 ### 待办
 
-- 云端验证 v4.10.6(消除一对后 disc 淡出)
+- 云端验证 v4.10.6.1(L1 tile 4 角完全在 disc 圆内)
 
 ---
 
