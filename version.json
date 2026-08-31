@@ -1,5 +1,5 @@
 {
-  "version": "v4.10.6.5",
+  "version": "45a4c29",
   "updated": "2026-09-01",
   "notes": "v4.10.6.5 回滚 v4.10.6.4 浮点圆心 snap,改回整数 snap(像摆麻将,1 cell 1 跳)。pixelToCell 去掉 opts.float 分支统一 floor;渲染侧 drawDiscAt 维持 +CELL/2。",
   "changelog": [
