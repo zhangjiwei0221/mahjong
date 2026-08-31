@@ -774,6 +774,12 @@
         <button class="sbtn" style="padding:4px 10px; font-size:11px;" onclick="location.reload(true)" title="强制刷新页面(Ctrl+Shift+R)">🔄 强刷</button>
       </div>
       <div class="gh-item">
+        <div class="gh-title">v4.10.6.3 · 2026-09-01</div>
+        <div class="gh-desc">
+          • 修复编辑器圆盘位置与 demo 不一致(相差半格):编辑器 <code>drawDiscAt</code> 用 <code>BOARD_PAD + (col+OFFSET_COL)*CELL</code>(cell 起点)画圆心,而 demo <code>renderDiscs</code> 用 <code>offX + (col-minCol)*cellPx + cellPx/2</code>(cell 中心),两者错位半个 cell。用户在编辑器画一个 disc 走「按当前形状生成」加载 demo,会发现圆盘视觉位置偏半格(尤其水平方向最明显)。修正:编辑器 <code>drawDiscAt</code> 与 <code>drawDiscPreview</code> 圆心统一加 <code>+ CELL/2</code>(与 demo cell-center 公式一致);<code>pixelToCell</code> 同步去掉 disc 画笔专用的 <code>+ 0.5</code> 偏移——hover 用 cell 起点,渲染用 cell 中心,两者公式天然对齐(同一像素落在哪一格 floor 结果不变)。验证:示例_圆盘.json(5 disc 全 col=-4)实测 editor backing pixel x 中心 <code>142.65</code>(= view 变换后 cx=66),与 demo SVG cx <code>176.14</code>(= cell 中心公式)在各自画布上视觉位置完全对应 ✓
+        </div>
+      </div>
+      <div class="gh-item">
         <div class="gh-title">v4.10.6.2 · 2026-08-31</div>
         <div class="gh-desc">
           • 修复 v4.10.6.1 圆盘 z-index 方向错误:v4.10.6.1 用单个 SVG <code>z-index=50000</code> 永远在最上层,导致 <b>L(N+1) tile 被圆盘压在下面</b>(视觉上"L1 tile 从圆盘后面凸出来")。修正:renderDiscs 改为按 <code>gapLayer</code> 分组、每组一个 SVG,各自 z-index = <code>(gapLayer+1)*1000</code>(tile 用 <code>layer*1000+id</code>,所以 L(N+1) tile 的 z 总 ≥ <code>(N+1)*1000+1</code> &gt; disc 的 z=<code>(N+1)*1000</code>;L(N) tile 的 z ≤ <code>N*1000</code> &lt; <code>(N+1)*1000</code>)。新方案:<b>L(N+1) tile 视觉上压着 disc</b>(tile z &gt; disc z),<b>L(N) tile 视觉上被 disc 覆盖</b>(disc z &gt; tile z),符合"圆盘是两层之间的盖子"语义。同时 disc 半径从 v4.10.6.1 的 <code>2.5 cell</code> 回到 <code>2 cell</code>——因为现在 L(N+1) tile 自然压在 disc 上方,disc 不需要再加大以完全覆盖 L(N+1) tile。验证:DOM 实测 <code>tile z=1~20</code>(L0 tile id 1~20,均 &lt; 1000 → 在 disc 下),<code>tile z=1021~1026</code>(L1 tile,均 &gt; 1000 → 在 disc 上),<code>disc-layer z=1000</code> ✓
@@ -1606,12 +1612,11 @@ function pixelToCell(px, py) {
   const wx = (px - view.ox) / view.scale;
   const wy = (py - view.oy) / view.scale;
   const bx = BOARD_PAD, by = worldTopPad() + BOARD_PAD;
-  // 普通画笔用 cell 起点(麻将位 2x2 footprint 从起点铺开)
-  // disc 画笔用 cell 中心(圆心精确对齐鼠标),加 +0.5 后 floor
-  const isDisc = state.brush === 'disc';
+  // 普通画笔/圆盘画笔都用 cell 起点(地板铺开)— +CELL/2 只用于 disc 渲染圆心
+  const eps = 1e-6;
   return {
-    col: Math.floor((wx - bx) / CELL + (isDisc ? 0.5 : 1e-6)) - DISPLAY_OFFSET_COL,
-    row: Math.floor((wy - by) / CELL + (isDisc ? 0.5 : 1e-6)) - DISPLAY_OFFSET_ROW,
+    col: Math.floor((wx - bx) / CELL + eps) - DISPLAY_OFFSET_COL,
+    row: Math.floor((wy - by) / CELL + eps) - DISPLAY_OFFSET_ROW,
   };
 }
 
@@ -1939,10 +1944,11 @@ function draw() {
 function discVisualLayer(disc) { return disc.gapLayer + 0.5; }
 
 function drawDiscAt(disc, alpha) {
-  // 圆心 = (col, row) 子格(任意整数,可放在麻将位中心,也可放在 4 麻将交界的"田字中心")
+  // 圆心 = (col, row) 子格中心(任意整数,可放在麻将位中心,也可放在 4 麻将交界的"田字中心")
   // 与 tile 一致:渲染用 dCol = col + DISPLAY_OFFSET_COL(棋盘原点 = 内部 col=-5 = 显示 col=0)
-  const cx = BOARD_PAD + (disc.col + DISPLAY_OFFSET_COL) * CELL;
-  const cy = worldTopPad() + BOARD_PAD + (disc.row + DISPLAY_OFFSET_ROW) * CELL;
+  // 子格中心 = cell 起点 + CELL/2 —— 与 demo renderDiscs 用 cellPx/2 一致
+  const cx = BOARD_PAD + (disc.col + DISPLAY_OFFSET_COL) * CELL + CELL / 2;
+  const cy = worldTopPad() + BOARD_PAD + (disc.row + DISPLAY_OFFSET_ROW) * CELL + CELL / 2;
   // 半径 = 1 张麻将边长 = 2 子格(直径 4 子格,圆盘能盖到周围 2x2 麻将位的各一角)
   const r = 2 * CELL;
   const lw = 1.5 / view.scale;
@@ -1984,8 +1990,8 @@ function drawDiscPreview() {
   drawDiscAt({ gapLayer: state.discGap, row, col }, overlapTile || overlapDisc ? 0.25 : 0.45);
   // hoverCell 是子格坐标(支持任意整数 = 田字中心等),虚线圆环直接画在该子格中心
   if (!overlapDisc) {
-    const cx = BOARD_PAD + (col + DISPLAY_OFFSET_COL) * CELL;
-    const cy = worldTopPad() + BOARD_PAD + (row + DISPLAY_OFFSET_ROW) * CELL;
+    const cx = BOARD_PAD + (col + DISPLAY_OFFSET_COL) * CELL + CELL / 2;
+    const cy = worldTopPad() + BOARD_PAD + (row + DISPLAY_OFFSET_ROW) * CELL + CELL / 2;
     const r = 2 * CELL;
     ctx.save();
     ctx.strokeStyle = 'rgba(60, 180, 100, 0.9)';
@@ -3198,7 +3204,7 @@ function buildEditorShape() {
 }
 
 // ========== 版本检测：发现新版本时提示强刷 ==========
-window.APP_VERSION = 'v4.10.6.2'; // 部署时同步更新，与 version.json 一致
+window.APP_VERSION = 'v4.10.6.3'; // 部署时同步更新，与 version.json 一致
 let versionCheckTimer = null;
 let versionBannerShown = false;
 function checkNewVersion() {

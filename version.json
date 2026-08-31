@@ -1,8 +1,13 @@
 {
-  "version": "v4.10.6.2",
-  "updated": "2026-08-31",
-  "notes": "v4.10.6.2 圆盘 z-index 分层:按 gapLayer 分组每组一个 SVG,z-index=(gapLayer+1)*1000 → L(N+1) tile(z ≥ (N+1)*1000+1)压在 disc 之上(tile 视觉压 disc),L(N) tile(z < (N+1)*1000)在 disc 之下(disc 盖 L(N))。修复 v4.10.6.1 的方向错误(此前 single SVG z=50000 永远在最上,L(N+1) tile 被圆盘压住,视觉上 L1 tile 在圆盘后面)。disc 半径同步回到 2 cell(因现在 L(N+1) tile 自然压在 disc 上方,disc 不需要再加大以完全覆盖 tile)。",
+  "version": "v4.10.6.3",
+  "updated": "2026-09-01",
+  "notes": "v4.10.6.3 修复编辑器圆盘位置与 demo 不一致(相差半格):drawDiscAt/drawDiscPreview 圆心加 +CELL/2 与 demo cell-center 公式对齐;pixelToCell 同步去掉 disc 画笔的 +0.5 偏移。",
   "changelog": [
+    {
+      "version": "v4.10.6.3",
+      "date": "2026-09-01",
+      "notes": "修复编辑器圆盘位置与 demo 不一致(相差半格):drawDiscAt/drawDiscPreview 圆心加 +CELL/2 与 demo cell-center 公式对齐;pixelToCell 同步去掉 disc 画笔的 +0.5 偏移。"
+    },
     {
       "version": "v4.10.6.2",
       "date": "2026-08-31",
